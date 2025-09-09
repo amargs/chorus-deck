@@ -5,7 +5,7 @@ Tool to generate slide decks with church songs and responses
 
 1. Parse source ppt file and output song titles ✅
 2. Index songs by title ✅
-3. Generate ppt file with selected songs
+3. Generate ppt file with selected songs ✅
 4. Add response slides
 5. Add UI
 6. Tag songs with additional info (e.g: moment, liturgical season, difficulty level, etc)

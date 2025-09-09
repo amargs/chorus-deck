@@ -1,10 +1,11 @@
+from copy import deepcopy
 from pptx import Presentation
 from .models import Song
 
 TITLE_PREFIX = "Cântico:"
 
-def read_song_titles(file_path: str) -> list[str]:
-    ppt = Presentation(file_path)
+def read_song_titles(source_file_path: str) -> list[str]:
+    ppt = Presentation(source_file_path)
     slide_titles = []
 
     for slide in ppt.slides:
@@ -14,8 +15,8 @@ def read_song_titles(file_path: str) -> list[str]:
 
     return slide_titles
 
-def index_songs(file_path: str) -> list[Song]:
-    ppt = Presentation(file_path)
+def index_songs(source_file_path: str) -> list[Song]:
+    ppt = Presentation(source_file_path)
     song_id = 1
     song_data = []
 
@@ -31,7 +32,26 @@ def index_songs(file_path: str) -> list[Song]:
     if len(song_data) > 0:
         song_data[-1].slide_end = len(ppt.slides) - 1
 
-    return song_data
+    return 
+
+def create_ppt(source_file_path: str, slide_ranges: list[tuple[int, int]]) -> Presentation:
+    source_ppt = Presentation(source_file_path)
+    output_ppt = Presentation()
+
+    for start, end in slide_ranges:
+        for i in range(start, end + 1):
+            slide = source_ppt.slides[i]
+
+            blank_layout = output_ppt.slide_layouts[6]
+            new_slide = output_ppt.slides.add_slide(blank_layout)
+
+            for child in list(new_slide._element):
+                new_slide._element.remove(child)
+
+            for element in slide._element:
+                new_slide._element.append(deepcopy(element))
+
+    return output_ppt
 
 def clean_title(title: str) -> str:
     return title.replace(TITLE_PREFIX, "").strip()
