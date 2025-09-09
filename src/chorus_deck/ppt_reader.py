@@ -10,6 +10,8 @@ def read_ppt(file_path: str):
         title_shape = slide.shapes.title
         if title_shape and title_shape.text:
             slide_titles.append(clean_title(title_shape.text)) 
+        else:
+            slide_titles.append("")
 
     return slide_titles
 
