@@ -38,17 +38,16 @@ def create(input, song):
     
     with open(INDEXED_SONGS_FILE, 'r', encoding='utf-8') as f:
         song_data = [Song.from_dict(item) for item in json.load(f)]
-        slide_ranges = []
+        songs = []
 
         for song_id in song:
             if len(song_data) < song_id or song_id < 1:
                 print(f'Song ID {song_id} not found in indexed data.')
                 return
             
-            current_song = song_data[song_id-1]
-            slide_ranges.append((current_song.slide_start, current_song.slide_end))
+            songs.append(song_data[song_id-1])
 
-        output_ppt = create_ppt(input, slide_ranges)
+        output_ppt = create_ppt(input, songs)
 
         output_file = "output.pptx"
         output_ppt.save(output_file)

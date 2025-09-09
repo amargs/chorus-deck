@@ -34,24 +34,27 @@ def index_songs(source_file_path: str) -> list[Song]:
 
     return 
 
-def create_ppt(source_file_path: str, slide_ranges: list[tuple[int, int]]) -> Presentation:
-    source_ppt = Presentation(source_file_path)
-    output_ppt = Presentation()
+def create_ppt(source_file_path: str, songs: list[Song]) -> Presentation:
+    slide_ranges = []
+    for song in songs:
+        slide_ranges.append((song.slide_start, song.slide_end))
 
-    for start, end in slide_ranges:
-        for i in range(start, end + 1):
-            slide = source_ppt.slides[i]
+    ppt = delete_unwanted_slides(source_file_path, slide_ranges)
 
-            blank_layout = output_ppt.slide_layouts[6]
-            new_slide = output_ppt.slides.add_slide(blank_layout)
+    return ppt
 
-            for child in list(new_slide._element):
-                new_slide._element.remove(child)
+def delete_unwanted_slides(source_file_path: str, slide_ranges: list[tuple[int, int]]) -> Presentation:
+    ppt = Presentation(source_file_path)
 
-            for element in slide._element:
-                new_slide._element.append(deepcopy(element))
+    slide_idx_to_keep = {i for start, end in slide_ranges for i in range(start, end + 1)}
 
-    return output_ppt
+    for i in reversed(range(len(ppt.slides))):
+        if i not in slide_idx_to_keep:
+            slide_id = ppt.slides._sldIdLst[i].rId
+            ppt.part.drop_rel(slide_id)
+            del ppt.slides._sldIdLst[i]
+
+    return ppt
 
 def clean_title(title: str) -> str:
     return title.replace(TITLE_PREFIX, "").strip()
