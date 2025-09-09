@@ -36,10 +36,21 @@ def index_songs(source_file_path: str) -> list[Song]:
 
 def create_ppt(source_file_path: str, songs: list[Song]) -> Presentation:
     slide_ranges = []
-    for song in songs:
+    offset = 0
+
+    for song in sorted(songs, key=lambda x: x.id):
         slide_ranges.append((song.slide_start, song.slide_end))
+        song.slide_end = offset + (song.slide_end - song.slide_start)
+        song.slide_start = offset
+        offset = song.slide_end + 1
 
     ppt = delete_unwanted_slides(source_file_path, slide_ranges)
+
+    ordered_slides = []
+    for song in songs:
+        ordered_slides.extend(range(song.slide_start, song.slide_end + 1))
+
+    reorder_slides(ppt, ordered_slides)
 
     return ppt
 
@@ -55,6 +66,16 @@ def delete_unwanted_slides(source_file_path: str, slide_ranges: list[tuple[int, 
             del ppt.slides._sldIdLst[i]
 
     return ppt
+
+def reorder_slides(ppt: Presentation, ordered_slides: list[int]):
+    slide_id_list = ppt.slides._sldIdLst
+    reordered_slide_id_list = [slide_id_list[idx] for idx in ordered_slides]
+
+    for id in slide_id_list:
+        slide_id_list.remove(id)
+
+    for id in reordered_slide_id_list:
+        slide_id_list.append(id)
 
 def clean_title(title: str) -> str:
     return title.replace(TITLE_PREFIX, "").strip()
