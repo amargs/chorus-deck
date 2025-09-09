@@ -8,10 +8,14 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "python-pptx (>=1.0.2,<2.0.0)"
 ]
 
 [tool.poetry]
 packages = [{include = "chorus_deck", from = "src"}]
+
+[tool.poetry.scripts]
+chorus-deck = "chorus_deck.cli:main"
 
 
 [build-system]
