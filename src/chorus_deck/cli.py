@@ -1,7 +1,8 @@
 import click
 import json
-from .ppt_reader import read_ppt
-from .models import Song
+from .ppt_handler import read_song_titles, index_songs
+
+INDEXED_SONGS_FILE = 'indexed_song_data.json'
 
 @click.group()
 def cli():
@@ -10,33 +11,23 @@ def cli():
 @click.command()
 @click.argument("ppt_file")
 def titles(ppt_file):
-    slide_titles = read_ppt(ppt_file)
+    slide_titles = read_song_titles(ppt_file)
     song_id = 1
 
     for title in slide_titles:
-        if len(title) > 0:
-            print(f"Song {song_id}: {title}")
-            song_id += 1
+        print(f"Song {song_id}: {title}")
+        song_id += 1
 
 
 @click.command()
 @click.argument("ppt_file")
 def index(ppt_file):
-    slide_titles = read_ppt(ppt_file)
-    song_id = 1
-    song_data = []
+    song_data = index_songs(ppt_file)
 
-    for i, title in enumerate(slide_titles, start=0):
-        if len(song_data) > 0:
-            song_data[-1].slide_end = i-1
-
-        if len(title) > 0:
-            song_data.append(Song(id=song_id, title=title, slide_start=i, slide_end=i))
-            song_id += 1
-
-    with open('indexed_song_data.json', 'w', encoding='utf-8') as f:
+    with open(INDEXED_SONGS_FILE, 'w', encoding='utf-8') as f:
         json.dump([song.to_dict() for song in song_data], f, ensure_ascii=False, indent=4)
-        print(f'Indexed {len(song_data)} songs and saved to {f.name}')
+        
+    print(f'Indexed {len(song_data)} songs and saved to {INDEXED_SONGS_FILE}')
 
 
 cli.add_command(titles)
