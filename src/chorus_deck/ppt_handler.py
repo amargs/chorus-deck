@@ -32,9 +32,11 @@ def index_songs(source_file_path: str) -> list[Song]:
     if len(song_data) > 0:
         song_data[-1].slide_end = len(ppt.slides) - 1
 
-    return 
+    return song_data
 
 def create_ppt(source_file_path: str, songs: list[Song]) -> Presentation:
+    ppt = Presentation(source_file_path)
+
     slide_ranges = []
     offset = 0
 
@@ -44,7 +46,7 @@ def create_ppt(source_file_path: str, songs: list[Song]) -> Presentation:
         song.slide_start = offset
         offset = song.slide_end + 1
 
-    ppt = delete_unwanted_slides(source_file_path, slide_ranges)
+    delete_unwanted_slides(ppt, slide_ranges)
 
     ordered_slides = []
     for song in songs:
@@ -54,9 +56,7 @@ def create_ppt(source_file_path: str, songs: list[Song]) -> Presentation:
 
     return ppt
 
-def delete_unwanted_slides(source_file_path: str, slide_ranges: list[tuple[int, int]]) -> Presentation:
-    ppt = Presentation(source_file_path)
-
+def delete_unwanted_slides(ppt: Presentation, slide_ranges: list[tuple[int, int]]):
     slide_idx_to_keep = {i for start, end in slide_ranges for i in range(start, end + 1)}
 
     for i in reversed(range(len(ppt.slides))):
