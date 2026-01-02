@@ -22,8 +22,7 @@ import java.util.List;
 public class Main {
 
     public static void main(String[] args) throws Exception {
-        createIndexFile();
-
+        createNewPresentation(List.of(8, 98, 16, 120), SlideDimensions.D16x9);
     }
 
     public static void createIndexFile() throws Exception {
@@ -32,6 +31,58 @@ public class Main {
             XMLSlideShow inputPpt = new XMLSlideShow(fis);
             List<SongCfg> songs = index(inputPpt);
             writeToFile(songs);
+        }
+    }
+
+    public static void createNewPresentation(List<Integer> ids, SlideDimensions dimensions) throws Exception {
+        String fileName;
+        int width;
+        int height;
+
+        if (dimensions == SlideDimensions.D4x3) {
+            fileName = "template_4x3.pptx";
+            width = 600;
+            height = 450;
+        } else {
+            fileName = "template_16x9.pptx";
+            width = 1600;
+            height = 900;
+        }
+
+        XMLSlideShow templatePpt;
+        try (FileInputStream fis = new FileInputStream(fileName)) {
+            templatePpt = new XMLSlideShow(fis);
+        }
+
+        XSLFSlideLayout layout =
+                templatePpt.getSlideMasters().get(0).getLayout(SlideLayout.TITLE_AND_CONTENT);
+
+        ObjectMapper mapper = new ObjectMapper();
+        List<SongCfg> songs;
+        try (FileInputStream fis = new FileInputStream("index.json")) {
+            songs = mapper.readValue(fis, new TypeReference<List<SongCfg>>() {});
+        }
+
+        for (int id : ids) {
+            SongCfg song = songs.get(id - 1);
+
+            XSLFSlide firstSlide = templatePpt.createSlide(layout);
+            firstSlide.getPlaceholder(0).setText(song.getTitle());
+            firstSlide.getPlaceholder(1).setText(song.getContent().get(0));
+
+            for (int i = 1; i < song.getContent().size(); i++) {
+                XSLFSlideLayout blankLayout =
+                        templatePpt.getSlideMasters().get(0).getLayout(SlideLayout.BLANK);
+                XSLFSlide slide = templatePpt.createSlide(blankLayout);
+
+                XSLFTextBox textBox = slide.createTextBox();
+                textBox.setAnchor(new Rectangle(50, 50, width, height));
+                textBox.setText(song.getContent().get(i));
+            }
+        }
+
+        try (FileOutputStream fos = new FileOutputStream("out_" + fileName)) {
+            templatePpt.write(fos);
         }
     }
 
