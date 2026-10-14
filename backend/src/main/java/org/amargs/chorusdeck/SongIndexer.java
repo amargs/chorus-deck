@@ -39,7 +39,7 @@ public final class SongIndexer {
                 String title = slideTitle.substring(slideTitle.indexOf('\n') + 1);
                 System.out.println(title);
                 XSLFTextShape bodyShape = (XSLFTextShape) slide.getShapes().get(1);
-                String body = bodyShape.getText().trim();
+                String body = BoldMarkup.mark(bodyShape);
 
                 List<String> content = new ArrayList<>();
                 content.add(body);
@@ -47,12 +47,21 @@ public final class SongIndexer {
             } else {
                 if (idx > 0 && !slideIsEmpty(slide)) {
                     XSLFTextShape bodyShape = (XSLFTextShape) slide.getShapes().get(0);
-                    String body = bodyShape.getText().trim();
+                    String body = BoldMarkup.mark(bodyShape);
                     songs.get(idx - 1).content().add(body);
                 }
             }
         }
+        stripUniformBoldOnSingleSlideSongs(songs);
         return songs;
+    }
+
+    static void stripUniformBoldOnSingleSlideSongs(List<SongCfg> songs) {
+        for (SongCfg song : songs) {
+            if (song.content() != null && song.content().size() == 1) {
+                song.content().set(0, BoldMarkup.plainIfFullyBold(song.content().get(0)));
+            }
+        }
     }
 
     static boolean slideIsEmpty(XSLFSlide slide) {

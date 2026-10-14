@@ -2,5 +2,6 @@
   "sourcePptx": "input.pptx",
   "indexFile": "index.json",
   "template4x3": "template_4x3.pptx",
-  "outputFile": "out_4x3.pptx"
+  "outputFile": "out_4x3.pptx",
+  "boldWeight": "medium"
 }

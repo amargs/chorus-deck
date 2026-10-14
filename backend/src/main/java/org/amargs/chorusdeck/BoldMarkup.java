@@ -1,0 +1,197 @@
+package org.amargs.chorusdeck;
+
+import org.apache.poi.xslf.usermodel.XSLFTextParagraph;
+import org.apache.poi.xslf.usermodel.XSLFTextRun;
+import org.apache.poi.xslf.usermodel.XSLFTextShape;
+import org.openxmlformats.schemas.drawingml.x2006.main.CTRegularTextRun;
+import org.openxmlformats.schemas.drawingml.x2006.main.CTTextCharacterProperties;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+
+final class BoldMarkup {
+
+    private BoldMarkup() {
+    }
+
+    static String mark(XSLFTextShape shape) {
+        List<String> lines = new ArrayList<>();
+        for (XSLFTextParagraph paragraph : shape.getTextParagraphs()) {
+            lines.add(markParagraph(paragraph));
+        }
+        return String.join("\n", lines).trim();
+    }
+
+    static String plain(String marked) {
+        if (marked == null || marked.isEmpty()) {
+            return "";
+        }
+        return marked.replace("**", "");
+    }
+
+    static String plainIfFullyBold(String marked) {
+        if (!fullyBold(marked)) {
+            return marked == null ? "" : marked;
+        }
+        return plain(marked);
+    }
+
+    static boolean fullyBold(String marked) {
+        if (marked == null || !marked.contains("**")) {
+            return false;
+        }
+        boolean bold = false;
+        boolean sawBoldText = false;
+        for (int i = 0; i < marked.length(); i++) {
+            if (marked.startsWith("**", i)) {
+                bold = !bold;
+                i++;
+                continue;
+            }
+            if (!Character.isWhitespace(marked.charAt(i))) {
+                if (!bold) {
+                    return false;
+                }
+                sawBoldText = true;
+            }
+        }
+        return sawBoldText;
+    }
+
+    static void apply(XSLFTextShape shape, String marked, String boldWeight) {
+        List<List<Segment>> parsed = parse(marked == null ? "" : marked);
+        String weight = boldWeight == null || boldWeight.isBlank() ? "semibold" : boldWeight.trim().toLowerCase(Locale.ROOT);
+        String weightedFamily = null;
+        if (!"bold".equals(weight)) {
+            String family = TextFit.latinFamily(shape);
+            String candidate = weightedFamily(family, weight);
+            if (TextFit.fontFileAvailable(candidate)) {
+                weightedFamily = candidate;
+            }
+        }
+        List<XSLFTextParagraph> paragraphs = shape.getTextParagraphs();
+        int count = Math.min(paragraphs.size(), parsed.size());
+        for (int i = 0; i < count; i++) {
+            applyLine(paragraphs.get(i), parsed.get(i), weightedFamily);
+        }
+    }
+
+    static String weightedFamily(String family, String weight) {
+        String base = family == null ? "" : family;
+        base = base.replaceAll("(?i)\\s+(extra\\s*light|extralight|extra\\s*bold|extrabold|semi\\s*bold|semibold|medium|light|thin|black|regular|bold)$", "").trim();
+        if (base.isEmpty()) {
+            base = "IBM Plex Sans";
+        }
+        return base + " " + weightLabel(weight);
+    }
+
+    private static String weightLabel(String weight) {
+        String key = weight.toLowerCase(Locale.ROOT).replaceAll("[\\s_-]+", "");
+        return switch (key) {
+            case "semibold" -> "SemiBold";
+            case "medium" -> "Medium";
+            case "light" -> "Light";
+            case "thin" -> "Thin";
+            case "black" -> "Black";
+            case "extrabold" -> "ExtraBold";
+            case "extralight" -> "ExtraLight";
+            default -> Character.toUpperCase(key.charAt(0)) + key.substring(1);
+        };
+    }
+
+    private static String markParagraph(XSLFTextParagraph paragraph) {
+        StringBuilder text = new StringBuilder();
+        boolean inBold = false;
+        for (XSLFTextRun run : paragraph.getTextRuns()) {
+            String raw = run.getRawText();
+            if (raw == null || raw.isEmpty()) {
+                continue;
+            }
+            boolean bold = run.isBold() && !raw.isBlank();
+            if (bold != inBold) {
+                text.append("**");
+                inBold = bold;
+            }
+            text.append(raw);
+        }
+        if (inBold) {
+            text.append("**");
+        }
+        return text.toString();
+    }
+
+    private static List<List<Segment>> parse(String marked) {
+        String[] lines = marked.split("\\R", -1);
+        List<List<Segment>> paragraphs = new ArrayList<>();
+        for (String line : lines) {
+            paragraphs.add(parseLine(line));
+        }
+        return paragraphs;
+    }
+
+    private static List<Segment> parseLine(String line) {
+        List<Segment> segments = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        boolean bold = false;
+        for (int i = 0; i < line.length(); i++) {
+            if (line.startsWith("**", i)) {
+                addSegment(segments, current, bold);
+                bold = !bold;
+                i++;
+                continue;
+            }
+            current.append(line.charAt(i));
+        }
+        addSegment(segments, current, bold);
+        if (segments.isEmpty()) {
+            segments.add(new Segment("", false));
+        }
+        return segments;
+    }
+
+    private static void addSegment(List<Segment> segments, StringBuilder current, boolean bold) {
+        if (current.isEmpty()) {
+            return;
+        }
+        segments.add(new Segment(current.toString(), bold));
+        current.setLength(0);
+    }
+
+    private static void applyLine(XSLFTextParagraph paragraph, List<Segment> segments, String weightedFamily) {
+        List<XSLFTextRun> runs = paragraph.getTextRuns();
+        if (runs.isEmpty() || segments.isEmpty()) {
+            return;
+        }
+        XSLFTextRun first = runs.get(0);
+        CTTextCharacterProperties base = copyProperties(first);
+        writeRun(first, segments.get(0), base, weightedFamily);
+        for (int i = 1; i < segments.size(); i++) {
+            XSLFTextRun run = paragraph.addNewTextRun();
+            writeRun(run, segments.get(i), base, weightedFamily);
+        }
+    }
+
+    private static void writeRun(XSLFTextRun run, Segment segment, CTTextCharacterProperties base, String weightedFamily) {
+        if (base != null && run.getXmlObject() instanceof CTRegularTextRun ctRun) {
+            ctRun.setRPr((CTTextCharacterProperties) base.copy());
+        }
+        run.setText(segment.text());
+        if (segment.bold() && weightedFamily != null) {
+            run.setBold(false);
+            run.setFontFamily(weightedFamily);
+        } else {
+            run.setBold(segment.bold());
+        }
+    }
+
+    private static CTTextCharacterProperties copyProperties(XSLFTextRun run) {
+        if (run.getXmlObject() instanceof CTRegularTextRun ctRun && ctRun.isSetRPr()) {
+            return (CTTextCharacterProperties) ctRun.getRPr().copy();
+        }
+        return null;
+    }
+
+    private record Segment(String text, boolean bold) {
+    }
+}

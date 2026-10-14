@@ -3,6 +3,7 @@ package org.amargs.chorusdeck;
 import org.apache.poi.xslf.usermodel.XMLSlideShow;
 import org.apache.poi.xslf.usermodel.XSLFShape;
 import org.apache.poi.xslf.usermodel.XSLFSlide;
+import org.apache.poi.xslf.usermodel.XSLFTextRun;
 import org.apache.poi.xslf.usermodel.XSLFTextShape;
 import org.junit.jupiter.api.Test;
 import org.openxmlformats.schemas.presentationml.x2006.main.CTShape;
@@ -59,6 +60,50 @@ class TemplateLayoutsTest {
             assertEquals(6000, ctShape.getTxBody().getLstStyle().getLvl1PPr().getDefRPr().getSz());
             assertEquals(2, ctShape.getTxBody().sizeOfPArray());
             assertEquals(6_000, fontSize(lyrics));
+        }
+    }
+
+    @Test
+    void emphasisUsesSemiBoldAndBoldIsTheFallback() throws Exception {
+        try (XMLSlideShow ppt = openTemplate()) {
+            XSLFSlide slide = ppt.createSlide(TemplateLayouts.findLayout(ppt, TemplateLayouts.LYRICS));
+            TemplateLayouts.setShapeText(slide, "Letra", "**Cântico:**\nverso");
+            XSLFTextShape lyrics = textShape(slide, "Letra");
+            assertEquals("Cântico:\nverso", lyrics.getText());
+            XSLFTextRun emphasis = lyrics.getTextParagraphs().get(0).getTextRuns().get(0);
+            assertFalse(emphasis.isBold());
+            assertEquals("IBM Plex Sans SemiBold", emphasis.getFontFamily());
+            XSLFTextRun verse = lyrics.getTextParagraphs().get(1).getTextRuns().get(0);
+            assertFalse(verse.isBold());
+            assertEquals("verso", verse.getRawText());
+
+            XSLFSlide boldSlide = ppt.createSlide(TemplateLayouts.findLayout(ppt, TemplateLayouts.LYRICS));
+            TemplateLayouts.setShapeText(boldSlide, "Letra", "**Cântico:**", "bold");
+            assertTrue(textShape(boldSlide, "Letra").getTextParagraphs().get(0).getTextRuns().get(0).isBold());
+
+            XSLFSlide fallback = ppt.createSlide(TemplateLayouts.findLayout(ppt, TemplateLayouts.LYRICS));
+            TemplateLayouts.setShapeText(fallback, "Letra", "**Cântico:**", "notafontweight");
+            assertTrue(textShape(fallback, "Letra").getTextParagraphs().get(0).getTextRuns().get(0).isBold());
+        }
+    }
+
+    @Test
+    void boldLinesShrinkMoreThanTheSamePlainLines() throws Exception {
+        String line = "nunca estou sozinha.";
+        String plain = (line + "\n").repeat(4);
+        String bold = ("**" + line + "**\n").repeat(4);
+        try (XMLSlideShow ppt = openTemplate()) {
+            XSLFSlide plainSlide = ppt.createSlide(TemplateLayouts.findLayout(ppt, TemplateLayouts.LYRICS));
+            TemplateLayouts.setShapeText(plainSlide, "Letra", plain);
+            XSLFSlide boldSlide = ppt.createSlide(TemplateLayouts.findLayout(ppt, TemplateLayouts.LYRICS));
+            TemplateLayouts.setShapeText(boldSlide, "Letra", bold);
+
+            int plainSize = fontSize(textShape(plainSlide, "Letra"));
+            int boldSize = fontSize(textShape(boldSlide, "Letra"));
+            assertTrue(boldSize < plainSize, "plain=" + plainSize + " bold=" + boldSize);
+            XSLFTextRun emphasis = textShape(boldSlide, "Letra").getTextParagraphs().get(0).getTextRuns().get(0);
+            assertFalse(emphasis.isBold());
+            assertEquals("IBM Plex Sans SemiBold", emphasis.getFontFamily());
         }
     }
 

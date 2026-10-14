@@ -53,14 +53,14 @@ public final class DeckGenerator {
 
                 System.out.println("  Verse 1 of " + verseCount);
                 XSLFSlide firstSlide = templatePpt.createSlide(titleLayout);
-                TemplateLayouts.setShapeText(firstSlide, "Título", song.title());
-                TemplateLayouts.setShapeText(firstSlide, "Letra", song.content().get(0));
+                TemplateLayouts.setShapeText(firstSlide, "Título", song.title(), config.boldWeight());
+                TemplateLayouts.setShapeText(firstSlide, "Letra", song.content().get(0), config.boldWeight());
                 slideNumber++;
 
                 for (int i = 1; i < verseCount; i++) {
                     System.out.println("  Verse " + (i + 1) + " of " + verseCount);
                     XSLFSlide slide = templatePpt.createSlide(lyricLayout);
-                    TemplateLayouts.setShapeText(slide, "Letra", song.content().get(i));
+                    TemplateLayouts.setShapeText(slide, "Letra", song.content().get(i), config.boldWeight());
                     slideNumber++;
                 }
             }

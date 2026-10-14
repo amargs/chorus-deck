@@ -6,12 +6,14 @@ import org.apache.poi.xslf.usermodel.XSLFSlide;
 import org.apache.poi.xslf.usermodel.XSLFSlideLayout;
 import org.apache.poi.xslf.usermodel.XSLFSlideMaster;
 import org.apache.poi.xslf.usermodel.XSLFTextParagraph;
+import org.apache.poi.xslf.usermodel.XSLFTextRun;
 import org.apache.poi.xslf.usermodel.XSLFTextShape;
 import org.openxmlformats.schemas.drawingml.x2006.main.CTOfficeStyleSheet;
 import org.openxmlformats.schemas.drawingml.x2006.main.CTRegularTextRun;
 import org.openxmlformats.schemas.drawingml.x2006.main.CTTextBody;
 import org.openxmlformats.schemas.drawingml.x2006.main.CTTextBodyProperties;
 import org.openxmlformats.schemas.drawingml.x2006.main.CTTextCharacterProperties;
+import org.openxmlformats.schemas.drawingml.x2006.main.CTTextListStyle;
 import org.openxmlformats.schemas.drawingml.x2006.main.CTTextNormalAutofit;
 import org.openxmlformats.schemas.drawingml.x2006.main.CTTextParagraph;
 import org.openxmlformats.schemas.drawingml.x2006.main.CTTextParagraphProperties;
@@ -70,7 +72,7 @@ final class TextFit {
         }
 
         TextStyle style = textStyle(shape, txBody);
-        List<String> paragraphs = paragraphs(shape);
+        List<XSLFTextParagraph> paragraphs = shape.getTextParagraphs();
         boolean lyric = !titlePlaceholder(shape);
         double textWidth = widthPt * (lyric ? 0.92 : 0.98);
         double targetHeight = lyric ? heightPt * LYRIC_BOX_FRACTION : heightPt;
@@ -116,18 +118,7 @@ final class TextFit {
         return Double.parseDouble(value.toString());
     }
 
-    private static List<String> paragraphs(XSLFTextShape shape) {
-        List<String> paragraphs = new ArrayList<>();
-        for (XSLFTextParagraph paragraph : shape.getTextParagraphs()) {
-            paragraphs.add(paragraph.getText() == null ? "" : paragraph.getText());
-        }
-        if (paragraphs.isEmpty()) {
-            paragraphs.add("");
-        }
-        return paragraphs;
-    }
-
-    private static int fit(List<String> paragraphs, TextStyle style, double widthPt, double heightPt) {
+    private static int fit(List<XSLFTextParagraph> paragraphs, TextStyle style, double widthPt, double heightPt) {
         if (fits(paragraphs, style, widthPt, heightPt, 1, 0)) {
             return FULL_SCALE;
         }
@@ -146,48 +137,107 @@ final class TextFit {
         return best;
     }
 
-    private static boolean fits(List<String> paragraphs, TextStyle style, double widthPt, double heightPt, double fontScale, double lineReduction) {
+    private static boolean fits(List<XSLFTextParagraph> paragraphs, TextStyle style, double widthPt, double heightPt, double fontScale, double lineReduction) {
         double fontPt = style.fontPt() * fontScale;
         double linePt = style.exactLinePt() > 0
                 ? style.exactLinePt()
                 : fontPt * style.linePct() * (1 - lineReduction);
         double total = 0;
-        for (String paragraph : paragraphs) {
-            int lines = wrapLines(paragraph, widthPt, fontPt, style.font());
+        for (XSLFTextParagraph paragraph : paragraphs) {
+            int lines = wrapLines(paragraph, widthPt, fontPt, style.font(), style.boldFont());
             total += style.spaceBeforePt() + lines * linePt + style.spaceAfterPt();
         }
         return total <= heightPt + 0.5;
     }
 
-    private static int wrapLines(String paragraph, double widthPt, double fontPt, Font font) {
-        if (paragraph.isEmpty()) {
+    private static int wrapLines(XSLFTextParagraph paragraph, double widthPt, double fontPt, Font regular, Font bold) {
+        List<XSLFTextRun> runs = paragraph.getTextRuns();
+        if (runs.isEmpty()) {
             return 1;
         }
-        String[] words = paragraph.split(" ", -1);
         int lines = 1;
         double used = 0;
-        for (String word : words) {
-            double wordWidth = textWidth(word, font, fontPt);
-            double space = textWidth(" ", font, fontPt);
-            if (used == 0) {
-                if (wordWidth <= widthPt) {
-                    used = wordWidth;
-                } else {
-                    lines += Math.max(0, (int) Math.ceil(wordWidth / widthPt) - 1);
-                    used = wordWidth % widthPt;
+        boolean any = false;
+        for (XSLFTextRun run : runs) {
+            String raw = run.getRawText();
+            if (raw == null || raw.isEmpty()) {
+                continue;
+            }
+            any = true;
+            Font face = runFace(run, regular, bold);
+            for (String token : tokens(raw)) {
+                if (token.equals("\n")) {
+                    lines++;
+                    used = 0;
+                    continue;
                 }
-            } else if (used + space + wordWidth <= widthPt) {
-                used += space + wordWidth;
-            } else {
-                lines++;
-                used = Math.min(wordWidth, widthPt);
-                if (wordWidth > widthPt) {
-                    lines += Math.max(0, (int) Math.ceil(wordWidth / widthPt) - 1);
-                    used = wordWidth % widthPt;
+                double width = textWidth(token, face, fontPt);
+                if (token.equals(" ")) {
+                    if (used > 0 && used + width <= widthPt) {
+                        used += width;
+                    }
+                    continue;
+                }
+                if (used == 0 || used + width <= widthPt) {
+                    if (width <= widthPt) {
+                        used = used == 0 ? width : used + width;
+                    } else {
+                        lines += Math.max(0, (int) Math.ceil(width / widthPt) - 1);
+                        used = width % widthPt;
+                    }
+                } else {
+                    lines++;
+                    if (width <= widthPt) {
+                        used = width;
+                    } else {
+                        lines += Math.max(0, (int) Math.ceil(width / widthPt) - 1);
+                        used = width % widthPt;
+                    }
                 }
             }
         }
-        return lines;
+        return any ? lines : 1;
+    }
+
+    private static Font runFace(XSLFTextRun run, Font regular, Font bold) {
+        String typeface = runTypeface(run);
+        if (typeface != null) {
+            Font weighted = baseFont(typeface);
+            if (weighted != null) {
+                return weighted;
+            }
+        }
+        return run.isBold() ? bold : regular;
+    }
+
+    private static String runTypeface(XSLFTextRun run) {
+        if (run.getXmlObject() instanceof CTRegularTextRun ctRun && ctRun.isSetRPr() && ctRun.getRPr().isSetLatin()) {
+            String typeface = ctRun.getRPr().getLatin().getTypeface();
+            if (typeface != null && !typeface.isBlank() && !typeface.startsWith("+")) {
+                return typeface;
+            }
+        }
+        return null;
+    }
+
+    private static List<String> tokens(String raw) {
+        List<String> tokens = new ArrayList<>();
+        int i = 0;
+        while (i < raw.length()) {
+            char c = raw.charAt(i);
+            if (c == ' ' || c == '\n') {
+                tokens.add(String.valueOf(c));
+                i++;
+                continue;
+            }
+            int end = i + 1;
+            while (end < raw.length() && raw.charAt(end) != ' ' && raw.charAt(end) != '\n') {
+                end++;
+            }
+            tokens.add(raw.substring(i, end));
+            i = end;
+        }
+        return tokens;
     }
 
     private static double textWidth(String text, Font font, double fontPt) {
@@ -195,7 +245,8 @@ final class TextFit {
             return 0;
         }
         if (font == null) {
-            return text.length() * fontPt * 0.5;
+            double em = fontPt * (text.equals(" ") ? 0.25 : 0.5);
+            return text.length() * em;
         }
         Font sized = font.deriveFont((float) fontPt);
         return sized.getStringBounds(text, RENDER_CONTEXT).getWidth();
@@ -218,9 +269,10 @@ final class TextFit {
             spaceAfterPt = spacingPt(level.isSetSpcAft() ? level.getSpcAft() : null, spaceAfterPt);
         }
         if (typeface == null || typeface.startsWith("+")) {
-            typeface = themeTypeface(shape, typeface, titlePlaceholder(shape));
+            typeface = latinFamily(shape, typeface);
         }
-        return new TextStyle(fontPt, linePct, exactLinePt, spaceBeforePt, spaceAfterPt, baseFont(typeface));
+        Font regular = baseFont(typeface);
+        return new TextStyle(fontPt, linePct, exactLinePt, spaceBeforePt, spaceAfterPt, regular, boldFont(typeface, regular));
     }
 
     private static double fontPt(CTTextParagraphProperties level, double fallback) {
@@ -278,13 +330,31 @@ final class TextFit {
         return "title".equals(type) || "ctrTitle".equals(type);
     }
 
-    private static String themeTypeface(XSLFTextShape shape, String current, boolean title) {
+    static String latinFamily(XSLFTextShape shape) {
+        String typeface = null;
+        if (shape.getXmlObject() instanceof CTShape ctShape && ctShape.getTxBody() != null && ctShape.getTxBody().getLstStyle() != null) {
+            CTTextListStyle styles = ctShape.getTxBody().getLstStyle();
+            if (styles.isSetLvl1PPr()) {
+                typeface = typeface(styles.getLvl1PPr(), null);
+            }
+        }
+        if (typeface == null || typeface.startsWith("+")) {
+            typeface = latinFamily(shape, typeface);
+        }
+        return typeface;
+    }
+
+    static boolean fontFileAvailable(String family) {
+        return loadFont(family) != null;
+    }
+
+    private static String latinFamily(XSLFTextShape shape, String current) {
         XSLFSlideMaster master = master(shape);
         if (master == null || master.getTheme() == null) {
             return current == null ? "IBM Plex Sans" : current;
         }
         CTOfficeStyleSheet theme = master.getTheme().getXmlObject();
-        boolean major = title || (current != null && current.startsWith("+mj"));
+        boolean major = titlePlaceholder(shape) || (current != null && current.startsWith("+mj"));
         String resolved = major
                 ? theme.getThemeElements().getFontScheme().getMajorFont().getLatin().getTypeface()
                 : theme.getThemeElements().getFontScheme().getMinorFont().getLatin().getTypeface();
@@ -300,6 +370,24 @@ final class TextFit {
             return layout.getSlideMaster();
         }
         return null;
+    }
+
+    private static Font boldFont(String family, Font regular) {
+        if (family == null || family.isBlank()) {
+            return regular == null ? null : regular.deriveFont(Font.BOLD);
+        }
+        return FONTS.computeIfAbsent(family + "\0bold", key -> {
+            Font loaded = loadFont(boldFamilyName(family));
+            if (loaded != null) {
+                return loaded;
+            }
+            return regular == null ? new Font(Font.SANS_SERIF, Font.BOLD, 12) : regular.deriveFont(Font.BOLD);
+        });
+    }
+
+    private static String boldFamilyName(String family) {
+        String stripped = family.replaceAll("(?i)\\s+(semi\\s*bold|semibold|medium|light|thin|black|regular|bold)$", "").trim();
+        return stripped + " Bold";
     }
 
     private static Font baseFont(String family) {
@@ -393,6 +481,6 @@ final class TextFit {
         return dirs;
     }
 
-    private record TextStyle(double fontPt, double linePct, double exactLinePt, double spaceBeforePt, double spaceAfterPt, Font font) {
+    private record TextStyle(double fontPt, double linePct, double exactLinePt, double spaceBeforePt, double spaceAfterPt, Font font, Font boldFont) {
     }
 }

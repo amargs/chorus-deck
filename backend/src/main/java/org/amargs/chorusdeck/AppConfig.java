@@ -7,7 +7,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-public record AppConfig(Path sourcePptx, Path indexFile, Path template4x3, Path outputFile) {
+public record AppConfig(Path sourcePptx, Path indexFile, Path template4x3, Path outputFile, String boldWeight) {
+
+    public AppConfig(Path sourcePptx, Path indexFile, Path template4x3, Path outputFile) {
+        this(sourcePptx, indexFile, template4x3, outputFile, "semibold");
+    }
 
     public static AppConfig load(Path configFile) throws IOException {
         if (!Files.isRegularFile(configFile)) {
@@ -19,7 +23,8 @@ public record AppConfig(Path sourcePptx, Path indexFile, Path template4x3, Path 
                 resolve(base, text(node, "sourcePptx")),
                 resolve(base, text(node, "indexFile")),
                 resolve(base, text(node, "template4x3")),
-                resolve(base, text(node, "outputFile")));
+                resolve(base, text(node, "outputFile")),
+                weight(node));
     }
 
     public static Path findConfig(Path explicit) {
@@ -48,6 +53,17 @@ public record AppConfig(Path sourcePptx, Path indexFile, Path template4x3, Path 
             throw new IllegalArgumentException("Config is missing a non-empty \"" + field + "\" string.");
         }
         return value.asText();
+    }
+
+    private static String weight(JsonNode node) {
+        JsonNode value = node.get("boldWeight");
+        if (value == null || value.isNull()) {
+            return "semibold";
+        }
+        if (!value.isTextual() || value.asText().isBlank()) {
+            throw new IllegalArgumentException("Config \"boldWeight\" must be a non-empty string such as semibold or bold.");
+        }
+        return value.asText().trim().toLowerCase(java.util.Locale.ROOT);
     }
 
     private static Path resolve(Path base, String value) {

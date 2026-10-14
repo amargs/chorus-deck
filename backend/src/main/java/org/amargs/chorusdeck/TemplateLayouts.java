@@ -27,8 +27,14 @@ public final class TemplateLayouts {
     }
 
     public static void setShapeText(XSLFSlide slide, String shapeName, String text) {
+        setShapeText(slide, shapeName, text, "semibold");
+    }
+
+    public static void setShapeText(XSLFSlide slide, String shapeName, String text, String boldWeight) {
         XSLFTextShape shape = findTextShape(slide, shapeName);
-        shape.setText(text == null ? "" : text);
+        String marked = text == null ? "" : text;
+        shape.setText(BoldMarkup.plain(marked));
+        BoldMarkup.apply(shape, marked, boldWeight);
         TextFit.apply(shape);
     }
 
