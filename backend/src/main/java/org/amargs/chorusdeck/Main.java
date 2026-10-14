@@ -74,9 +74,11 @@ public class Main {
             }
         }
 
-        AppConfig config = AppConfig.load(AppConfig.findConfig(configArg));
+        Path configFile = AppConfig.findConfig(configArg);
+        AppConfig config = AppConfig.load(configFile);
         switch (command) {
             case "index" -> new SongIndexer().rebuild(config);
+            case "songbook" -> printSongbooks(configFile.getParent());
             case "generate" -> {
                 if (ids == null) {
                     throw new IllegalArgumentException("generate requires --ids.\n" + usage());
@@ -89,6 +91,18 @@ public class Main {
                         season, cover, domingo, frase, versiculo, Season.ano(ano)));
             }
             default -> throw new IllegalArgumentException("Unknown command: " + command + "\n" + usage());
+        }
+    }
+
+    private static void printSongbooks(Path configDir) throws Exception {
+        SongbookReader reader = new SongbookReader();
+        for (String name : List.of("songbook_default.docx", "songbook_rites.docx")) {
+            Path docx = configDir.resolve("data").resolve(name);
+            System.out.println(docx.getFileName());
+            for (SongbookReader.Item item : reader.read(docx)) {
+                System.out.println(SongbookReader.line(item));
+            }
+            System.out.println();
         }
     }
 
@@ -140,6 +154,7 @@ public class Main {
         return """
                 Usage:
                   index [--config <file>]
+                  songbook [--config <file>]
                   generate --ids <id,id,...> --season <season> --ano <A|B|C> --domingo <text> --frase <text> --versiculo <text> [--cover <layout>] [--config <file>]""";
     }
 }
