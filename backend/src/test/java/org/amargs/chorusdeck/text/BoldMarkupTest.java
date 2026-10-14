@@ -1,4 +1,4 @@
-package org.amargs.chorusdeck;
+package org.amargs.chorusdeck.text;
 
 import org.apache.poi.xslf.usermodel.XMLSlideShow;
 import org.apache.poi.xslf.usermodel.XSLFSlide;
@@ -7,13 +7,7 @@ import org.apache.poi.xslf.usermodel.XSLFTextParagraph;
 import org.apache.poi.xslf.usermodel.XSLFTextRun;
 import org.junit.jupiter.api.Test;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BoldMarkupTest {
 
@@ -36,21 +30,6 @@ class BoldMarkupTest {
         assertEquals("Hoje eu vou celebrar", BoldMarkup.plainIfFullyBold("**Hoje eu vou celebrar**"));
         assertEquals("linha um\nlinha dois", BoldMarkup.plainIfFullyBold("**linha um**\n**linha dois**"));
         assertEquals("**Cântico: **verso", BoldMarkup.plainIfFullyBold("**Cântico: **verso"));
-
-        SongCfg single = new SongCfg(8, "Song", new java.util.ArrayList<>(List.of("**tudo em negrito**")));
-        SongCfg multi = new SongCfg(6, "Song", new java.util.ArrayList<>(List.of("**refrão**", "verso")));
-        SongIndexer.stripUniformBoldOnSingleSlideSongs(List.of(single, multi));
-        assertEquals("tudo em negrito", single.content().get(0));
-        assertEquals("**refrão**", multi.content().get(0));
-    }
-
-    @Test
-    void missingBoldWeightDefaultsToSemibold() throws Exception {
-        Path file = Files.createTempFile("chorus-deck-config", ".json");
-        Files.writeString(file, """
-                {"sourcePptx":"a.pptx","indexFile":"b.json","template4x3":"c.pptx","outputFile":"d.pptx"}
-                """);
-        assertEquals("semibold", AppConfig.load(file).boldWeight());
     }
 
     private static XSLFTextBox textBox(XMLSlideShow ppt) {

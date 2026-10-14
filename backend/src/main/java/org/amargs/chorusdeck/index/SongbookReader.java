@@ -1,4 +1,6 @@
-package org.amargs.chorusdeck;
+package org.amargs.chorusdeck.index;
+
+import org.amargs.chorusdeck.model.SongbookItem;
 
 import org.apache.poi.xwpf.usermodel.XWPFAbstractNum;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
@@ -34,16 +36,7 @@ public final class SongbookReader {
     static final String TITLE_STYLE = "Nome";
     private static final Pattern RITE_CODE = Pattern.compile("^([A-Za-z]+\\d+)\\.\\s*(.*)$", Pattern.DOTALL);
 
-    public sealed interface Item permits Entry, MissingPrefix {
-    }
-
-    public record Entry(String bookId, String title) implements Item {
-    }
-
-    public record MissingPrefix(String text) implements Item {
-    }
-
-    public List<Item> read(Path docx) throws IOException {
+    public List<SongbookItem> read(Path docx) throws IOException {
         if (!Files.isRegularFile(docx)) {
             throw new IllegalArgumentException("Songbook not found: " + docx);
         }
@@ -53,8 +46,8 @@ public final class SongbookReader {
         }
     }
 
-    static List<Item> read(XWPFDocument document) {
-        List<Item> items = new ArrayList<>();
+    static List<SongbookItem> read(XWPFDocument document) {
+        List<SongbookItem> items = new ArrayList<>();
         Counters counters = new Counters();
         for (XWPFParagraph paragraph : document.getParagraphs()) {
             if (!TITLE_STYLE.equals(paragraph.getStyle())) {
@@ -70,25 +63,17 @@ public final class SongbookReader {
                         numbering.numId(),
                         numbering.level(),
                         startAt(document, numbering.numId(), numbering.level())));
-                items.add(new Entry(bookId, text));
+                items.add(new SongbookItem.Entry(bookId, text));
             } else {
                 Matcher rite = RITE_CODE.matcher(text);
                 if (!rite.matches()) {
-                    items.add(new MissingPrefix(text));
+                    items.add(new SongbookItem.MissingPrefix(text));
                 } else {
-                    items.add(new Entry(rite.group(1), rite.group(2).trim()));
+                    items.add(new SongbookItem.Entry(rite.group(1), rite.group(2).trim()));
                 }
             }
         }
         return items;
-    }
-
-    public static String line(Item item) {
-        if (item instanceof Entry entry) {
-            return entry.bookId() + "\t" + entry.title();
-        }
-        MissingPrefix missing = (MissingPrefix) item;
-        return "missing-prefix\t" + missing.text();
     }
 
     private static NumRef effectiveNumbering(XWPFParagraph paragraph, XWPFDocument document) {

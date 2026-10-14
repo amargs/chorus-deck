@@ -1,4 +1,4 @@
-package org.amargs.chorusdeck;
+package org.amargs.chorusdeck.index;
 
 import java.util.Locale;
 import java.util.regex.Pattern;

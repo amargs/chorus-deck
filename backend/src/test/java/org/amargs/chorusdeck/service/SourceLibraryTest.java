@@ -1,4 +1,10 @@
-package org.amargs.chorusdeck;
+package org.amargs.chorusdeck.service;
+
+import org.amargs.chorusdeck.config.AppConfig;
+import org.amargs.chorusdeck.index.SourceHashes;
+import org.amargs.chorusdeck.model.SongCfg;
+import org.amargs.chorusdeck.model.SongbookItem;
+import org.amargs.chorusdeck.model.SourceSnapshot;
 
 import org.junit.jupiter.api.Test;
 
@@ -21,29 +27,25 @@ class SourceLibraryTest {
                 new SongCfg(80, "Jesus Cristo és minha vida", List.of("v")),
                 new SongCfg(190, "Jesus Cristo és minha vida", List.of("v")),
                 new SongCfg(50, "Só no PowerPoint", List.of("v")));
-        List<SongbookReader.Item> books = List.of(
-                new SongbookReader.Entry("2", "A festa da música"),
-                new SongbookReader.Entry("3", "A Ti, Senhor, meu Deus"),
-                new SongbookReader.Entry("12", "Adoramus te, O Christe"),
-                new SongbookReader.Entry("147", "Quero ser como tu"),
-                new SongbookReader.Entry("40", "Jesus Cristo és minha vida"),
-                new SongbookReader.Entry("99", "Só no cancioneiro"),
-                new SongbookReader.MissingPrefix("Sem código"));
+        List<SongbookItem> books = List.of(
+                new SongbookItem.Entry("2", "A festa da música"),
+                new SongbookItem.Entry("3", "A Ti, Senhor, meu Deus"),
+                new SongbookItem.Entry("12", "Adoramus te, O Christe"),
+                new SongbookItem.Entry("147", "Quero ser como tu"),
+                new SongbookItem.Entry("40", "Jesus Cristo és minha vida"),
+                new SongbookItem.Entry("99", "Só no cancioneiro"),
+                new SongbookItem.MissingPrefix("Sem código"));
 
-        SourceDiff.Report report = SourceDiff.diff(songs, books);
+        DiffService.Report report = DiffService.diff(songs, books);
 
-        assertEquals(List.of("99\tSó no cancioneiro"), report.songbookOnly());
-        assertEquals(List.of("50\tSó no PowerPoint"), report.slideOnly());
-        assertTrue(report.near().contains("12\tAdoramus te, O Christe\t8\tAdorasmus te o Christe"));
-        assertTrue(report.near().contains("147\tQuero ser como tu\t134\tQuero ser como tu, Maria"));
-        assertEquals(List.of(
-                "| songbook id | songbook title    | slide id | slide title              |",
-                "|-------------|-------------------|----------|--------------------------|",
-                "| 147         | Quero ser como tu | 134      | Quero ser como tu, Maria |"),
-                SourceDiff.table(List.of("147\tQuero ser como tu\t134\tQuero ser como tu, Maria"),
-                        "songbook id", "songbook title", "slide id", "slide title"));
+        assertEquals(List.of(new DiffService.Report.BookOnly("99", "Só no cancioneiro")), report.songbookOnly());
+        assertEquals(List.of(new DiffService.Report.SlideOnly(50, "Só no PowerPoint")), report.slideOnly());
+        assertTrue(report.near().contains(new DiffService.Report.Near(
+                "12", "Adoramus te, O Christe", 8, "Adorasmus te o Christe")));
+        assertTrue(report.near().contains(new DiffService.Report.Near(
+                "147", "Quero ser como tu", 134, "Quero ser como tu, Maria")));
         assertEquals(2, report.ambiguous().size());
-        assertTrue(report.ambiguous().get(0).startsWith("40\t"));
+        assertEquals(List.of("40"), report.ambiguous().get(0).bookIds());
         assertEquals(List.of("Sem código"), report.missingPrefix());
         assertTrue(report.noLyrics().isEmpty());
     }
@@ -54,14 +56,16 @@ class SourceLibraryTest {
                 new SongCfg(33, "Da pace cordium", List.of("")),
                 new SongCfg(146, "Só Deus basta", List.of("  "), "159"),
                 new SongCfg(1, "A festa da música", List.of("", "verso"), "2"));
-        List<SongbookReader.Item> books = List.of(
-                new SongbookReader.Entry("159", "Só Deus basta"),
-                new SongbookReader.Entry("2", "A festa da música"));
+        List<SongbookItem> books = List.of(
+                new SongbookItem.Entry("159", "Só Deus basta"),
+                new SongbookItem.Entry("2", "A festa da música"));
 
-        SourceDiff.Report report = SourceDiff.diff(songs, books);
+        DiffService.Report report = DiffService.diff(songs, books);
 
-        assertEquals(List.of("33\t\tDa pace cordium", "146\t159\tSó Deus basta"), report.noLyrics());
-        assertEquals(List.of("33\tDa pace cordium"), report.slideOnly());
+        assertEquals(List.of(
+                new DiffService.Report.NoLyrics(33, null, "Da pace cordium"),
+                new DiffService.Report.NoLyrics(146, "159", "Só Deus basta")), report.noLyrics());
+        assertEquals(List.of(new DiffService.Report.SlideOnly(33, "Da pace cordium")), report.slideOnly());
         assertTrue(report.songbookOnly().isEmpty());
     }
 
@@ -82,22 +86,22 @@ class SourceLibraryTest {
         Files.writeString(index, "[]");
 
         AppConfig app = AppConfig.load(config);
-        SourceSnapshot current = SourceSnapshot.of(app);
+        SourceSnapshot current = SourceHashes.of(app);
         assertEquals(SourceSnapshot.Refresh.FULL, SourceSnapshot.decide(null, current, true));
-        current.write(config);
+        SourceHashes.write(config, current);
 
         AppConfig reloaded = AppConfig.load(config);
         assertEquals("medium", reloaded.boldWeight());
-        assertEquals(SourceSnapshot.Refresh.UNCHANGED, SourceSnapshot.decide(SourceSnapshot.read(config), SourceSnapshot.of(app), true));
+        assertEquals(SourceSnapshot.Refresh.UNCHANGED, SourceSnapshot.decide(SourceHashes.read(config), SourceHashes.of(app), true));
 
         Files.writeString(songbook, "book-edited");
         assertEquals(SourceSnapshot.Refresh.SONGBOOK,
-                SourceSnapshot.decide(SourceSnapshot.read(config), SourceSnapshot.of(app), true));
+                SourceSnapshot.decide(SourceHashes.read(config), SourceHashes.of(app), true));
         assertEquals(SourceSnapshot.Refresh.FULL,
-                SourceSnapshot.decide(SourceSnapshot.read(config), SourceSnapshot.of(app), false));
+                SourceSnapshot.decide(SourceHashes.read(config), SourceHashes.of(app), false));
 
         Files.writeString(pptx, "slides-edited");
         assertEquals(SourceSnapshot.Refresh.FULL,
-                SourceSnapshot.decide(SourceSnapshot.read(config), SourceSnapshot.of(app), true));
+                SourceSnapshot.decide(SourceHashes.read(config), SourceHashes.of(app), true));
     }
 }

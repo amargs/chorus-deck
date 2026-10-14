@@ -1,4 +1,4 @@
-package org.amargs.chorusdeck;
+package org.amargs.chorusdeck.model;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 

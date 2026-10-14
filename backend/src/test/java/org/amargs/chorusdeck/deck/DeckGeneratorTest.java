@@ -1,4 +1,4 @@
-package org.amargs.chorusdeck;
+package org.amargs.chorusdeck.deck;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
@@ -23,10 +23,10 @@ class DeckGeneratorTest {
     @Test
     void outputProbeAllowsAMissingOrClosedFile() throws Exception {
         Path missing = Files.createTempDirectory("chorus-deck").resolve("out.pptx");
-        assertDoesNotThrow(() -> DeckGenerator.ensureOutputWritable(missing));
+        assertDoesNotThrow(() -> DeckFile.ensureWritable(missing));
 
         Path closed = Files.createTempFile("chorus-deck", ".pptx");
-        assertDoesNotThrow(() -> DeckGenerator.ensureOutputWritable(closed));
+        assertDoesNotThrow(() -> DeckFile.ensureWritable(closed));
     }
 
     @Test
@@ -48,7 +48,7 @@ class DeckGeneratorTest {
                 throw new IllegalStateException("Could not lock " + file);
             }
             IllegalArgumentException error = assertThrows(
-                    IllegalArgumentException.class, () -> DeckGenerator.ensureOutputWritable(file));
+                    IllegalArgumentException.class, () -> DeckFile.ensureWritable(file));
             assertTrue(error.getMessage().contains("because it is open"));
         } finally {
             lock.destroy();
@@ -57,11 +57,11 @@ class DeckGeneratorTest {
 
     @Test
     void lockedOutputIsRecognizedOnWindowsAndWsl() throws Exception {
-        assertTrue(DeckGenerator.outputIsLocked(new AccessDeniedException("out_4x3.pptx")));
-        assertTrue(DeckGenerator.outputIsLocked(new FileSystemException(
+        assertTrue(DeckFile.isLocked(new AccessDeniedException("out_4x3.pptx")));
+        assertTrue(DeckFile.isLocked(new FileSystemException(
                 "out_4x3.pptx",
                 null,
                 "The process cannot access the file because it is being used by another process")));
-        assertFalse(DeckGenerator.outputIsLocked(new NoSuchFileException("out_4x3.pptx")));
+        assertFalse(DeckFile.isLocked(new NoSuchFileException("out_4x3.pptx")));
     }
 }

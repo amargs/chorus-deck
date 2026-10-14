@@ -1,4 +1,7 @@
-package org.amargs.chorusdeck;
+package org.amargs.chorusdeck.deck;
+
+import org.amargs.chorusdeck.text.BoldMarkup;
+import org.amargs.chorusdeck.text.TextFit;
 
 import org.apache.poi.xslf.usermodel.XMLSlideShow;
 import org.apache.poi.xslf.usermodel.XSLFShape;

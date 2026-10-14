@@ -1,8 +1,8 @@
-package org.amargs.chorusdeck;
+package org.amargs.chorusdeck.model;
 
 import java.util.Locale;
 
-final class Season {
+public final class Season {
 
     static final String ORDINARY_TITLE = "Título e letra";
     static final String FESTIVE_TITLE = "Título e letra - Natal e Páscoa";
@@ -19,23 +19,23 @@ final class Season {
         this.tempoName = tempoName;
     }
 
-    String coverLayout() {
+    public String coverLayout() {
         return coverLayout;
     }
 
-    String titleLayout() {
+    public String titleLayout() {
         return titleLayout;
     }
 
-    String headerScheme() {
+    public String headerScheme() {
         return headerScheme;
     }
 
-    String tempo(String ano) {
+    public String tempo(String ano) {
         return tempoName + " · Ano " + ano;
     }
 
-    static Season resolve(String seasonKey, String coverOverride) {
+    public static Season resolve(String seasonKey, String coverOverride) {
         Season season = byKey(seasonKey);
         if (coverOverride == null || coverOverride.isBlank()) {
             return season;
@@ -45,17 +45,6 @@ final class Season {
             return fromCover;
         }
         return new Season(coverOverride, season.titleLayout, season.headerScheme, season.tempoName);
-    }
-
-    static String ano(String raw) {
-        if (raw == null || raw.isBlank()) {
-            throw new IllegalArgumentException("--ano requires A, B, or C.");
-        }
-        String year = raw.trim().toUpperCase(Locale.ROOT);
-        if (!year.equals("A") && !year.equals("B") && !year.equals("C")) {
-            throw new IllegalArgumentException("--ano requires A, B, or C.");
-        }
-        return year;
     }
 
     private static Season byKey(String raw) {

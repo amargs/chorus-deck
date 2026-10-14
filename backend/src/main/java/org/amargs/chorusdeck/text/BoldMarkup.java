@@ -1,4 +1,4 @@
-package org.amargs.chorusdeck;
+package org.amargs.chorusdeck.text;
 
 import org.apache.poi.xslf.usermodel.XSLFTextParagraph;
 import org.apache.poi.xslf.usermodel.XSLFTextRun;
@@ -11,12 +11,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-final class BoldMarkup {
+public final class BoldMarkup {
 
     private BoldMarkup() {
     }
 
-    static String mark(XSLFTextShape shape) {
+    public static String mark(XSLFTextShape shape) {
         List<String> lines = new ArrayList<>();
         for (XSLFTextParagraph paragraph : shape.getTextParagraphs()) {
             lines.add(markParagraph(paragraph));
@@ -24,14 +24,14 @@ final class BoldMarkup {
         return String.join("\n", lines).trim();
     }
 
-    static String plain(String marked) {
+    public static String plain(String marked) {
         if (marked == null || marked.isEmpty()) {
             return "";
         }
         return marked.replace("**", "");
     }
 
-    static String plainIfFullyBold(String marked) {
+    public static String plainIfFullyBold(String marked) {
         if (!fullyBold(marked)) {
             return marked == null ? "" : marked;
         }
@@ -60,14 +60,14 @@ final class BoldMarkup {
         return sawBoldText;
     }
 
-    static void apply(XSLFTextShape shape, String marked, String boldWeight) {
+    public static void apply(XSLFTextShape shape, String marked, String boldWeight) {
         List<List<Segment>> parsed = parse(marked == null ? "" : marked);
         String weight = boldWeight == null || boldWeight.isBlank() ? "semibold" : boldWeight.trim().toLowerCase(Locale.ROOT);
         String weightedFamily = null;
         if (!"bold".equals(weight)) {
-            String family = TextFit.latinFamily(shape);
+            String family = Fonts.latinFamily(shape);
             String candidate = weightedFamily(family, weight);
-            if (TextFit.fontFileAvailable(candidate)) {
+            if (Fonts.fontFileAvailable(candidate)) {
                 weightedFamily = candidate;
             }
         }

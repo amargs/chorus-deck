@@ -1,4 +1,6 @@
-package org.amargs.chorusdeck;
+package org.amargs.chorusdeck.index;
+
+import org.amargs.chorusdeck.model.SongbookItem;
 
 import org.apache.poi.xwpf.usermodel.XWPFAbstractNum;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
@@ -35,12 +37,12 @@ class SongbookReaderTest {
             nome(doc, "");
             nome(doc, "A festa da música");
 
-            List<SongbookReader.Item> items = SongbookReader.read(doc);
+            List<SongbookItem> items = SongbookReader.read(doc);
 
             assertEquals(2, items.size());
-            assertEquals(new SongbookReader.Entry("1", "A minh’alma descansa em paz"), items.get(0));
-            assertEquals(new SongbookReader.Entry("2", "A festa da música"), items.get(1));
-            assertEquals("1\tA minh’alma descansa em paz", SongbookReader.line(items.get(0)));
+            assertEquals(new SongbookItem.Entry("1", "A minh’alma descansa em paz"), items.get(0));
+            assertEquals(new SongbookItem.Entry("2", "A festa da música"), items.get(1));
+            assertEquals("1\tA minh’alma descansa em paz", SongbookItem.line(items.get(0)));
         }
     }
 
@@ -53,13 +55,13 @@ class SongbookReaderTest {
             nome(doc, "A12. Preparai os caminhos do Senhor");
             nome(doc, "Sem código");
 
-            List<SongbookReader.Item> items = SongbookReader.read(doc);
+            List<SongbookItem> items = SongbookReader.read(doc);
 
             assertEquals(3, items.size());
-            assertEquals(new SongbookReader.Entry("RP1", "Kyrie eleison (1)"), items.get(0));
-            assertEquals(new SongbookReader.Entry("A12", "Preparai os caminhos do Senhor"), items.get(1));
-            assertEquals(new SongbookReader.MissingPrefix("Sem código"), items.get(2));
-            assertEquals("missing-prefix\tSem código", SongbookReader.line(items.get(2)));
+            assertEquals(new SongbookItem.Entry("RP1", "Kyrie eleison (1)"), items.get(0));
+            assertEquals(new SongbookItem.Entry("A12", "Preparai os caminhos do Senhor"), items.get(1));
+            assertEquals(new SongbookItem.MissingPrefix("Sem código"), items.get(2));
+            assertEquals("missing-prefix\tSem código", SongbookItem.line(items.get(2)));
         }
     }
 
@@ -75,22 +77,22 @@ class SongbookReaderTest {
         assertTrue(Files.isRegularFile(rites));
 
         SongbookReader reader = new SongbookReader();
-        List<SongbookReader.Item> songs = reader.read(regular);
-        assertInstanceOf(SongbookReader.Entry.class, songs.get(0));
-        assertEquals(new SongbookReader.Entry("1", "A minh’alma descansa em paz"), songs.get(0));
-        assertTrue(songs.contains(new SongbookReader.Entry("5", "Acreditar")));
-        assertTrue(songs.contains(new SongbookReader.Entry("6", "Adeste fideles")));
-        assertTrue(songs.contains(new SongbookReader.Entry("135", "Passa por mim")));
-        assertTrue(songs.contains(new SongbookReader.Entry("136", "Passo a passo")));
-        assertTrue(songs.contains(new SongbookReader.Entry("147", "Quero ser como tu")));
-        assertEquals(0, songs.stream().filter(item -> item instanceof SongbookReader.MissingPrefix).count());
+        List<SongbookItem> songs = reader.read(regular);
+        assertInstanceOf(SongbookItem.Entry.class, songs.get(0));
+        assertEquals(new SongbookItem.Entry("1", "A minh’alma descansa em paz"), songs.get(0));
+        assertTrue(songs.contains(new SongbookItem.Entry("5", "Acreditar")));
+        assertTrue(songs.contains(new SongbookItem.Entry("6", "Adeste fideles")));
+        assertTrue(songs.contains(new SongbookItem.Entry("135", "Passa por mim")));
+        assertTrue(songs.contains(new SongbookItem.Entry("136", "Passo a passo")));
+        assertTrue(songs.contains(new SongbookItem.Entry("147", "Quero ser como tu")));
+        assertEquals(0, songs.stream().filter(item -> item instanceof SongbookItem.MissingPrefix).count());
 
-        List<SongbookReader.Item> riteItems = reader.read(rites);
-        assertEquals(new SongbookReader.Entry("RP1", "Kyrie eleison (1)"), riteItems.get(0));
-        assertTrue(riteItems.contains(new SongbookReader.Entry("A1", "Aleluia (7)")));
-        assertTrue(riteItems.contains(new SongbookReader.Entry("S1", "Santo (Antigo)")));
-        assertTrue(riteItems.contains(new SongbookReader.Entry("C8", "Cordeiro (nós, Senhor)")));
-        assertEquals(0, riteItems.stream().filter(item -> item instanceof SongbookReader.MissingPrefix).count());
+        List<SongbookItem> riteItems = reader.read(rites);
+        assertEquals(new SongbookItem.Entry("RP1", "Kyrie eleison (1)"), riteItems.get(0));
+        assertTrue(riteItems.contains(new SongbookItem.Entry("A1", "Aleluia (7)")));
+        assertTrue(riteItems.contains(new SongbookItem.Entry("S1", "Santo (Antigo)")));
+        assertTrue(riteItems.contains(new SongbookItem.Entry("C8", "Cordeiro (nós, Senhor)")));
+        assertEquals(0, riteItems.stream().filter(item -> item instanceof SongbookItem.MissingPrefix).count());
     }
 
     private static BigInteger decimalList(XWPFDocument doc) {

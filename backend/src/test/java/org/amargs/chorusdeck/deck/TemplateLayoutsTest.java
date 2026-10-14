@@ -1,4 +1,8 @@
-package org.amargs.chorusdeck;
+package org.amargs.chorusdeck.deck;
+
+import org.amargs.chorusdeck.config.AppConfig;
+import org.amargs.chorusdeck.model.Cover;
+import org.amargs.chorusdeck.service.DeckService;
 
 import org.apache.poi.xslf.usermodel.XMLSlideShow;
 import org.apache.poi.xslf.usermodel.XSLFShape;
@@ -174,7 +178,7 @@ class TemplateLayoutsTest {
     void generateRendersSongsOnNamedLayouts() throws Exception {
         Path out = Files.createTempFile("chorus-deck", ".pptx");
         AppConfig config = new AppConfig(Path.of("unused.pptx"), indexFile(), template(), out);
-        new DeckGenerator().generate(config, List.of(1, 2), cover("comum"));
+        new DeckService().generate(config, List.of(1, 2), cover("comum"));
 
         try (XMLSlideShow ppt = open(out)) {
             assertEquals(6, ppt.getSlides().size());
@@ -201,7 +205,7 @@ class TemplateLayoutsTest {
     void coverFollowsSeasonAndSpecialSunday() throws Exception {
         Path out = Files.createTempFile("chorus-deck", ".pptx");
         AppConfig config = new AppConfig(Path.of("unused.pptx"), indexFile(), template(), out);
-        new DeckGenerator().generate(config, List.of(2), new DeckGenerator.Cover(
+        new DeckService().generate(config, List.of(2), new Cover(
                 "quaresma", "Capa - Domingo IV Quaresma", "IV Domingo da Quaresma", "frase", "Jo 9, 1-41", "B"));
 
         try (XMLSlideShow ppt = open(out)) {
@@ -213,7 +217,7 @@ class TemplateLayoutsTest {
         }
 
         Path festive = Files.createTempFile("chorus-deck", ".pptx");
-        new DeckGenerator().generate(
+        new DeckService().generate(
                 new AppConfig(Path.of("unused.pptx"), indexFile(), template(), festive),
                 List.of(2),
                 cover("pascoa"));
@@ -231,13 +235,13 @@ class TemplateLayoutsTest {
         Files.writeString(index, "[{\"id\":1,\"title\":\"Vazio\",\"content\":[]}]", UTF_8);
         AppConfig config = new AppConfig(Path.of("unused.pptx"), index, template(), out);
 
-        assertThrows(IllegalArgumentException.class, () -> new DeckGenerator().generate(config, List.of(1), cover("comum")));
+        assertThrows(IllegalArgumentException.class, () -> new DeckService().generate(config, List.of(1), cover("comum")));
         Files.writeString(index, "[{\"id\":1,\"title\":\"Um\",\"content\":[\"verso\"]}]", UTF_8);
-        assertThrows(IllegalArgumentException.class, () -> new DeckGenerator().generate(config, List.of(2), cover("comum")));
+        assertThrows(IllegalArgumentException.class, () -> new DeckService().generate(config, List.of(2), cover("comum")));
     }
 
-    private static DeckGenerator.Cover cover(String season) {
-        return new DeckGenerator.Cover(season, null, "XXVIII Domingo", "frase", "Mt 25, 14-30", "A");
+    private static Cover cover(String season) {
+        return new Cover(season, null, "XXVIII Domingo", "frase", "Mt 25, 14-30", "A");
     }
 
     private static String headerScheme(XMLSlideShow ppt) {

@@ -1,4 +1,7 @@
-package org.amargs.chorusdeck;
+package org.amargs.chorusdeck.index;
+
+import org.amargs.chorusdeck.model.SongCfg;
+import org.amargs.chorusdeck.model.SongbookItem;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -42,7 +45,7 @@ class SongIndexTest {
             XSLFSlide list = ppt.createSlide();
             list.createTextBox().setText("A festa da música");
 
-            List<SongCfg> songs = SongIndexer.index(ppt);
+            List<SongCfg> songs = SlideSongs.index(ppt).songs();
 
             assertEquals(List.of("Vem connosco a caminhar", "Outra"), songs.stream().map(SongCfg::title).toList());
             assertEquals(List.of(""), songs.get(0).content());
@@ -52,8 +55,8 @@ class SongIndexTest {
 
     @Test
     void songTitleDropsTheLineBeforeTheBreakAndSurroundingSpace() {
-        assertEquals("Misericordias domini", SongIndexer.songTitle("\n Misericordias domini"));
-        assertEquals("Não sei como louvar-te", SongIndexer.songTitle("94\nNão sei como louvar-te "));
+        assertEquals("Misericordias domini", SlideSongs.songTitle("\n Misericordias domini"));
+        assertEquals("Não sei como louvar-te", SlideSongs.songTitle("94\nNão sei como louvar-te "));
     }
 
     @Test
@@ -75,13 +78,13 @@ class SongIndexTest {
                 new SongCfg(4, "A Ti Senhor meu Deus", List.of("verso"), "old"),
                 new SongCfg(8, "Adorasmus te o Christe", List.of("verso")),
                 new SongCfg(9, "Quero ser como tu, Maria", List.of("verso")));
-        List<SongbookReader.Entry> books = List.of(
-                new SongbookReader.Entry("3", "A Ti, Senhor, meu Deus"),
-                new SongbookReader.Entry("12", "Adoramus te, O Christe"),
-                new SongbookReader.Entry("147", "Quero ser como tu"));
+        List<SongbookItem.Entry> books = List.of(
+                new SongbookItem.Entry("3", "A Ti, Senhor, meu Deus"),
+                new SongbookItem.Entry("12", "Adoramus te, O Christe"),
+                new SongbookItem.Entry("147", "Quero ser como tu"));
         List<String> warnings = new ArrayList<>();
 
-        List<SongCfg> attached = SongIndexer.attachBookIds(songs, books, warnings);
+        List<SongCfg> attached = BookIds.attach(songs, books, warnings);
 
         assertEquals("3", attached.get(0).bookId());
         assertEquals(4, attached.get(0).id());
@@ -101,7 +104,7 @@ class SongIndexTest {
                 new SongCfg(2, "Canção nova", List.of("new")),
                 new SongCfg(3, "A festa da música", List.of("new")));
 
-        SongIndexer.IdMatch match = SongIndexer.assignIds(fresh, previous);
+        SongIds.IdMatch match = SongIds.assign(fresh, previous);
 
         assertEquals(8, match.songs().get(0).id());
         assertEquals("3", match.songs().get(0).bookId());
@@ -134,22 +137,31 @@ class SongIndexTest {
         List<SongCfg> songs = new ObjectMapper().readValue(index.toFile(),
                 new com.fasterxml.jackson.core.type.TypeReference<List<SongCfg>>() {});
         SongbookReader reader = new SongbookReader();
-        List<SongbookReader.Entry> entries = new ArrayList<>();
+        List<SongbookItem.Entry> entries = new ArrayList<>();
         for (String name : List.of("songbook_default.docx", "songbook_rites.docx")) {
-            for (SongbookReader.Item item : reader.read(dir.resolve(name))) {
-                if (item instanceof SongbookReader.Entry entry) {
+            for (SongbookItem item : reader.read(dir.resolve(name))) {
+                if (item instanceof SongbookItem.Entry entry) {
                     entries.add(entry);
                 }
             }
         }
 
-        List<SongCfg> attached = SongIndexer.attachBookIds(songs, entries, new ArrayList<>());
+        List<SongCfg> attached = BookIds.attach(songs, entries, new ArrayList<>());
 
         assertEquals("2", bookId(attached, "A festa da música"));
         assertEquals("3", bookId(attached, "A Ti Senhor meu Deus"));
         assertNull(bookId(attached, "Adorasmus te o Christe"));
         assertNull(bookId(attached, "Quero ser como tu, Maria"));
         assertEquals(4, song(attached, "A Ti Senhor meu Deus").id());
+    }
+
+    @Test
+    void dropsBoldWhenTheOnlySlideIsFullyBold() {
+        SongCfg single = new SongCfg(8, "Song", new ArrayList<>(List.of("**tudo em negrito**")));
+        SongCfg multi = new SongCfg(6, "Song", new ArrayList<>(List.of("**refrão**", "verso")));
+        SlideSongs.stripUniformBold(List.of(single, multi));
+        assertEquals("tudo em negrito", single.content().get(0));
+        assertEquals("**refrão**", multi.content().get(0));
     }
 
     private static String bookId(List<SongCfg> songs, String title) {

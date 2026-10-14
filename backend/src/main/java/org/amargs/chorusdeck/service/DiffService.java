@@ -1,7 +1,11 @@
-package org.amargs.chorusdeck;
+package org.amargs.chorusdeck.service;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import org.amargs.chorusdeck.config.AppConfig;
+import org.amargs.chorusdeck.index.SongIndex;
+import org.amargs.chorusdeck.index.TitleNormalizer;
+import org.amargs.chorusdeck.model.SongCfg;
+import org.amargs.chorusdeck.model.SongbookItem;
+import org.amargs.chorusdeck.text.BoldMarkup;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -14,42 +18,39 @@ import java.util.Map;
 import java.util.Set;
 
 /** Read-only comparison of slide titles and songbook headings. */
-public final class SourceDiff {
+public final class DiffService {
 
     public record Report(
-            List<String> songbookOnly,
-            List<String> slideOnly,
-            List<String> near,
-            List<String> ambiguous,
+            List<BookOnly> songbookOnly,
+            List<SlideOnly> slideOnly,
+            List<Near> near,
+            List<Ambiguous> ambiguous,
             List<String> missingPrefix,
-            List<String> noLyrics) {
-    }
+            List<NoLyrics> noLyrics) {
 
-    public void print(AppConfig config) throws IOException {
-        Report report = compare(config);
-        printSection("Songbook only", report.songbookOnly());
-        printSection("Slide only", report.slideOnly());
-        printTable("Near matches", report.near(), "songbook id", "songbook title", "slide id", "slide title");
-        printSection("Ambiguous", report.ambiguous());
-        printSection("Missing prefix", report.missingPrefix());
-        printTable("No lyrics", report.noLyrics(), "slide id", "book id", "title");
-        if (report.songbookOnly().isEmpty()
-                && report.slideOnly().isEmpty()
-                && report.near().isEmpty()
-                && report.ambiguous().isEmpty()
-                && report.missingPrefix().isEmpty()
-                && report.noLyrics().isEmpty()) {
-            System.out.println("Songbook and slides agree.");
+        public record BookOnly(String bookId, String title) {
+        }
+
+        public record SlideOnly(int id, String title) {
+        }
+
+        public record Near(String bookId, String bookTitle, int slideId, String slideTitle) {
+        }
+
+        public record Ambiguous(List<String> bookIds, int slideId, String title) {
+        }
+
+        public record NoLyrics(int slideId, String bookId, String title) {
         }
     }
 
-    static Report diff(List<SongCfg> songs, List<SongbookReader.Item> items) {
+    static Report diff(List<SongCfg> songs, List<SongbookItem> items) {
         List<Book> books = new ArrayList<>();
         List<String> missingPrefix = new ArrayList<>();
-        for (SongbookReader.Item item : items) {
-            if (item instanceof SongbookReader.Entry entry) {
+        for (SongbookItem item : items) {
+            if (item instanceof SongbookItem.Entry entry) {
                 books.add(new Book(entry.bookId(), entry.title(), TitleNormalizer.normalize(entry.title())));
-            } else if (item instanceof SongbookReader.MissingPrefix missing) {
+            } else if (item instanceof SongbookItem.MissingPrefix missing) {
                 missingPrefix.add(missing.text());
             }
         }
@@ -99,112 +100,48 @@ public final class SourceDiff {
             }
         }
 
-        List<String> near = new ArrayList<>();
+        List<Report.Near> near = new ArrayList<>();
         Set<Book> pairedBooks = new HashSet<>();
         Set<Slide> pairedSlides = new HashSet<>();
         for (NearPair pair : pair(bookOnly, slideOnly)) {
             pairedBooks.add(pair.book());
             pairedSlides.add(pair.slide());
-            near.add(pair.book().bookId() + "\t" + pair.book().title()
-                    + "\t" + pair.slide().id() + "\t" + pair.slide().title());
+            near.add(new Report.Near(
+                    pair.book().bookId(), pair.book().title(), pair.slide().id(), pair.slide().title()));
         }
         bookOnly.removeIf(pairedBooks::contains);
         slideOnly.removeIf(pairedSlides::contains);
 
-        List<String> songbookOnly = bookOnly.stream().map(book -> book.bookId() + "\t" + book.title()).toList();
-        List<String> slidesOnly = slideOnly.stream().map(slide -> slide.id() + "\t" + slide.title()).toList();
-        List<String> noLyrics = new ArrayList<>();
+        List<Report.BookOnly> songbookOnly = bookOnly.stream()
+                .map(book -> new Report.BookOnly(book.bookId(), book.title()))
+                .toList();
+        List<Report.SlideOnly> slidesOnly = slideOnly.stream()
+                .map(slide -> new Report.SlideOnly(slide.id(), slide.title()))
+                .toList();
+        List<Report.NoLyrics> noLyrics = new ArrayList<>();
         for (SongCfg song : songs) {
             if (!hasLyrics(song)) {
-                String bookId = song.bookId() == null ? "" : song.bookId();
-                noLyrics.add(song.id() + "\t" + bookId + "\t" + song.title());
+                noLyrics.add(new Report.NoLyrics(song.id(), song.bookId(), song.title()));
             }
         }
-        List<String> ambiguous = new ArrayList<>();
+        List<Report.Ambiguous> ambiguous = new ArrayList<>();
         for (String key : ambiguousKeys) {
-            String bookIds = booksByKey.get(key).stream().map(Book::bookId).reduce((left, right) -> left + "," + right).orElse("");
+            List<String> bookIds = booksByKey.get(key).stream().map(Book::bookId).toList();
             for (Slide slide : slidesByKey.get(key)) {
-                ambiguous.add(bookIds + "\t" + slide.id() + "\t" + slide.title());
+                ambiguous.add(new Report.Ambiguous(bookIds, slide.id(), slide.title()));
             }
         }
         return new Report(songbookOnly, slidesOnly, near, ambiguous, missingPrefix, noLyrics);
     }
 
-    private static Report compare(AppConfig config) throws IOException {
-        List<SongCfg> songs = new ObjectMapper().readValue(
-                config.indexFile().toFile(), new TypeReference<List<SongCfg>>() {});
-        SongbookReader reader = new SongbookReader();
-        List<SongbookReader.Item> items = new ArrayList<>();
+    public Report compare(AppConfig config) throws IOException {
+        List<SongCfg> songs = SongIndex.read(config.indexFile());
+        SongbookService books = new SongbookService();
+        List<SongbookItem> items = new ArrayList<>();
         Path directory = config.indexFile().getParent();
-        items.addAll(reader.read(directory.resolve("songbook_default.docx")));
-        items.addAll(reader.read(directory.resolve("songbook_rites.docx")));
+        items.addAll(books.read(directory.resolve("songbook_default.docx")));
+        items.addAll(books.read(directory.resolve("songbook_rites.docx")));
         return diff(songs, items);
-    }
-
-    private static void printSection(String heading, List<String> lines) {
-        if (lines.isEmpty()) {
-            return;
-        }
-        System.out.println(heading);
-        for (String line : lines) {
-            System.out.println(line);
-        }
-        System.out.println();
-    }
-
-    private static void printTable(String heading, List<String> rows, String... headers) {
-        if (rows.isEmpty()) {
-            return;
-        }
-        System.out.println(heading);
-        for (String line : table(rows, headers)) {
-            System.out.println(line);
-        }
-        System.out.println();
-    }
-
-    static List<String> table(List<String> rows, String... headers) {
-        List<String[]> cells = new ArrayList<>();
-        for (String row : rows) {
-            cells.add(row.split("\t", -1));
-        }
-        int[] width = new int[headers.length];
-        for (int column = 0; column < headers.length; column++) {
-            width[column] = headers[column].length();
-        }
-        for (String[] row : cells) {
-            for (int column = 0; column < headers.length && column < row.length; column++) {
-                width[column] = Math.max(width[column], row[column].length());
-            }
-        }
-        List<String> lines = new ArrayList<>();
-        lines.add(formatRow(headers, width));
-        lines.add(formatRule(width));
-        for (String[] row : cells) {
-            lines.add(formatRow(row, width));
-        }
-        return lines;
-    }
-
-    private static String formatRow(String[] cells, int[] width) {
-        StringBuilder line = new StringBuilder("|");
-        for (int column = 0; column < width.length; column++) {
-            String value = column < cells.length ? cells[column] : "";
-            line.append(' ').append(pad(value, width[column])).append(" |");
-        }
-        return line.toString();
-    }
-
-    private static String formatRule(int[] width) {
-        StringBuilder line = new StringBuilder("|");
-        for (int column : width) {
-            line.append("-".repeat(column + 2)).append("|");
-        }
-        return line.toString();
-    }
-
-    private static String pad(String value, int width) {
-        return value + " ".repeat(Math.max(0, width - value.length()));
     }
 
     private static List<NearPair> pair(List<Book> books, List<Slide> slides) {

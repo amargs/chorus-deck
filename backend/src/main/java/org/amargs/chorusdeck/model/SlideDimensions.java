@@ -1,4 +1,4 @@
-package org.amargs.chorusdeck;
+package org.amargs.chorusdeck.model;
 
 public enum SlideDimensions {
     D16x9,

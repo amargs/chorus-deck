@@ -1,4 +1,8 @@
-package org.amargs.chorusdeck;
+package org.amargs.chorusdeck.index;
+
+import org.amargs.chorusdeck.config.AppConfig;
+import org.amargs.chorusdeck.model.SourceSnapshot;
+import org.amargs.chorusdeck.model.StaleSources;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,18 +14,17 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.HexFormat;
+import java.util.List;
 
-/** SHA-256 of the PowerPoint and both songbooks, stored in config after a successful index. */
-public record SourceSnapshot(String pptx, String songbook, String rites) {
+/** Reads and writes the source hashes stored in config. */
+public final class SourceHashes {
 
-    enum Refresh {
-        UNCHANGED,
-        SONGBOOK,
-        FULL
+    private SourceHashes() {
     }
 
-    static SourceSnapshot of(AppConfig config) throws IOException {
+    public static SourceSnapshot of(AppConfig config) throws IOException {
         Path directory = config.indexFile().getParent();
         return new SourceSnapshot(
                 sha256(config.sourcePptx()),
@@ -29,7 +32,7 @@ public record SourceSnapshot(String pptx, String songbook, String rites) {
                 sha256(directory.resolve("songbook_rites.docx")));
     }
 
-    static SourceSnapshot read(Path configFile) throws IOException {
+    public static SourceSnapshot read(Path configFile) throws IOException {
         JsonNode hashes = new ObjectMapper().readTree(configFile.toFile()).get("sourceHashes");
         if (hashes == null || !hashes.isObject()) {
             return null;
@@ -43,55 +46,35 @@ public record SourceSnapshot(String pptx, String songbook, String rites) {
         return new SourceSnapshot(pptx, songbook, rites);
     }
 
-    void write(Path configFile) throws IOException {
+    public static void write(Path configFile, SourceSnapshot snapshot) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
         ObjectNode root = (ObjectNode) mapper.readTree(configFile.toFile());
         ObjectNode hashes = mapper.createObjectNode();
-        hashes.put("pptx", pptx);
-        hashes.put("songbook", songbook);
-        hashes.put("rites", rites);
+        hashes.put("pptx", snapshot.pptx());
+        hashes.put("songbook", snapshot.songbook());
+        hashes.put("rites", snapshot.rites());
         root.set("sourceHashes", hashes);
         mapper.writerWithDefaultPrettyPrinter().writeValue(configFile.toFile(), root);
     }
 
-    static Refresh decide(SourceSnapshot stored, SourceSnapshot current, boolean indexExists) {
-        if (!indexExists || stored == null) {
-            return Refresh.FULL;
-        }
-        if (!stored.pptx.equals(current.pptx)) {
-            return Refresh.FULL;
-        }
-        if (!stored.songbook.equals(current.songbook) || !stored.rites.equals(current.rites)) {
-            return Refresh.SONGBOOK;
-        }
-        return Refresh.UNCHANGED;
-    }
-
-    static void warnIfStale(Path configFile, AppConfig config) throws IOException {
+    public static StaleSources check(Path configFile, AppConfig config) throws IOException {
         SourceSnapshot stored = read(configFile);
         if (stored == null) {
-            System.err.println("Source hashes are missing. Run index before trusting this deck.");
-            return;
+            return new StaleSources(true, List.of());
         }
         SourceSnapshot current = of(config);
-        StringBuilder changed = new StringBuilder();
-        appendChanged(changed, stored.pptx, current.pptx, config.sourcePptx().getFileName());
+        List<String> changed = new ArrayList<>();
+        if (!stored.pptx().equals(current.pptx())) {
+            changed.add(config.sourcePptx().getFileName().toString());
+        }
         Path directory = config.indexFile().getParent();
-        appendChanged(changed, stored.songbook, current.songbook, directory.resolve("songbook_default.docx").getFileName());
-        appendChanged(changed, stored.rites, current.rites, directory.resolve("songbook_rites.docx").getFileName());
-        if (!changed.isEmpty()) {
-            System.err.println("Changed since last index: " + changed + ". Run index before trusting this deck.");
+        if (!stored.songbook().equals(current.songbook())) {
+            changed.add(directory.resolve("songbook_default.docx").getFileName().toString());
         }
-    }
-
-    private static void appendChanged(StringBuilder changed, String stored, String current, Path name) {
-        if (stored.equals(current)) {
-            return;
+        if (!stored.rites().equals(current.rites())) {
+            changed.add(directory.resolve("songbook_rites.docx").getFileName().toString());
         }
-        if (!changed.isEmpty()) {
-            changed.append(", ");
-        }
-        changed.append(name);
+        return new StaleSources(false, changed);
     }
 
     private static String text(JsonNode node, String field) {
