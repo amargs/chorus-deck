@@ -4,7 +4,7 @@ Java 20 Gradle app in `backend/`. Run from that directory: `./gradlew test` and 
 
 Paths are in `backend/config.json` and are relative to that file. Data lives in `backend/data/`: `input.pptx` (source songs, do not commit), `index.json` (commit), `template_4x3.pptx` (commit), `out_4x3.pptx` (generated, do not commit). Close the output file in PowerPoint before generating again.
 
-Song ids are 1-based positions in `index.json`. `index` rebuilds that file from `input.pptx`. A titled slide starts a song; following untitled slides are more verses. Bold runs are stored as `**...**`. A song that is a single slide and entirely bold is stored as plain text. `boldWeight` in config is `semibold` by default (`medium`, `bold`, and the other IBM Plex Sans weights are valid). `bold` means real PowerPoint bold. Any other weight sets that typeface, and falls back to real bold if the font file is missing.
+Song ids are 1-based positions in `index.json`. `index` rebuilds that file from `input.pptx`. A song title is two lines (a label such as `Cântico:` or a number, then the name); following slides that use the lyric placeholder are more verses. A single-line title, and a slide that is only a free text box, is not a song. Bold runs are stored as `**...**`. A song that is a single slide and entirely bold is stored as plain text. `boldWeight` in config is `semibold` by default (`medium`, `bold`, and the other IBM Plex Sans weights are valid). `bold` means real PowerPoint bold. Any other weight sets that typeface, and falls back to real bold if the font file is missing.
 
 `generate` writes one cover, then each song: first verse on a title layout, later verses on `Letra`.
 

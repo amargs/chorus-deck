@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import org.apache.poi.openxml4j.util.ZipSecureFile;
+import org.apache.poi.sl.usermodel.Placeholder;
 import org.apache.poi.xslf.usermodel.XMLSlideShow;
 import org.apache.poi.xslf.usermodel.XSLFShape;
 import org.apache.poi.xslf.usermodel.XSLFSlide;
@@ -24,7 +25,27 @@ import java.util.Set;
 
 public final class SongIndexer {
 
-    public void rebuild(AppConfig config) throws IOException {
+    public void rebuild(AppConfig config, Path configFile) throws IOException {
+        SourceSnapshot current = SourceSnapshot.of(config);
+        SourceSnapshot.Refresh refresh = SourceSnapshot.decide(
+                SourceSnapshot.read(configFile), current, Files.isRegularFile(config.indexFile()));
+        switch (refresh) {
+            case UNCHANGED -> System.out.println("Sources unchanged");
+            case SONGBOOK -> {
+                System.out.println("Songbook changed");
+                if (!reattach(config)) {
+                    rebuildFromPptx(config);
+                }
+                current.write(configFile);
+            }
+            case FULL -> {
+                rebuildFromPptx(config);
+                current.write(configFile);
+            }
+        }
+    }
+
+    private void rebuildFromPptx(AppConfig config) throws IOException {
         ZipSecureFile.setMaxFileCount(10000);
         List<SongCfg> fresh;
         try (InputStream in = Files.newInputStream(config.sourcePptx());
@@ -48,6 +69,22 @@ public final class SongIndexer {
         write(config.indexFile(), songs);
     }
 
+    private boolean reattach(AppConfig config) throws IOException {
+        List<SongCfg> existing = readIfExists(config.indexFile());
+        if (existing.isEmpty()) {
+            return false;
+        }
+        List<String> warnings = new ArrayList<>();
+        List<SongCfg> songs = attachBookIds(existing, readSongbooks(config.indexFile().getParent()), warnings);
+        for (String warning : warnings) {
+            System.out.println(warning);
+        }
+        long withBookId = songs.stream().filter(song -> song.bookId() != null).count();
+        System.out.println("bookId on " + withBookId + " of " + songs.size() + " songs");
+        write(config.indexFile(), songs);
+        return true;
+    }
+
     static List<SongCfg> index(XMLSlideShow ppt) {
         int idx = 0;
         List<SongCfg> songs = new ArrayList<>();
@@ -55,25 +92,50 @@ public final class SongIndexer {
         for (XSLFSlide slide : ppt.getSlides()) {
             String slideTitle = slide.getTitle();
 
-            if (slideTitle != null && !slideTitle.isEmpty()) {
+            if (isSongTitle(slideTitle)) {
                 String title = songTitle(slideTitle);
                 System.out.println(title);
-                XSLFTextShape bodyShape = (XSLFTextShape) slide.getShapes().get(1);
-                String body = BoldMarkup.mark(bodyShape);
-
                 List<String> content = new ArrayList<>();
-                content.add(body);
+                content.add(lyricBody(slide));
                 songs.add(new SongCfg(++idx, title, content));
-            } else {
-                if (idx > 0 && !slideIsEmpty(slide)) {
-                    XSLFTextShape bodyShape = (XSLFTextShape) slide.getShapes().get(0);
-                    String body = BoldMarkup.mark(bodyShape);
-                    songs.get(idx - 1).content().add(body);
-                }
+            } else if (slideTitle != null && !slideTitle.isBlank()) {
+                System.out.println("Skipped " + slideTitle.replace('\u00A0', ' ').strip());
+            } else if (idx > 0 && isVerseSlide(slide) && !slideIsEmpty(slide)) {
+                XSLFTextShape bodyShape = (XSLFTextShape) slide.getShapes().get(0);
+                String body = BoldMarkup.mark(bodyShape);
+                songs.get(idx - 1).content().add(body);
             }
         }
         stripUniformBoldOnSingleSlideSongs(songs);
         return songs;
+    }
+
+    /** A song title is two lines: a label (`Cântico:` or a number), then the name. */
+    static boolean isSongTitle(String slideTitle) {
+        return slideTitle != null && slideTitle.contains("\n");
+    }
+
+    /** A verse slide uses the lyric placeholder. A free text box is not a verse. */
+    static boolean isVerseSlide(XSLFSlide slide) {
+        for (XSLFShape shape : slide.getShapes()) {
+            if (!(shape instanceof XSLFTextShape text) || !text.isPlaceholder()) {
+                continue;
+            }
+            Placeholder type = text.getTextType();
+            if (type != Placeholder.TITLE && type != Placeholder.CENTERED_TITLE) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Lyric text is the second shape. A title-only slide has no verse. */
+    static String lyricBody(XSLFSlide slide) {
+        List<XSLFShape> shapes = slide.getShapes();
+        if (shapes.size() < 2 || !(shapes.get(1) instanceof XSLFTextShape body)) {
+            return "";
+        }
+        return BoldMarkup.mark(body);
     }
 
     static String songTitle(String slideTitle) {

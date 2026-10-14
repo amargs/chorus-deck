@@ -34,9 +34,10 @@
   "content" : [ "Adeste fideles laeti triumphantes\nvenite, venite in Bethlehem\nNatum videte regen angelorun\n\n**Venite adoremus, venite adoremus**\n**venite adoremus dominum**", "En grege relicto\nhumildes adcunas\nvocati pastores approperant\net nos avanti gradu festinemus\n\n**Venite adoremus, venite adoremus**\n**venite adoremus dominum**", "Aeterni parentis\nsplenderem aeternum\nvelatum sub cerne videmus\nDeum infantem panis involutum\n\n**Venite adoremus, venite adoremus**\n**venite adoremus dominum **" ],
   "bookId" : "6"
 }, {
-  "id" : 8,
-  "title" : "Adorasmus te o Christe",
-  "content" : [ "Oh, oh, oh \nAdorasmus te, o Christe" ]
+  "id" : 228,
+  "title" : "Adoramus te, O Christe",
+  "content" : [ "Oh, oh, oh \nAdorasmus te, o Christe" ],
+  "bookId" : "7"
 }, {
   "id" : 9,
   "title" : "Alegria de Viver",
@@ -149,7 +150,7 @@
 }, {
   "id" : 31,
   "title" : "Cristo em mim",
-  "content" : [ "Senhor faz com que olhem para mim\nSó te vejam a ti, só te vejam a ti\nNão ser eu quem fala, mas só tu\nEu quem fala mas só tu\nSó Cristo em mim" ],
+  "content" : [ "Senhor faz que olhem para mim\nSó te vejam a ti, só te vejam a ti\nNão ser eu quem fala, mas só tu\nEu quem fala mas só tu\nSó Cristo em mim" ],
   "bookId" : "30"
 }, {
   "id" : 32,
@@ -157,9 +158,10 @@
   "content" : [ "Cristo vive anuncia-O,\nEscutei-O no meu coração,\nEle falou-me de meu Pai\nQue me ama com loucura", "Cristo vive anuncia-O,\nEscutei-O no meu coração,\nTenho-O visto \nnos meus irmãos\nOs que partilham \nAmor e gozo.", "**Oh irmão, vem comigo, **\n**Se é amar **\n**O que move a tua vida,**\n**Mostra que Cristo**\n**Já vive no teu coração**\n**Olha, Ele vive,**\n**Anuncia-O! (x2)**", "Cristo vive anuncia-O,\nEscutei-O no meu coração,\nPois a morte nada pode\nPorque o Pai o ressuscita.\nCristo vive anuncia-O,\nEscutei-O no meu coração,\nE me grita aos meus irmãos\nOs que sofrem e vivem sós.", "**Oh irmão, vem comigo, **\n**Se é amar **\n**O que move a tua vida,**\n**Mostra que Cristo**\n**Já vive no teu coração**\n**Olha, Ele vive,**\n**Anuncia-O! (x2)**" ],
   "bookId" : "31"
 }, {
-  "id" : 33,
-  "title" : "Da pace cordium",
-  "content" : [ "" ]
+  "id" : 229,
+  "title" : "Da pacem cordium",
+  "content" : [ "" ],
+  "bookId" : "32"
 }, {
   "id" : 34,
   "title" : "Dar mais",
@@ -175,6 +177,10 @@
   "title" : "Deixa Deus entrar",
   "content" : [ "**Deixa Deus entrar,**\n**Na Tua própria casa**\n**Deixa-te tocar pela sua graça,**\n**Dentro em segredo**\n**Reza-lhe sem medo**\n**Senhor, Senhor**\n**Que queres que eu faça**", "Só no fundo do ser \nEu vou encontrar\nAs razões de viver, \nAs razões de amar\nÉ bem dentro de nós \nQue está a raiz\nQue nos faz amar\nE ser feliz…", "**Deixa Deus entrar,**\n**Na Tua própria casa**\n**Deixa-te tocar pela sua graça,**\n**Dentro em segredo**\n**Reza-lhe sem medo**\n**Senhor, Senhor**\n**Que queres que eu faça**", "Tanta coisa me impede\nDe O escutar\nMe desvia da meta\nA que me propus\nEu vou ter coragem\nDe O deixar entrar\nVou sentir o clarão,\nDa Sua luz…", "**Deixa Deus entrar,**\n**Na Tua própria casa**\n**Deixa-te tocar pela sua graça,**\n**Dentro em segredo**\n**Reza-lhe sem medo**\n**Senhor, Senhor**\n**Que queres que eu faça**" ],
   "bookId" : "36"
+}, {
+  "id" : 230,
+  "title" : "Dentro de mim",
+  "content" : [ "Dentro de mim existe uma luz\nQue me mostra por onde por onde deverei andar.\nDentro de mim também mora Jesus\nQue me ensina a buscar o seu jeito de sonhar.", "**Minha luz é Jesus, e Jesus me conduz**\n**Pelos caminhos da paz.**", "Dentro de mim existe um farol\nQue me mostra por onde por onde deverei remar.\nDentro de mim Jesus Cristo é o sol\nQue me ensina a buscar o seu jeito de amar.", "**Minha luz é Jesus, e Jesus me conduz**\n**Pelos caminhos da paz.**" ]
 }, {
   "id" : 37,
   "title" : "Deus é amor",
@@ -248,7 +254,7 @@
 }, {
   "id" : 51,
   "title" : "Embarca neste porto",
-  "content" : [ "**Vem, caminha nesta estrada**\n**Desponta a madrugada**\n**Jesus é nosso porto**\n**Vem, já nasce um novo dia**\n**Traz a tua alegria**\n**Embarca neste porto**", "Chegamos de muitas margens\nRefazemos pontes e cais\nDestruímos as barreiras\nInventamos ideias\nCarregamos nossas vidas\nCheias de sol e de luz\nEscrevemos nossa história\nSomos jovens seguidores de Jesus!!", "**Vem, caminha nesta estrada**\n**Desponta a madrugada**\n**Jesus é nosso porto**\n**Vem, já nasce um novo dia**\n**Traz a tua alegria**\n**Embarca neste porto**" ],
+  "content" : [ "**Vem, caminha nesta estrada**\n**Desponta a madrugada**\n**Jesus é nosso porto**\n**Vem, já nasce um novo dia**\n**Traz a tua alegria**\n**Embarca neste porto**", "Chegamos de muitas margens\nRefazemos pontes e cais\nDestruímos as barreiras\nInventamos ideais\nCarregamos nossas vidas\nCheias de sol e de luz\nEscrevemos nossa história\nSomos jovens seguidores, de Jesus!!", "**Vem, caminha nesta estrada**\n**Desponta a madrugada**\n**Jesus é nosso porto**\n**Vem, já nasce um novo dia**\n**Traz a tua alegria**\n**Embarca neste porto**" ],
   "bookId" : "52"
 }, {
   "id" : 52,
@@ -256,9 +262,10 @@
   "content" : [ "Quando o mundo está cinzento\nE o vento me quer levar\nQuando não sinto cá dentro\nQue o tempo me quer esperar\nSolto a dor que me engana,\nE chama a desistir\nE prometo a mim mesmo,\nQue hoje, vou resistir", "**Porque essa dor já passou**\n**E agora escrevo quem sou**\n**Hei de perder, hei de sofrer,**\n**Mas vou...**", "**Vou remar contra a maré,**\n**Que a vida não espera por nós**\n**Quando voltar, vou recordar**\n**O fim...**", "Não deixes que a tua história\nSe perca na solidão\nse torne numa memória\nDe esperança que foste em vão\nAnda, vamos todos juntos\nEm frente,  que há quem nos vê\nSomos mais do que uma força, \nCrescemos , sabes porquê?", "**Porque essa dor já passou**\n**E o vento nem tudo agarrou**\n**Pode soprar, não vai levar-me a mim…**", "**Corre de encontro à maré,**\n**Que o mundo precisa de nós**\n**Somos mudança;**\n**não vamos voltar **\n**A estar sós**", "**Vou remar contra a maré,**\n**Que a vida não espera por nós**\n**Quando voltar, vou recordar**\n**O fim...**" ],
   "bookId" : "53"
 }, {
-  "id" : 53,
-  "title" : "Ensina-me a dizer sim",
-  "content" : [ "Escuta, Maria, a minha prece\nSou um frágil viajante nesta estrada\nNa mochila carrego uma missão\nMas sou poeira, pedaço de nada\nQue eu tenha força para avançar \nMesmo que a estrada me \nPrenda ao chão\nDá-me um pouco dessa fé sem fundo\nEscuta o pulsar do meu coração", "**Maria ensina-me a dizer sim**\n**A dar a vida a caminhar sem medo**\n**A abraçar o mundo**\n**Criado para mim**\n**A ser fiel, a olhar em segredo**\n**Pois só tu sabes de cor os trilhos**\n**Que o teu filho me chama a seguir**\n**És o farol, a flor, a fonte e o berço**\n**Nesse amor, que eu nasci para servir**", "Não há caminho que apague essa luz\nQue me invade a cada dia\nCarrego-a para a dar ao mundo\nE derrubar a noite mais sombria\nÉ o teu filho que me seduz\nQue vem num silêncio para me chamar\nSigo abraçado à sua cruz\nNão resisto, deixo-me conquistar", "**Maria ensina-me a dizer sim**\n**A dar a vida a caminhar sem medo**\n**A abraçar o mundo**\n**Criado para mim**\n**A ser fiel, a olhar em segredo**\n**Pois só tu sabes de cor os trilhos**\n**Que o teu filho me chama a seguir**\n**És o farol, a flor, a fonte e o berço**\n**Nesse amor, que eu nasci para servir**" ]
+  "id" : 231,
+  "title" : "Maria ensina-me a dizer sim",
+  "content" : [ "Escuta, Maria, a minha prece\nSou um frágil viajante nesta estrada\nNa mochila carrego uma missão\nMas sou poeira, pedaço de nada\nQue eu tenha força para avançar \nMesmo que a estrada me \nPrenda ao chão\nDá-me um pouco dessa fé sem fundo\nEscuta o pulsar do meu coração", "**Maria ensina-me a dizer sim**\n**A dar a vida a caminhar sem medo**\n**A abraçar o mundo**\n**Criado para mim**\n**A ser fiel, a olhar em segredo**\n**Pois só tu sabes de cor os trilhos**\n**Que o teu filho me chama a seguir**\n**És o farol, a flor, a fonte e o berço**\n**Nesse amor, que eu nasci para servir**", "Não há caminho que apague essa luz\nQue me invade a cada dia\nCarrego-a para a dar ao mundo\nE derrubar a noite mais sombria\nÉ o teu filho que me seduz\nQue vem num silêncio para me chamar\nSigo abraçado à sua cruz\nNão resisto, deixo-me conquistar", "**Maria ensina-me a dizer sim**\n**A dar a vida a caminhar sem medo**\n**A abraçar o mundo**\n**Criado para mim**\n**A ser fiel, a olhar em segredo**\n**Pois só tu sabes de cor os trilhos**\n**Que o teu filho me chama a seguir**\n**És o farol, a flor, a fonte e o berço**\n**Nesse amor, que eu nasci para servir**" ],
+  "bookId" : "96"
 }, {
   "id" : 54,
   "title" : "Ensina-me a viver",
@@ -370,9 +377,10 @@
   "content" : [ "Inunda o meu ser,\ninunda o meu ser,  \nEspírito, inunda o meu ser.  \nCom fogo de amor,  \nó vem sobre mim.  \nEspírito inunda o meu ser.", "Ensina-me a amar,  \nensina-me a amar,  \nEspírito, ensina-me a amar.  \nComo ama Jesus,  \nó vem sobre mim.  \nEspírito ensina-me a amar.", "Aumenta-me a fé,  \naumenta-me a fé,  \nEspírito, aumenta-me a fé.  \nCom fogo de amor,  \nó vem sobre mim.  \nEspírito aumenta-me a fé", "Ensina-me a orar,  \nensina-me a orar,  \nEspírito, ensina-me a orar.  \nComo ora Jesus,  \nó vem sobre mim.  \nEspírito ensina-me a orar" ],
   "bookId" : "80"
 }, {
-  "id" : 76,
-  "title" : "Jesus Cristo és minha vida",
-  "content" : [ "**Jesus Cristo, és vida em mim**\n**Aleluia, aleluia!**\n**Jesus Cristo, és vida em mim**\n**És vida em mim, Aleluia!**", "És caminho, Tu és verdade\nTu és a nossa vida\nCaminhando junto a Ti\nViveremos p’ra sempre", "**Jesus Cristo, és vida em mim**\n**Aleluia, aleluia!**\n**Jesus Cristo, és vida em mim**\n**És vida em mim, Aleluia!**", "Na alegria caminharemos\nTrazendo o Teu Evangelho.\nTestemunhos de caridade,\nFilhos de Deus no mundo.", "**Jesus Cristo, és minha vida**\n**Aleluia, aleluia!**\n**Jesus Cristo, és minha luz**\n**És minha luz, Aleluia!**", "Tu nos reúnes na unidade,\nTu nos reúnes em Teu amor.\nDiante de Ti em alegria,\nCantamos tua Glória.", "**Jesus Cristo, és minha vida**\n**Aleluia, aleluia!**\n**Jesus Cristo, és minha luz**\n**És minha luz, Aleluia!**" ]
+  "id" : 239,
+  "title" : "Jesus Cristo és vida em mim",
+  "content" : [ "**Jesus Cristo, és vida em mim**\n**Aleluia, aleluia!**\n**Jesus Cristo, és vida em mim**\n**És vida em mim, Aleluia!**", "És caminho, Tu és verdade\nTu és a nossa vida\nCaminhando junto a Ti\nViveremos p’ra sempre", "**Jesus Cristo, és vida em mim**\n**Aleluia, aleluia!**\n**Jesus Cristo, és vida em mim**\n**És vida em mim, Aleluia!**", "Na alegria caminharemos\nTrazendo o Teu Evangelho.\nTestemunhos de caridade,\nFilhos de Deus no mundo.", "**Jesus Cristo, és minha vida**\n**Aleluia, aleluia!**\n**Jesus Cristo, és minha luz**\n**És minha luz, Aleluia!**", "Tu nos reúnes na unidade,\nTu nos reúnes em Teu amor.\nDiante de Ti em alegria,\nCantamos tua Glória.", "**Jesus Cristo, és minha vida**\n**Aleluia, aleluia!**\n**Jesus Cristo, és minha luz**\n**És minha luz, Aleluia!**" ],
+  "bookId" : "81"
 }, {
   "id" : 77,
   "title" : "Jesus Cristo mora aqui",
@@ -517,9 +525,10 @@
   "title" : "O reino de Deus",
   "content" : [ "O reino de Deus é um reino de paz, justiça e alegria.\nSenhor, em nós vem abrir as portas do Teu reino" ]
 }, {
-  "id" : 106,
-  "title" : "O Senhor é a minha força (Taizé)",
-  "content" : [ "O Senhor é a minha força\nAo Senhor o meu canto,\nEle é nosso Salvador\nNele eu confio e nada temo\nNele eu confio e nada temo." ]
+  "id" : 232,
+  "title" : "O Senhor é a minha força",
+  "content" : [ "O Senhor é a minha força\nAo Senhor o meu canto,\nEle é nosso Salvador\nNele eu confio e nada temo\nNele eu confio e nada temo." ],
+  "bookId" : "116"
 }, {
   "id" : 107,
   "title" : "O Senhor é meu Pastor",
@@ -656,9 +665,10 @@
   "content" : [ "**Quero louvar-Te**\n**Mais e sempre mais**\n**Quero louvar-Te**\n**Mais e sempre mais**\n**Buscar a Tua vontade**\n**Tua graça conhecer**\n**Quero louvar-Te.**", "**Quero louvar-Te, mais e sempre mais… **\n\nAs aves do céu cantam para ti\nOs animais do campo\nRefletem o teu poder\nQuero cantar, quero levantar \nAs minhas mãos a Ti.", "**Quero seguir-Te, só a ti, Senhor... (x2)**\n\nAs aves do céu cantam para ti\nOs animais do campo\nRefletem o teu poder\nQuero cantar, quero levantar \nAs minhas mãos a Ti.", "**Quero amar-te, só a ti, Senhor... (x2)**\n\nAs aves do céu cantam para ti\nOs animais do campo\nRefletem o teu poder\nQuero cantar, quero levantar \nAs minhas mãos a Ti.", "**E proclamar-te, **\n**Nosso Salvador**\n**E proclamar-te, **\n**Nosso Salvador**\n**Buscar a tua vontade**\n**Tua graça conhecer**\n**E proclamar-te**" ],
   "bookId" : "146"
 }, {
-  "id" : 134,
-  "title" : "Quero ser como tu, Maria",
-  "content" : [ "Quero ser como tu,\nComo tu, Maria\nComo tu, um dia\nComo tu, Maria.\n\nQuero esperar Jesus…\nQuero aprender a amar…\nQuero dizer meu sim" ]
+  "id" : 233,
+  "title" : "Quero ser como tu",
+  "content" : [ "Quero ser como tu,\nComo tu, Maria\nComo tu, um dia\nComo tu, Maria.\n\nQuero esperar Jesus…\nQuero aprender a amar…\nQuero dizer meu sim" ],
+  "bookId" : "147"
 }, {
   "id" : 135,
   "title" : "Quimera",
@@ -705,9 +715,10 @@
   "content" : [ "Senhor Jesus tu és luz do mundo\nDissipa as trevas que me querem falar\nSenhor Jesus, és luz na minha alma, \n   saiba eu acolher o Teu amor." ],
   "bookId" : "156"
 }, {
-  "id" : 144,
-  "title" : "Senhor, meu deus (Mariamar)",
-  "content" : [ "" ]
+  "id" : 234,
+  "title" : "Senhor, meu Deus",
+  "content" : [ "" ],
+  "bookId" : "157"
 }, {
   "id" : 145,
   "title" : "Senhora da noite",
@@ -803,6 +814,10 @@
   "content" : [ "**Vede Senhor, quanta gente.**\n**Nunca ouviu falar de Vós; **\n**Quanta gente não sabe **\n**Que deve amar alguém**\n**Senhor, aceita-nos assim!**", "**Vede Senhor, nós chegamos **\n**Prontos a dar o que temos,**\n**A vida alegre ou triste**\n**O amor que em nós existe**\n**Senhor, aceita-nos assim!**", "**Vede Senhor, nós queremos**\n**Ser instrumentos do teu reino**\n**Espalhar a paz, o amor,**\n**Alegria esperança**\n**Senhor, ajuda-nos a ser!**" ],
   "bookId" : "176"
 }, {
+  "id" : 235,
+  "title" : "Vem connosco a caminhar",
+  "content" : [ "" ]
+}, {
   "id" : 164,
   "title" : "Vem daí",
   "content" : [ "Quando as trevas se dissiparam\nQuando amanheceu o amor\nO Homem feliz, vivia sem dor\nQuando depois a escuridão\nTornou a noite solidão\nE o Homem sofria sem o seu Senhor", "**Vem daí, vem daí**\n**É Deus que te chama, é Deus que te ama**\n**O Deus que os Homens precisam de olhar**", "**Vem daí, vem daí**\n**É Deus que te manda pelo mundo inteiro**\n**És o sal da terra, luz sempre a brilhar**", "Quando apareceu Jesus,\nquando Ele se fez pão\nAlguns entenderam e deram as mãos\nHouve porém quem cheio de si\nVirasse as costas à Verdade\nAo Deus da História, à eternidade", "**Vem daí, vem daí**\n**É Deus que te chama, é Deus que te ama**\n**O Deus que os Homens precisam de olhar**", "**Vem daí, vem daí**\n**É Deus que te manda pelo mundo inteiro**\n**És o sal da terra, luz sempre a brilhar**", "Estás aqui tu que acreditaste\nNaquela Cruz, naquela hora\nTambém tu, agora, te queres ir embora\nO mundo porém precisa de ti\nDos jovens que hoje se querem dar\nE a toda a gente Cristo anunciar", "**Vem daí, vem daí**\n**É Deus que te chama, é Deus que te ama**\n**O Deus que os Homens precisam de olhar**", "**Vem daí, vem daí**\n**É Deus que te manda pelo mundo inteiro**\n**És o sal da terra, luz sempre a brilhar**" ],
@@ -823,9 +838,10 @@
   "content" : [ "**Vem e verás **\n**Que é possível a alegria**\n**Que amar não é uma utopia**\n**E que podes ser feliz!**\n**Vem e verás **\n**Um amor que é diferente**\n**Lança-te e sê valente**\n**O melhor encontrarás!**", "Tu que buscas a verdade, \nQue dê um sentido à vida\nJá cansado de viver \nNa mentira.\nNecessitas ser tu próprio, \nLança-te tal como és\nHá alguém que te conhece \nE assim te ama.", "**Vem e verás **\n**Que é possível a alegria**\n**Que amar não é uma utopia**\n**E que podes ser feliz!**\n**Vem e verás **\n**Um amor que é diferente**\n**Lança-te e sê valente**\n**O melhor encontrarás!**" ],
   "bookId" : "180"
 }, {
-  "id" : 168,
-  "title" : "Vem viver em nós",
-  "content" : [ "Vem viver em nós, Senhor\nVem viver em nós (x2)" ]
+  "id" : 236,
+  "title" : "Vem viver em nós, Senhor",
+  "content" : [ "Vem viver em nós, Senhor\nVem viver em nós (x2)" ],
+  "bookId" : "181"
 }, {
   "id" : 169,
   "title" : "Via de amor",
@@ -926,14 +942,15 @@
 }, {
   "id" : 189,
   "title" : "Aleluia, a palavra é Deus em nós",
-  "content" : [ "Aleluia\na palavra é Deus em nós (x2)\nAleluia, aleluia, aleluia (x2)" ],
+  "content" : [ "Aleluia, a palavra é Deus em nós (x2)\nAleluia, aleluia, aleluia (x2)" ],
   "bookId" : "A3"
 }, {
-  "id" : 190,
-  "title" : "Desde pronto amanhecer",
-  "content" : [ "Desde pronto amanhecer\nAté que se ponha o sol\nEu louvarei o nome do Senhor", "**Aleluia (Palma) louvai a Deus!**\n**Todos louvai ao Senhor!**\n**Louvai o nome de Deus**\n**(x2) **" ]
+  "id" : 238,
+  "title" : "Desde o pronto amanhecer",
+  "content" : [ "Desde o pronto amanhecer\nAté que se ponha o sol\nEu louvarei o nome do Senhor", "**Aleluia (Palma) louvai a Deus!**\n**Todos louvai ao Senhor!**\n**Louvai o nome de Deus**\n**(x2) **" ],
+  "bookId" : "35"
 }, {
-  "id" : 191,
+  "id" : 76,
   "title" : "Jesus Cristo és minha vida",
   "content" : [ "**Jesus Cristo, És minha vida, Aleluia, Aleluia!**\n**Jesus Cristo, És minha luz, És minha luz, Aleluia!**", "1.És caminho, És a verdade,\nTu és a nossa vida.\nCaminhando junto a Ti,\nVivemos em Ti p’ra sempre", "2.Na alegria caminharemos\nTrazendo o Teu Evangelho.\nTestemunhos de caridade,\nFilhos de Deus no mundo", "3.Tu nos reúnes na unidade,\nTu nos reúnes em Teu amor.\nDiante de Ti em alegria,\nCantamos tua Glória." ]
 }, {

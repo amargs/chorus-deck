@@ -2,6 +2,10 @@ package org.amargs.chorusdeck;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import org.apache.poi.sl.usermodel.Placeholder;
+import org.apache.poi.xslf.usermodel.XMLSlideShow;
+import org.apache.poi.xslf.usermodel.XSLFSlide;
+import org.apache.poi.xslf.usermodel.XSLFTextBox;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Files;
@@ -15,6 +19,36 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SongIndexTest {
+
+    @Test
+    void titleOnlySlideIndexesAsASongWithNoLyrics() throws Exception {
+        try (XMLSlideShow ppt = new XMLSlideShow()) {
+            XSLFSlide titleOnly = ppt.createSlide();
+            XSLFTextBox title = titleOnly.createTextBox();
+            title.setPlaceholder(Placeholder.TITLE);
+            title.setText("12\nVem connosco a caminhar");
+
+            XSLFSlide withLyrics = ppt.createSlide();
+            XSLFTextBox otherTitle = withLyrics.createTextBox();
+            otherTitle.setPlaceholder(Placeholder.TITLE);
+            otherTitle.setText("Cântico:\nOutra");
+            XSLFTextBox body = withLyrics.createTextBox();
+            body.setText("verso");
+
+            XSLFSlide count = ppt.createSlide();
+            XSLFTextBox countTitle = count.createTextBox();
+            countTitle.setPlaceholder(Placeholder.TITLE);
+            countTitle.setText("Número Total de Cânticos: 176");
+            XSLFSlide list = ppt.createSlide();
+            list.createTextBox().setText("A festa da música");
+
+            List<SongCfg> songs = SongIndexer.index(ppt);
+
+            assertEquals(List.of("Vem connosco a caminhar", "Outra"), songs.stream().map(SongCfg::title).toList());
+            assertEquals(List.of(""), songs.get(0).content());
+            assertEquals(List.of("verso"), songs.get(1).content());
+        }
+    }
 
     @Test
     void songTitleDropsTheLineBeforeTheBreakAndSurroundingSpace() {

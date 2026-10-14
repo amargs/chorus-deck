@@ -77,8 +77,9 @@ public class Main {
         Path configFile = AppConfig.findConfig(configArg);
         AppConfig config = AppConfig.load(configFile);
         switch (command) {
-            case "index" -> new SongIndexer().rebuild(config);
+            case "index" -> new SongIndexer().rebuild(config, configFile);
             case "songbook" -> printSongbooks(configFile.getParent());
+            case "diff-sources" -> new SourceDiff().print(config);
             case "generate" -> {
                 if (ids == null) {
                     throw new IllegalArgumentException("generate requires --ids.\n" + usage());
@@ -87,6 +88,7 @@ public class Main {
                     throw new IllegalArgumentException(
                             "generate requires --season, --ano, --domingo, --frase, and --versiculo.\n" + usage());
                 }
+                SourceSnapshot.warnIfStale(configFile, config);
                 new DeckGenerator().generate(config, ids, new DeckGenerator.Cover(
                         season, cover, domingo, frase, versiculo, Season.ano(ano)));
             }
@@ -154,6 +156,7 @@ public class Main {
         return """
                 Usage:
                   index [--config <file>]
+                  diff-sources [--config <file>]
                   songbook [--config <file>]
                   generate --ids <id,id,...> --season <season> --ano <A|B|C> --domingo <text> --frase <text> --versiculo <text> [--cover <layout>] [--config <file>]""";
     }
