@@ -22,10 +22,16 @@ To see slides and songbook headings that do not match:
 
 `generate` warns when one of those files has changed since the last `index`.
 
-To build a deck, name the songs by their id in the index and say which Sunday it is. The season is one of `comum`, `advento`, `natal`, `quaresma`, `ramos`, `pascoa`, or `pentecostes`. The year is `A`, `B`, or `C`. You do not type the «» around the sentence or the "Tempo … · Ano …" line; the program adds those.
+To build a deck, name the songs in the order they should appear, and say which Sunday it is. `--ids` uses the id stored in the index. `--book-ids` uses the songbook number, including a rite code such as `A1` or `RP3`, so you can check that order against the book. Use one of those flags. The season is one of `comum`, `advento`, `natal`, `quaresma`, `ramos`, `pascoa`, or `pentecostes`. The year is `A`, `B`, or `C`. You do not type the «» around the sentence or the "Tempo … · Ano …" line; the program adds those.
 
 ```bash
-./gradlew run --args 'generate --ids 8,98 --season advento --ano B --domingo "Domingo II" --frase "Dai a César o que é de César e a Deus o que é de Deus" --versiculo "Mt 3, 15-21"'
+./gradlew run --args 'generate --ids 1,2 --season advento --ano B --domingo "Domingo II" --frase "Dai a César o que é de César e a Deus o que é de Deus" --versiculo "Mt 3, 15-21"'
+```
+
+The same two songs by songbook number:
+
+```bash
+./gradlew run --args 'generate --book-ids 2,1 --season advento --ano B --domingo "Domingo II" --frase "Dai a César o que é de César e a Deus o que é de Deus" --versiculo "Mt 3, 15-21"'
 ```
 
 Keep the single quotes. Without them the terminal splits the sentence and Gradle treats the leftover words as extra tasks.

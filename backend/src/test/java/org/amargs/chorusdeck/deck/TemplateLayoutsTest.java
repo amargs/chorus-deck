@@ -178,7 +178,7 @@ class TemplateLayoutsTest {
     void generateRendersSongsOnNamedLayouts() throws Exception {
         Path out = Files.createTempFile("chorus-deck", ".pptx");
         AppConfig config = new AppConfig(Path.of("unused.pptx"), indexFile(), template(), out);
-        new DeckService().generate(config, List.of(1, 2), cover("comum"));
+        new DeckService().generate(config, new DeckService.Selection.Ids(List.of(1, 2)), cover("comum"));
 
         try (XMLSlideShow ppt = open(out)) {
             assertEquals(6, ppt.getSlides().size());
@@ -202,10 +202,22 @@ class TemplateLayoutsTest {
     }
 
     @Test
+    void generateByBookIdUsesTheSongbookNumber() throws Exception {
+        Path out = Files.createTempFile("chorus-deck", ".pptx");
+        AppConfig config = new AppConfig(Path.of("unused.pptx"), indexFile(), template(), out);
+        new DeckService().generate(config, new DeckService.Selection.BookIds(List.of("2", "1")), cover("comum"));
+
+        try (XMLSlideShow ppt = open(out)) {
+            assertEquals("A festa da música", textShape(ppt.getSlides().get(1), "Título").getText());
+            assertEquals("A minh’alma descansa em paz", textShape(ppt.getSlides().get(5), "Título").getText());
+        }
+    }
+
+    @Test
     void coverFollowsSeasonAndSpecialSunday() throws Exception {
         Path out = Files.createTempFile("chorus-deck", ".pptx");
         AppConfig config = new AppConfig(Path.of("unused.pptx"), indexFile(), template(), out);
-        new DeckService().generate(config, List.of(2), new Cover(
+        new DeckService().generate(config, new DeckService.Selection.Ids(List.of(2)), new Cover(
                 "quaresma", "Capa - Domingo IV Quaresma", "IV Domingo da Quaresma", "frase", "Jo 9, 1-41", "B"));
 
         try (XMLSlideShow ppt = open(out)) {
@@ -219,7 +231,7 @@ class TemplateLayoutsTest {
         Path festive = Files.createTempFile("chorus-deck", ".pptx");
         new DeckService().generate(
                 new AppConfig(Path.of("unused.pptx"), indexFile(), template(), festive),
-                List.of(2),
+                new DeckService.Selection.Ids(List.of(2)),
                 cover("pascoa"));
         try (XMLSlideShow ppt = open(festive)) {
             assertEquals("Capa - Páscoa", ppt.getSlides().get(0).getSlideLayout().getName());
@@ -232,12 +244,16 @@ class TemplateLayoutsTest {
     void generateRejectsUnknownIdAndEmptySong() throws Exception {
         Path out = Files.createTempFile("chorus-deck", ".pptx");
         Path index = Files.createTempFile("chorus-deck", ".json");
-        Files.writeString(index, "[{\"id\":1,\"title\":\"Vazio\",\"content\":[]}]", UTF_8);
+        Files.writeString(index, "[{\"id\":1,\"bookId\":\"1\",\"title\":\"Vazio\",\"content\":[]}]", UTF_8);
         AppConfig config = new AppConfig(Path.of("unused.pptx"), index, template(), out);
 
-        assertThrows(IllegalArgumentException.class, () -> new DeckService().generate(config, List.of(1), cover("comum")));
-        Files.writeString(index, "[{\"id\":1,\"title\":\"Um\",\"content\":[\"verso\"]}]", UTF_8);
-        assertThrows(IllegalArgumentException.class, () -> new DeckService().generate(config, List.of(2), cover("comum")));
+        assertThrows(IllegalArgumentException.class,
+                () -> new DeckService().generate(config, new DeckService.Selection.Ids(List.of(1)), cover("comum")));
+        Files.writeString(index, "[{\"id\":1,\"bookId\":\"1\",\"title\":\"Um\",\"content\":[\"verso\"]}]", UTF_8);
+        assertThrows(IllegalArgumentException.class,
+                () -> new DeckService().generate(config, new DeckService.Selection.Ids(List.of(2)), cover("comum")));
+        assertThrows(IllegalArgumentException.class,
+                () -> new DeckService().generate(config, new DeckService.Selection.BookIds(List.of("9")), cover("comum")));
     }
 
     private static Cover cover(String season) {

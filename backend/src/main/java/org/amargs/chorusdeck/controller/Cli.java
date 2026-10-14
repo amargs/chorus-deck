@@ -29,6 +29,7 @@ public final class Cli {
         String command = args[0];
         Path configArg = null;
         List<Integer> ids = null;
+        List<String> bookIds = null;
         String season = null;
         String cover = null;
         String domingo = null;
@@ -51,6 +52,13 @@ public final class Cli {
                         throw new IllegalArgumentException("Duplicate --ids.\n" + usage());
                     }
                     ids = parseIds(requireValue(args, ++i, "--ids"));
+                }
+                case "--book-ids" -> {
+                    requireGenerate(command, "--book-ids");
+                    if (bookIds != null) {
+                        throw new IllegalArgumentException("Duplicate --book-ids.\n" + usage());
+                    }
+                    bookIds = parseBookIds(requireValue(args, ++i, "--book-ids"));
                 }
                 case "--season" -> {
                     requireGenerate(command, "--season");
@@ -87,15 +95,21 @@ public final class Cli {
             case "songbook" -> printSongbooks(configFile.getParent());
             case "diff-sources" -> printDiff(new DiffService().compare(config));
             case "generate" -> {
-                if (ids == null) {
-                    throw new IllegalArgumentException("generate requires --ids.\n" + usage());
+                if (ids == null && bookIds == null) {
+                    throw new IllegalArgumentException("generate requires --ids or --book-ids.\n" + usage());
+                }
+                if (ids != null && bookIds != null) {
+                    throw new IllegalArgumentException("generate takes --ids or --book-ids, not both.\n" + usage());
                 }
                 if (season == null || domingo == null || frase == null || versiculo == null || ano == null) {
                     throw new IllegalArgumentException(
                             "generate requires --season, --ano, --domingo, --frase, and --versiculo.\n" + usage());
                 }
+                DeckService.Selection selection = ids != null
+                        ? new DeckService.Selection.Ids(ids)
+                        : new DeckService.Selection.BookIds(bookIds);
                 printStale(new IndexService().warnIfStale(configFile, config));
-                printGenerated(config, new DeckService().generate(config, ids, new Cover(
+                printGenerated(config, new DeckService().generate(config, selection, new Cover(
                         season, cover, domingo, frase, versiculo, year(ano))));
             }
             default -> throw new IllegalArgumentException("Unknown command: " + command + "\n" + usage());
@@ -184,7 +198,7 @@ public final class Cli {
         System.out.println("Opening " + config.template4x3().toAbsolutePath());
         System.out.println("Cover: " + generated.coverLayout());
         for (DeckService.Generated.Song song : generated.songs()) {
-            System.out.println("Song " + song.id() + ": " + song.title() + " (" + song.verses() + " verses)");
+            System.out.println("Song " + song.key() + ": " + song.title() + " (" + song.verses() + " verses)");
             for (int verse = 1; verse <= song.verses(); verse++) {
                 System.out.println("  Verse " + verse + " of " + song.verses());
             }
@@ -266,9 +280,25 @@ public final class Cli {
             }
         }
         if (ids.isEmpty()) {
-            throw new IllegalArgumentException("generate requires --ids.\n" + usage());
+            throw new IllegalArgumentException("generate requires --ids or --book-ids.\n" + usage());
         }
         return ids;
+    }
+
+    private static List<String> parseBookIds(String raw) {
+        String[] parts = raw.split(",");
+        List<String> bookIds = new ArrayList<>();
+        for (String part : parts) {
+            String token = part.trim();
+            if (token.isEmpty()) {
+                throw new IllegalArgumentException("Empty songbook id in --book-ids.\n" + usage());
+            }
+            bookIds.add(token);
+        }
+        if (bookIds.isEmpty()) {
+            throw new IllegalArgumentException("generate requires --ids or --book-ids.\n" + usage());
+        }
+        return bookIds;
     }
 
     private static String usage() {
@@ -277,6 +307,6 @@ public final class Cli {
                   index [--config <file>]
                   diff-sources [--config <file>]
                   songbook [--config <file>]
-                  generate --ids <id,id,...> --season <season> --ano <A|B|C> --domingo <text> --frase <text> --versiculo <text> [--cover <layout>] [--config <file>]""";
+                  generate (--ids <id,id,...> | --book-ids <bookId,bookId,...>) --season <season> --ano <A|B|C> --domingo <text> --frase <text> --versiculo <text> [--cover <layout>] [--config <file>]""";
     }
 }
