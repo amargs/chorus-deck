@@ -34,6 +34,10 @@ java {
     }
 }
 
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
 run {
     jvmArgs = ['-Dfile.encoding=UTF-8']
     standardOutput = new PrintStream(System.out, true, "UTF-8")

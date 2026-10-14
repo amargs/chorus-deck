@@ -9,17 +9,21 @@ import org.apache.poi.xslf.usermodel.XSLFSlideLayout;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.channels.FileChannel;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.FileSystemException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.List;
 import java.util.Locale;
 
 public final class DeckGenerator {
 
     public void generate(AppConfig config, List<Integer> ids, Cover cover) throws IOException {
+        ensureOutputWritable(config.outputFile());
+
         System.out.println("Reading " + config.indexFile().toAbsolutePath());
         List<SongCfg> songs;
         try (InputStream in = Files.newInputStream(config.indexFile())) {
@@ -93,17 +97,35 @@ public final class DeckGenerator {
         return "«" + text + "»";
     }
 
+    static void ensureOutputWritable(Path outputFile) throws IOException {
+        if (Files.notExists(outputFile)) {
+            return;
+        }
+        try (FileChannel probe = FileChannel.open(outputFile, StandardOpenOption.WRITE)) {
+            // Opening for write fails when PowerPoint already has the deck open.
+        } catch (FileSystemException e) {
+            if (outputIsLocked(e)) {
+                throw outputOpen(outputFile, e);
+            }
+            throw e;
+        }
+    }
+
     private static void writeShow(XMLSlideShow templatePpt, Path outputFile) throws IOException {
         try (OutputStream out = Files.newOutputStream(outputFile)) {
             templatePpt.write(out);
         } catch (FileSystemException e) {
             if (outputIsLocked(e)) {
-                throw new IllegalArgumentException(
-                        "Can't write " + outputFile.toAbsolutePath() + " because it is open. Close it and run generate again.",
-                        e);
+                throw outputOpen(outputFile, e);
             }
             throw e;
         }
+    }
+
+    private static IllegalArgumentException outputOpen(Path outputFile, Exception cause) {
+        return new IllegalArgumentException(
+                "Can't write " + outputFile.toAbsolutePath() + " because it is open. Close it and run generate again.",
+                cause);
     }
 
     static boolean outputIsLocked(FileSystemException e) {

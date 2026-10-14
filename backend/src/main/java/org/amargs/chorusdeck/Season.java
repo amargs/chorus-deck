@@ -78,7 +78,7 @@ final class Season {
             case "Capa - Advento" -> advento();
             case "Capa - Natal" -> natal();
             case "Capa - Quaresma" -> quaresma();
-            case "Capa - Domingo III Advento" -> rose(name, "Tempo do Advento");
+            case "Capa - Domingo III Advento" -> rose(name, "Tempo de Advento");
             case "Capa - Domingo IV Quaresma" -> rose(name, "Tempo de Quaresma");
             case "Capa - Ramos" -> ramos();
             case "Capa - Páscoa" -> pascoa();
@@ -92,11 +92,11 @@ final class Season {
     }
 
     private static Season advento() {
-        return new Season("Capa - Advento", ORDINARY_TITLE, "accent2", "Tempo do Advento");
+        return new Season("Capa - Advento", ORDINARY_TITLE, "accent2", "Tempo de Advento");
     }
 
     private static Season natal() {
-        return new Season("Capa - Natal", FESTIVE_TITLE, null, "Tempo do Natal");
+        return new Season("Capa - Natal", FESTIVE_TITLE, null, "Tempo de Natal");
     }
 
     private static Season quaresma() {

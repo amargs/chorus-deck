@@ -48,6 +48,15 @@ class TemplateLayoutsTest {
     }
 
     @Test
+    void festiveTitleSlideHasTitleShape() throws Exception {
+        try (XMLSlideShow ppt = openTemplate()) {
+            XSLFSlide slide = ppt.createSlide(TemplateLayouts.findLayout(ppt, TemplateLayouts.FESTIVE_TITLE));
+            TemplateLayouts.setShapeText(slide, "Título", "Adoramus te");
+            assertEquals("Adoramus te", textShape(slide, "Título").getText());
+        }
+    }
+
+    @Test
     void lyricPlaceholderKeepsLayoutFontAndReplacesPrompt() throws Exception {
         try (XMLSlideShow ppt = openTemplate()) {
             XSLFSlide slide = ppt.createSlide(TemplateLayouts.findLayout(ppt, TemplateLayouts.ORDINARY_TITLE));
