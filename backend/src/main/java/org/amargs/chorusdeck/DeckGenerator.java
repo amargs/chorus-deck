@@ -19,7 +19,7 @@ import java.util.Locale;
 
 public final class DeckGenerator {
 
-    public void generate(AppConfig config, List<Integer> ids) throws IOException {
+    public void generate(AppConfig config, List<Integer> ids, Cover cover) throws IOException {
         System.out.println("Reading " + config.indexFile().toAbsolutePath());
         List<SongCfg> songs;
         try (InputStream in = Files.newInputStream(config.indexFile())) {
@@ -35,10 +35,21 @@ public final class DeckGenerator {
         System.out.println("Opening " + config.template4x3().toAbsolutePath());
         try (InputStream in = Files.newInputStream(config.template4x3());
              XMLSlideShow templatePpt = new XMLSlideShow(in)) {
-            XSLFSlideLayout titleLayout = TemplateLayouts.findLayout(templatePpt, TemplateLayouts.ORDINARY_TITLE);
+            Season season = Season.resolve(cover.season(), cover.cover());
+            XSLFSlideLayout coverLayout = TemplateLayouts.findLayout(templatePpt, season.coverLayout());
+            XSLFSlideLayout titleLayout = TemplateLayouts.findLayout(templatePpt, season.titleLayout());
             XSLFSlideLayout lyricLayout = TemplateLayouts.findLayout(templatePpt, TemplateLayouts.LYRICS);
+            if (season.headerScheme() != null) {
+                TemplateLayouts.setHeaderScheme(titleLayout, season.headerScheme());
+            }
 
-            int slideNumber = 0;
+            System.out.println("Cover: " + season.coverLayout());
+            XSLFSlide coverSlide = templatePpt.createSlide(coverLayout);
+            TemplateLayouts.setShapeText(coverSlide, "Domingo", cover.domingo());
+            TemplateLayouts.setShapeText(coverSlide, "Frase", quote(cover.frase()));
+            TemplateLayouts.setShapeText(coverSlide, "Versiculo", cover.versiculo());
+            TemplateLayouts.setShapeText(coverSlide, "Tempo", season.tempo(cover.ano()));
+            int slideNumber = 1;
             for (int id : ids) {
                 if (id < 1 || id > songs.size()) {
                     throw new IllegalArgumentException("Unknown song id: " + id);
@@ -69,6 +80,17 @@ public final class DeckGenerator {
             writeShow(templatePpt, config.outputFile());
             System.out.println("Done");
         }
+    }
+
+    public record Cover(String season, String cover, String domingo, String frase, String versiculo, String ano) {
+    }
+
+    static String quote(String frase) {
+        String text = frase == null ? "" : frase.trim();
+        if (text.startsWith("«") && text.endsWith("»")) {
+            return text;
+        }
+        return "«" + text + "»";
     }
 
     private static void writeShow(XMLSlideShow templatePpt, Path outputFile) throws IOException {

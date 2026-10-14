@@ -5,6 +5,7 @@ import org.apache.poi.xslf.usermodel.XSLFTextRun;
 import org.apache.poi.xslf.usermodel.XSLFTextShape;
 import org.openxmlformats.schemas.drawingml.x2006.main.CTRegularTextRun;
 import org.openxmlformats.schemas.drawingml.x2006.main.CTTextCharacterProperties;
+import org.openxmlformats.schemas.presentationml.x2006.main.CTShape;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -70,10 +71,11 @@ final class BoldMarkup {
                 weightedFamily = candidate;
             }
         }
+        boolean layoutBold = layoutBold(shape);
         List<XSLFTextParagraph> paragraphs = shape.getTextParagraphs();
         int count = Math.min(paragraphs.size(), parsed.size());
         for (int i = 0; i < count; i++) {
-            applyLine(paragraphs.get(i), parsed.get(i), weightedFamily);
+            applyLine(paragraphs.get(i), parsed.get(i), weightedFamily, layoutBold);
         }
     }
 
@@ -158,21 +160,32 @@ final class BoldMarkup {
         current.setLength(0);
     }
 
-    private static void applyLine(XSLFTextParagraph paragraph, List<Segment> segments, String weightedFamily) {
+    private static boolean layoutBold(XSLFTextShape shape) {
+        if (!(shape.getXmlObject() instanceof CTShape ctShape)
+                || ctShape.getTxBody() == null
+                || ctShape.getTxBody().getLstStyle() == null
+                || !ctShape.getTxBody().getLstStyle().isSetLvl1PPr()) {
+            return false;
+        }
+        CTTextCharacterProperties defaults = ctShape.getTxBody().getLstStyle().getLvl1PPr().getDefRPr();
+        return defaults != null && defaults.isSetB() && defaults.getB();
+    }
+
+    private static void applyLine(XSLFTextParagraph paragraph, List<Segment> segments, String weightedFamily, boolean layoutBold) {
         List<XSLFTextRun> runs = paragraph.getTextRuns();
         if (runs.isEmpty() || segments.isEmpty()) {
             return;
         }
         XSLFTextRun first = runs.get(0);
         CTTextCharacterProperties base = copyProperties(first);
-        writeRun(first, segments.get(0), base, weightedFamily);
+        writeRun(first, segments.get(0), base, weightedFamily, layoutBold);
         for (int i = 1; i < segments.size(); i++) {
             XSLFTextRun run = paragraph.addNewTextRun();
-            writeRun(run, segments.get(i), base, weightedFamily);
+            writeRun(run, segments.get(i), base, weightedFamily, layoutBold);
         }
     }
 
-    private static void writeRun(XSLFTextRun run, Segment segment, CTTextCharacterProperties base, String weightedFamily) {
+    private static void writeRun(XSLFTextRun run, Segment segment, CTTextCharacterProperties base, String weightedFamily, boolean layoutBold) {
         if (base != null && run.getXmlObject() instanceof CTRegularTextRun ctRun) {
             ctRun.setRPr((CTTextCharacterProperties) base.copy());
         }
@@ -180,8 +193,8 @@ final class BoldMarkup {
         if (segment.bold() && weightedFamily != null) {
             run.setBold(false);
             run.setFontFamily(weightedFamily);
-        } else {
-            run.setBold(segment.bold());
+        } else if (segment.bold() || layoutBold) {
+            run.setBold(true);
         }
     }
 

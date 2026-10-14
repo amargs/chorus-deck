@@ -23,6 +23,12 @@ public class Main {
         String command = args[0];
         Path configArg = null;
         List<Integer> ids = null;
+        String season = null;
+        String cover = null;
+        String domingo = null;
+        String frase = null;
+        String versiculo = null;
+        String ano = null;
 
         for (int i = 1; i < args.length; i++) {
             String arg = args[i];
@@ -34,13 +40,35 @@ public class Main {
                     configArg = Path.of(requireValue(args, ++i, "--config"));
                 }
                 case "--ids" -> {
-                    if (!"generate".equals(command)) {
-                        throw new IllegalArgumentException("--ids is only valid for generate.\n" + usage());
-                    }
+                    requireGenerate(command, "--ids");
                     if (ids != null) {
                         throw new IllegalArgumentException("Duplicate --ids.\n" + usage());
                     }
                     ids = parseIds(requireValue(args, ++i, "--ids"));
+                }
+                case "--season" -> {
+                    requireGenerate(command, "--season");
+                    season = single(season, requireValue(args, ++i, "--season"), "--season");
+                }
+                case "--cover" -> {
+                    requireGenerate(command, "--cover");
+                    cover = single(cover, requireValue(args, ++i, "--cover"), "--cover");
+                }
+                case "--domingo" -> {
+                    requireGenerate(command, "--domingo");
+                    domingo = single(domingo, requireValue(args, ++i, "--domingo"), "--domingo");
+                }
+                case "--frase" -> {
+                    requireGenerate(command, "--frase");
+                    frase = single(frase, requireValue(args, ++i, "--frase"), "--frase");
+                }
+                case "--versiculo" -> {
+                    requireGenerate(command, "--versiculo");
+                    versiculo = single(versiculo, requireValue(args, ++i, "--versiculo"), "--versiculo");
+                }
+                case "--ano" -> {
+                    requireGenerate(command, "--ano");
+                    ano = single(ano, requireValue(args, ++i, "--ano"), "--ano");
                 }
                 default -> throw new IllegalArgumentException("Unknown argument: " + arg + "\n" + usage());
             }
@@ -53,10 +81,28 @@ public class Main {
                 if (ids == null) {
                     throw new IllegalArgumentException("generate requires --ids.\n" + usage());
                 }
-                new DeckGenerator().generate(config, ids);
+                if (season == null || domingo == null || frase == null || versiculo == null || ano == null) {
+                    throw new IllegalArgumentException(
+                            "generate requires --season, --ano, --domingo, --frase, and --versiculo.\n" + usage());
+                }
+                new DeckGenerator().generate(config, ids, new DeckGenerator.Cover(
+                        season, cover, domingo, frase, versiculo, Season.ano(ano)));
             }
             default -> throw new IllegalArgumentException("Unknown command: " + command + "\n" + usage());
         }
+    }
+
+    private static void requireGenerate(String command, String flag) {
+        if (!"generate".equals(command)) {
+            throw new IllegalArgumentException(flag + " is only valid for generate.\n" + usage());
+        }
+    }
+
+    private static String single(String current, String value, String flag) {
+        if (current != null) {
+            throw new IllegalArgumentException("Duplicate " + flag + ".\n" + usage());
+        }
+        return value;
     }
 
     private static String requireValue(String[] args, int index, String flag) {
@@ -94,6 +140,6 @@ public class Main {
         return """
                 Usage:
                   index [--config <file>]
-                  generate --ids <id,id,...> [--config <file>]""";
+                  generate --ids <id,id,...> --season <season> --ano <A|B|C> --domingo <text> --frase <text> --versiculo <text> [--cover <layout>] [--config <file>]""";
     }
 }

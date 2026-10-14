@@ -3,6 +3,7 @@ package org.amargs.chorusdeck;
 import org.apache.poi.xslf.usermodel.XMLSlideShow;
 import org.apache.poi.xslf.usermodel.XSLFShape;
 import org.apache.poi.xslf.usermodel.XSLFSlide;
+import org.apache.poi.xslf.usermodel.XSLFSlideLayout;
 import org.apache.poi.xslf.usermodel.XSLFTextRun;
 import org.apache.poi.xslf.usermodel.XSLFTextShape;
 import org.junit.jupiter.api.Test;
@@ -24,13 +25,16 @@ class TemplateLayoutsTest {
 
     private static final List<String> REQUIRED_LAYOUTS = List.of(
             "Capa - Tempo Comum",
-            "Capa - Tempo de Advento",
-            "Capa - Tempo de Natal",
-            "Capa - Tempo de Quaresma",
+            "Capa - Advento",
+            "Capa - Natal",
+            "Capa - Quaresma",
             "Capa - Domingo III Advento",
-            "Capa - Domingo IV Advento",
-            "Título e letra - Tempo comum",
-            "Título e letra - Tempo Advento",
+            "Capa - Domingo IV Quaresma",
+            "Capa - Ramos",
+            "Capa - Páscoa",
+            "Capa - Pentecostes",
+            TemplateLayouts.ORDINARY_TITLE,
+            TemplateLayouts.FESTIVE_TITLE,
             "Letra");
 
     @Test
@@ -161,19 +165,53 @@ class TemplateLayoutsTest {
     void generateRendersSongsOnNamedLayouts() throws Exception {
         Path out = Files.createTempFile("chorus-deck", ".pptx");
         AppConfig config = new AppConfig(Path.of("unused.pptx"), indexFile(), template(), out);
-        new DeckGenerator().generate(config, List.of(1, 2));
+        new DeckGenerator().generate(config, List.of(1, 2), cover("comum"));
 
         try (XMLSlideShow ppt = open(out)) {
-            assertEquals(5, ppt.getSlides().size());
-            assertEquals(TemplateLayouts.ORDINARY_TITLE, ppt.getSlides().get(0).getSlideLayout().getName());
-            assertEquals(TemplateLayouts.LYRICS, ppt.getSlides().get(1).getSlideLayout().getName());
-            assertEquals(TemplateLayouts.ORDINARY_TITLE, ppt.getSlides().get(4).getSlideLayout().getName());
+            assertEquals(6, ppt.getSlides().size());
+            assertEquals("Capa - Tempo Comum", ppt.getSlides().get(0).getSlideLayout().getName());
+            assertEquals("XXVIII Domingo", textShape(ppt.getSlides().get(0), "Domingo").getText());
+            assertEquals("«frase»", textShape(ppt.getSlides().get(0), "Frase").getText());
+            XSLFTextRun domingo = textShape(ppt.getSlides().get(0), "Domingo").getTextParagraphs().get(0).getTextRuns().get(0);
+            assertTrue(domingo.isBold());
+            assertEquals("Playfair Display", domingo.getFontFamily());
+            assertEquals("Tempo Comum · Ano A", textShape(ppt.getSlides().get(0), "Tempo").getText());
+            assertEquals(TemplateLayouts.ORDINARY_TITLE, ppt.getSlides().get(1).getSlideLayout().getName());
+            assertEquals(TemplateLayouts.LYRICS, ppt.getSlides().get(2).getSlideLayout().getName());
+            assertEquals(TemplateLayouts.ORDINARY_TITLE, ppt.getSlides().get(5).getSlideLayout().getName());
 
-            String lyrics = textShape(ppt.getSlides().get(0), "Letra").getText();
+            String lyrics = textShape(ppt.getSlides().get(1), "Letra").getText();
             assertTrue(lyrics.contains("Sentei-me ali à espera"));
             assertFalse(lyrics.contains("Música"));
-            assertEquals("A festa da música", textShape(ppt.getSlides().get(0), "Título").getText());
-            assertEquals("A minh’alma descansa em paz", textShape(ppt.getSlides().get(4), "Título").getText());
+            assertEquals("A festa da música", textShape(ppt.getSlides().get(1), "Título").getText());
+            assertEquals("A minh’alma descansa em paz", textShape(ppt.getSlides().get(5), "Título").getText());
+        }
+    }
+
+    @Test
+    void coverFollowsSeasonAndSpecialSunday() throws Exception {
+        Path out = Files.createTempFile("chorus-deck", ".pptx");
+        AppConfig config = new AppConfig(Path.of("unused.pptx"), indexFile(), template(), out);
+        new DeckGenerator().generate(config, List.of(2), new DeckGenerator.Cover(
+                "quaresma", "Capa - Domingo IV Quaresma", "IV Domingo da Quaresma", "frase", "Jo 9, 1-41", "B"));
+
+        try (XMLSlideShow ppt = open(out)) {
+            XSLFSlide cover = ppt.getSlides().get(0);
+            assertEquals("Capa - Domingo IV Quaresma", cover.getSlideLayout().getName());
+            assertEquals("Tempo de Quaresma · Ano B", textShape(cover, "Tempo").getText());
+            assertEquals(TemplateLayouts.ORDINARY_TITLE, ppt.getSlides().get(1).getSlideLayout().getName());
+            assertEquals("accent3", headerScheme(ppt));
+        }
+
+        Path festive = Files.createTempFile("chorus-deck", ".pptx");
+        new DeckGenerator().generate(
+                new AppConfig(Path.of("unused.pptx"), indexFile(), template(), festive),
+                List.of(2),
+                cover("pascoa"));
+        try (XMLSlideShow ppt = open(festive)) {
+            assertEquals("Capa - Páscoa", ppt.getSlides().get(0).getSlideLayout().getName());
+            assertEquals("Tempo Pascal · Ano A", textShape(ppt.getSlides().get(0), "Tempo").getText());
+            assertEquals(TemplateLayouts.FESTIVE_TITLE, ppt.getSlides().get(1).getSlideLayout().getName());
         }
     }
 
@@ -184,9 +222,23 @@ class TemplateLayoutsTest {
         Files.writeString(index, "[{\"id\":1,\"title\":\"Vazio\",\"content\":[]}]", UTF_8);
         AppConfig config = new AppConfig(Path.of("unused.pptx"), index, template(), out);
 
-        assertThrows(IllegalArgumentException.class, () -> new DeckGenerator().generate(config, List.of(1)));
+        assertThrows(IllegalArgumentException.class, () -> new DeckGenerator().generate(config, List.of(1), cover("comum")));
         Files.writeString(index, "[{\"id\":1,\"title\":\"Um\",\"content\":[\"verso\"]}]", UTF_8);
-        assertThrows(IllegalArgumentException.class, () -> new DeckGenerator().generate(config, List.of(2)));
+        assertThrows(IllegalArgumentException.class, () -> new DeckGenerator().generate(config, List.of(2), cover("comum")));
+    }
+
+    private static DeckGenerator.Cover cover(String season) {
+        return new DeckGenerator.Cover(season, null, "XXVIII Domingo", "frase", "Mt 25, 14-30", "A");
+    }
+
+    private static String headerScheme(XMLSlideShow ppt) {
+        XSLFSlideLayout layout = TemplateLayouts.findLayout(ppt, TemplateLayouts.ORDINARY_TITLE);
+        for (XSLFShape shape : layout.getShapes()) {
+            if ("Header".equals(shape.getShapeName()) && shape.getXmlObject() instanceof CTShape ctShape) {
+                return ctShape.getSpPr().getSolidFill().getSchemeClr().getVal().toString();
+            }
+        }
+        throw new IllegalStateException("Header not found");
     }
 
     private static XMLSlideShow openTemplate() throws Exception {
@@ -204,7 +256,11 @@ class TemplateLayoutsTest {
         if (Files.isRegularFile(direct)) {
             return direct;
         }
-        Path nested = Path.of("backend", "index.json");
+        Path data = Path.of("data", "index.json");
+        if (Files.isRegularFile(data)) {
+            return data;
+        }
+        Path nested = Path.of("backend", "data", "index.json");
         if (Files.isRegularFile(nested)) {
             return nested;
         }
@@ -216,7 +272,11 @@ class TemplateLayoutsTest {
         if (Files.isRegularFile(direct)) {
             return direct;
         }
-        Path nested = Path.of("backend", "template_4x3.pptx");
+        Path data = Path.of("data", "template_4x3.pptx");
+        if (Files.isRegularFile(data)) {
+            return data;
+        }
+        Path nested = Path.of("backend", "data", "template_4x3.pptx");
         if (Files.isRegularFile(nested)) {
             return nested;
         }

@@ -1,0 +1,29 @@
+# Agents
+
+Java 20 Gradle app in `backend/`. Run from that directory: `./gradlew test` and `./gradlew run --args '...'`. On the shell, keep single quotes around `--args` so text flags are not split into extra Gradle tasks. IntelliJ uses the same program arguments with working directory `backend`.
+
+Paths are in `backend/config.json` and are relative to that file. Data lives in `backend/data/`: `input.pptx` (source songs, do not commit), `index.json` (commit), `template_4x3.pptx` (commit), `out_4x3.pptx` (generated, do not commit). Close the output file in PowerPoint before generating again.
+
+Song ids are 1-based positions in `index.json`. `index` rebuilds that file from `input.pptx`. A titled slide starts a song; following untitled slides are more verses. Bold runs are stored as `**...**`. A song that is a single slide and entirely bold is stored as plain text. `boldWeight` in config is `semibold` by default (`medium`, `bold`, and the other IBM Plex Sans weights are valid). `bold` means real PowerPoint bold. Any other weight sets that typeface, and falls back to real bold if the font file is missing.
+
+`generate` writes one cover, then each song: first verse on a title layout, later verses on `Letra`.
+
+| Season or `--cover` | Cover layout | Title layout | Header |
+|---|---|---|---|
+| `comum` | `Capa - Tempo Comum` | `Título e letra` | `accent1` |
+| `advento` | `Capa - Advento` | `Título e letra` | `accent2` |
+| `quaresma` | `Capa - Quaresma` | `Título e letra` | `accent2` |
+| `ramos` | `Capa - Ramos` | `Título e letra` | `accent5` |
+| `pentecostes` | `Capa - Pentecostes` | `Título e letra` | `accent5` |
+| `Capa - Domingo III Advento` | that cover | `Título e letra` | `accent3` |
+| `Capa - Domingo IV Quaresma` | that cover | `Título e letra` | `accent3` |
+| `natal` | `Capa - Natal` | `Título e letra - Natal e Páscoa` | white bar, gold title, already on the layout |
+| `pascoa` | `Capa - Páscoa` | `Título e letra - Natal e Páscoa` | white bar, gold title, already on the layout |
+
+`Tempo` is generated, not typed: `Tempo Comum`, `Tempo do Advento`, `Tempo do Natal`, `Tempo de Quaresma` (also Ramos and Domingo IV Quaresma), `Tempo Pascal` (also Pentecostes). Domingo III Advento stays `Tempo do Advento`. The line is `{that} · Ano {A\|B\|C}`. `--frase` is wrapped in «» when the user did not already include them. `--domingo` and `--versiculo` are copied as given.
+
+Cover fields the code fills: `Domingo`, `Frase`, `Versiculo`, `Tempo`. Song fields: `Título`, `Letra`. `Domingo` is Playfair Display Bold on the layout; keep that bold. Do not rewrite `Header` (colored bar; recolor its scheme fill on the title layout in the generated file only) or `Picture 4` (season image on the cover). Continuation verses stay on the shared `Letra` layout. Lyric fitting reads the live text box and measures semibold/bold wider than regular.
+
+Theme accents: `accent1` `#377D49` green, `accent2` `#A461AF` purple, `accent3` `#F99595` rose, `accent4` `#8C6A00` gold, `accent5` `#B92323` red (Pentecost, Palm Sunday, Confirmation). Easter season is gold, not red.
+
+Stage 1 (index, generate, cover, season header) is implemented. Do not start song numbers, response slides, liturgia.pt, or a UI unless the user asks for that stage.
