@@ -55,10 +55,7 @@ public final class DeckGenerator {
             TemplateLayouts.setShapeText(coverSlide, "Tempo", season.tempo(cover.ano()));
             int slideNumber = 1;
             for (int id : ids) {
-                if (id < 1 || id > songs.size()) {
-                    throw new IllegalArgumentException("Unknown song id: " + id);
-                }
-                SongCfg song = songs.get(id - 1);
+                SongCfg song = find(songs, id);
                 if (song.content() == null || song.content().isEmpty()) {
                     throw new IllegalArgumentException("Song " + id + " has no verses.");
                 }
@@ -109,6 +106,15 @@ public final class DeckGenerator {
             }
             throw e;
         }
+    }
+
+    private static SongCfg find(List<SongCfg> songs, int id) {
+        for (SongCfg song : songs) {
+            if (song.id() == id) {
+                return song;
+            }
+        }
+        throw new IllegalArgumentException("Unknown song id: " + id);
     }
 
     private static void writeShow(XMLSlideShow templatePpt, Path outputFile) throws IOException {
