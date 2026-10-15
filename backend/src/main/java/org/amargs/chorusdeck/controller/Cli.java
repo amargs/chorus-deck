@@ -112,8 +112,9 @@ public final class Cli {
                 DeckService.Selection selection = ids != null
                         ? new DeckService.Selection.Ids(ids)
                         : new DeckService.Selection.BookIds(bookIds);
+                long staleStart = System.nanoTime();
                 printStale(new IndexService().warnIfStale(configFile, config));
-                LOG.info("Checked sources");
+                LOG.info("Checked sources (" + (System.nanoTime() - staleStart) / 1_000_000 + " ms)");
                 new DeckService().generate(config, selection, new Cover(
                         season, cover, domingo, frase, versiculo, year(ano)));
             }

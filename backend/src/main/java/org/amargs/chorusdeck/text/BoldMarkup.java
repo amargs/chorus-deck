@@ -9,11 +9,23 @@ import org.openxmlformats.schemas.presentationml.x2006.main.CTShape;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 public final class BoldMarkup {
 
+    public static final String SEMIBOLD = "IBM Plex Sans SemiBold";
+    public static final String PLAYFAIR = "Playfair Display";
+    public static final String PLAYFAIR_BOLD = "Playfair Display Bold";
+
     private BoldMarkup() {
+    }
+
+    public static void requireDeckFonts() {
+        List<String> missing = Fonts.preload(SEMIBOLD, PLAYFAIR, PLAYFAIR_BOLD);
+        if (!missing.isEmpty()) {
+            throw new IllegalArgumentException(
+                    String.join(", ", missing) + (missing.size() == 1 ? " was not found." : " were not found.")
+                            + " Install the missing font and run generate again.");
+        }
     }
 
     public static String mark(XSLFTextShape shape) {
@@ -60,46 +72,14 @@ public final class BoldMarkup {
         return sawBoldText;
     }
 
-    public static void apply(XSLFTextShape shape, String marked, String boldWeight) {
+    public static void apply(XSLFTextShape shape, String marked) {
         List<List<Segment>> parsed = parse(marked == null ? "" : marked);
-        String weight = boldWeight == null || boldWeight.isBlank() ? "semibold" : boldWeight.trim().toLowerCase(Locale.ROOT);
-        String weightedFamily = null;
-        if (!"bold".equals(weight)) {
-            String family = Fonts.latinFamily(shape);
-            String candidate = weightedFamily(family, weight);
-            if (Fonts.fontFileAvailable(candidate)) {
-                weightedFamily = candidate;
-            }
-        }
         boolean layoutBold = layoutBold(shape);
         List<XSLFTextParagraph> paragraphs = shape.getTextParagraphs();
         int count = Math.min(paragraphs.size(), parsed.size());
         for (int i = 0; i < count; i++) {
-            applyLine(paragraphs.get(i), parsed.get(i), weightedFamily, layoutBold);
+            applyLine(paragraphs.get(i), parsed.get(i), SEMIBOLD, layoutBold);
         }
-    }
-
-    static String weightedFamily(String family, String weight) {
-        String base = family == null ? "" : family;
-        base = base.replaceAll("(?i)\\s+(extra\\s*light|extralight|extra\\s*bold|extrabold|semi\\s*bold|semibold|medium|light|thin|black|regular|bold)$", "").trim();
-        if (base.isEmpty()) {
-            base = "IBM Plex Sans";
-        }
-        return base + " " + weightLabel(weight);
-    }
-
-    private static String weightLabel(String weight) {
-        String key = weight.toLowerCase(Locale.ROOT).replaceAll("[\\s_-]+", "");
-        return switch (key) {
-            case "semibold" -> "SemiBold";
-            case "medium" -> "Medium";
-            case "light" -> "Light";
-            case "thin" -> "Thin";
-            case "black" -> "Black";
-            case "extrabold" -> "ExtraBold";
-            case "extralight" -> "ExtraLight";
-            default -> Character.toUpperCase(key.charAt(0)) + key.substring(1);
-        };
     }
 
     private static String markParagraph(XSLFTextParagraph paragraph) {

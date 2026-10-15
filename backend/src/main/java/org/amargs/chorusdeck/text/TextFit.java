@@ -17,6 +17,7 @@ import java.awt.font.FontRenderContext;
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * PowerPoint does not run "shrink text on overflow" until someone edits the shape.
@@ -37,6 +38,10 @@ public final class TextFit {
     }
 
     public static void apply(XSLFTextShape shape) {
+        apply(shape, null, null, 0, 0);
+    }
+
+    public static void apply(XSLFTextShape shape, String marked, FitCache cache, int songId, int slide) {
         if (!(shape.getXmlObject() instanceof CTShape ctShape) || ctShape.getTxBody() == null) {
             return;
         }
@@ -55,22 +60,55 @@ public final class TextFit {
             return;
         }
 
-        TextStyle style = textStyle(shape, txBody);
-        List<XSLFTextParagraph> paragraphs = shape.getTextParagraphs();
         boolean lyric = !Fonts.titlePlaceholder(shape);
         double textWidth = widthPt * (lyric ? 0.92 : 0.98);
         double targetHeight = lyric ? heightPt * LYRIC_BOX_FRACTION : heightPt;
-        int fontScale = FULL_SCALE;
-        if (!fits(paragraphs, style, textWidth, targetHeight, 1, 0)) {
-            fontScale = fit(paragraphs, style, textWidth, targetHeight);
+        CTTextParagraphProperties level = level(txBody);
+        String box = box(textWidth, targetHeight, level == null ? 18 : fontPt(level, 18));
+        String hash = FitCache.hash(BoldMarkup.SEMIBOLD + "\0" + marked);
+        Integer remembered = cache == null ? null : cache.recall(songId, slide, shape.getShapeName(), box, hash);
+        int hundredths = remembered != null
+                ? remembered
+                : fittedHundredths(shape, txBody, textWidth, targetHeight);
+        if (remembered == null && cache != null) {
+            cache.remember(songId, slide, layoutName(shape), shape.getShapeName(), box, hash, hundredths);
         }
         CTTextNormalAutofit autofit = bodyPr.getNormAutofit();
         autofit.setFontScale(FULL_SCALE);
         autofit.setLnSpcReduction(0);
-        if (fontScale < FULL_SCALE) {
-            int hundredths = (int) Math.floor(style.fontPt() * fontScale / FULL_SCALE * 100.0);
-            applyFontSize(txBody, Math.max(hundredths, 800));
+        if (hundredths > 0) {
+            applyFontSize(txBody, hundredths);
         }
+    }
+
+    private static int fittedHundredths(XSLFTextShape shape, CTTextBody txBody, double textWidth, double targetHeight) {
+        TextStyle style = textStyle(shape, txBody);
+        List<XSLFTextParagraph> paragraphs = shape.getTextParagraphs();
+        int fontScale = FULL_SCALE;
+        if (!fits(paragraphs, style, textWidth, targetHeight, 1, 0)) {
+            fontScale = fit(paragraphs, style, textWidth, targetHeight);
+        }
+        if (fontScale >= FULL_SCALE) {
+            return 0;
+        }
+        int hundredths = (int) Math.floor(style.fontPt() * fontScale / FULL_SCALE * 100.0);
+        return Math.max(hundredths, 800);
+    }
+
+    private static String layoutName(XSLFTextShape shape) {
+        if (shape.getSheet() instanceof org.apache.poi.xslf.usermodel.XSLFSlide slide && slide.getSlideLayout() != null) {
+            String name = slide.getSlideLayout().getName();
+            return name == null ? "" : name;
+        }
+        return "";
+    }
+
+    private static String box(double textWidth, double targetHeight, double fontPt) {
+        return String.format(Locale.ROOT, "%.2f|%.2f|%.2f", textWidth, targetHeight, fontPt);
+    }
+
+    private static CTTextParagraphProperties level(CTTextBody txBody) {
+        return txBody.getLstStyle() == null ? null : txBody.getLstStyle().getLvl1PPr();
     }
 
     private static void applyFontSize(CTTextBody txBody, int hundredths) {
@@ -243,7 +281,7 @@ public final class TextFit {
         double spaceBeforePt = 0;
         double spaceAfterPt = 0;
         String typeface = null;
-        CTTextParagraphProperties level = txBody.getLstStyle() == null ? null : txBody.getLstStyle().getLvl1PPr();
+        CTTextParagraphProperties level = level(txBody);
         if (level != null) {
             fontPt = fontPt(level, fontPt);
             typeface = Fonts.typeface(level, typeface);

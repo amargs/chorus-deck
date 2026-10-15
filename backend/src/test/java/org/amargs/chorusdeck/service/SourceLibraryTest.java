@@ -74,7 +74,7 @@ class SourceLibraryTest {
         Path directory = Files.createTempDirectory("chorus-sources");
         Path config = directory.resolve("config.json");
         Files.writeString(config, """
-                {"sourcePptx":"input.pptx","indexFile":"index.json","template4x3":"template.pptx","outputFile":"out.pptx","boldWeight":"medium"}
+                {"sourcePptx":"input.pptx","indexFile":"index.json","template4x3":"template.pptx","outputFile":"out.pptx"}
                 """);
         Path pptx = directory.resolve("input.pptx");
         Path songbook = directory.resolve("songbook_default.docx");
@@ -91,8 +91,7 @@ class SourceLibraryTest {
         SourceHashes.write(config, current);
 
         AppConfig reloaded = AppConfig.load(config);
-        assertEquals("medium", reloaded.boldWeight());
-        assertEquals(SourceSnapshot.Refresh.UNCHANGED, SourceSnapshot.decide(SourceHashes.read(config), SourceHashes.of(app), true));
+        assertEquals(SourceSnapshot.Refresh.UNCHANGED, SourceSnapshot.decide(SourceHashes.read(config), SourceHashes.of(reloaded), true));
 
         Files.writeString(songbook, "book-edited");
         assertEquals(SourceSnapshot.Refresh.SONGBOOK,

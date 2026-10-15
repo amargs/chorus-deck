@@ -3,6 +3,7 @@ package org.amargs.chorusdeck.deck;
 import org.amargs.chorusdeck.config.AppConfig;
 import org.amargs.chorusdeck.model.Cover;
 import org.amargs.chorusdeck.service.DeckService;
+import org.amargs.chorusdeck.text.FitCache;
 
 import org.apache.poi.xslf.usermodel.XMLSlideShow;
 import org.apache.poi.xslf.usermodel.XSLFShape;
@@ -81,7 +82,7 @@ class TemplateLayoutsTest {
     }
 
     @Test
-    void emphasisUsesSemiBoldAndBoldIsTheFallback() throws Exception {
+    void emphasisUsesMedium() throws Exception {
         try (XMLSlideShow ppt = openTemplate()) {
             XSLFSlide slide = ppt.createSlide(TemplateLayouts.findLayout(ppt, TemplateLayouts.LYRICS));
             TemplateLayouts.setShapeText(slide, "Letra", "**Cântico:**\nverso");
@@ -93,14 +94,6 @@ class TemplateLayoutsTest {
             XSLFTextRun verse = lyrics.getTextParagraphs().get(1).getTextRuns().get(0);
             assertFalse(verse.isBold());
             assertEquals("verso", verse.getRawText());
-
-            XSLFSlide boldSlide = ppt.createSlide(TemplateLayouts.findLayout(ppt, TemplateLayouts.LYRICS));
-            TemplateLayouts.setShapeText(boldSlide, "Letra", "**Cântico:**", "bold");
-            assertTrue(textShape(boldSlide, "Letra").getTextParagraphs().get(0).getTextRuns().get(0).isBold());
-
-            XSLFSlide fallback = ppt.createSlide(TemplateLayouts.findLayout(ppt, TemplateLayouts.LYRICS));
-            TemplateLayouts.setShapeText(fallback, "Letra", "**Cântico:**", "notafontweight");
-            assertTrue(textShape(fallback, "Letra").getTextParagraphs().get(0).getTextRuns().get(0).isBold());
         }
     }
 
@@ -172,6 +165,30 @@ class TemplateLayoutsTest {
             assertTrue(lyricsSize >= 800, "sz=" + lyricsSize);
             assertEquals(3_400, fontSize(textShape(slide, "Título")));
         }
+    }
+
+    @Test
+    void fittedSizeIsReusedForTheSameVerseAndLayout() throws Exception {
+        Path file = Files.createTempFile("chorus-deck-fit", ".json");
+        String verse = "Se me envolve a noite escura\ne caminho sobre abismos de amargura,\nnada temo, porque a luz está comigo. \nNada temo, porque…";
+        FitCache first = FitCache.load(file);
+        int sized;
+        try (XMLSlideShow ppt = openTemplate()) {
+            XSLFSlide slide = ppt.createSlide(TemplateLayouts.findLayout(ppt, TemplateLayouts.ORDINARY_TITLE));
+            TemplateLayouts.setShapeText(slide, "Letra", verse, first, 8, 1);
+            sized = fontSize(textShape(slide, "Letra"));
+        }
+        assertEquals(1, first.stored());
+        first.save();
+
+        FitCache second = FitCache.load(file);
+        try (XMLSlideShow ppt = openTemplate()) {
+            XSLFSlide slide = ppt.createSlide(TemplateLayouts.findLayout(ppt, TemplateLayouts.ORDINARY_TITLE));
+            TemplateLayouts.setShapeText(slide, "Letra", verse, second, 8, 1);
+            assertEquals(sized, fontSize(textShape(slide, "Letra")));
+        }
+        assertEquals(1, second.reused());
+        assertEquals(0, second.stored());
     }
 
     @Test

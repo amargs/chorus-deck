@@ -3,7 +3,6 @@
   "indexFile" : "data/index.json",
   "template4x3" : "data/template_4x3.pptx",
   "outputFile" : "data/out_4x3.pptx",
-  "boldWeight" : "medium",
   "sourceHashes" : {
     "pptx" : "0bd078ce17f49c2d9a5b62926ced6fb2de1c53c5816105e593d40bde827f2e73",
     "songbook" : "b59aaeca6dcdf0957f8a34821ba36f51686e16b6862b22f9ad355ca950910a4d",

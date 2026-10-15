@@ -28,8 +28,33 @@ import java.util.concurrent.ConcurrentHashMap;
 final class Fonts {
 
     private static final Map<String, Font> LOADED = new ConcurrentHashMap<>();
+    private static Map<String, Path> indexed;
 
     private Fonts() {
+    }
+
+    /** One pass over the font folders, then load each requested family from that index. */
+    static List<String> preload(String... families) {
+        ensureIndex();
+        List<String> missing = new ArrayList<>();
+        for (String family : families) {
+            Font font = baseFont(family);
+            if (font == null && family.endsWith(" Bold")) {
+                Font regular = baseFont(family.substring(0, family.length() - " Bold".length()));
+                if (regular != null) {
+                    font = regular.deriveFont(Font.BOLD);
+                    LOADED.put(family, font);
+                }
+            }
+            if (font == null) {
+                missing.add(family);
+                continue;
+            }
+            if (family.endsWith(" Bold")) {
+                LOADED.putIfAbsent(family.substring(0, family.length() - " Bold".length()) + "\0bold", font);
+            }
+        }
+        return missing;
     }
 
     static String latinFamily(XSLFTextShape shape) {
@@ -57,10 +82,6 @@ final class Fonts {
                 ? theme.getThemeElements().getFontScheme().getMajorFont().getLatin().getTypeface()
                 : theme.getThemeElements().getFontScheme().getMinorFont().getLatin().getTypeface();
         return resolved == null || resolved.isBlank() ? "IBM Plex Sans" : resolved;
-    }
-
-    static boolean fontFileAvailable(String family) {
-        return load(family) != null;
     }
 
     static boolean titlePlaceholder(XSLFTextShape shape) {
@@ -130,9 +151,36 @@ final class Fonts {
     }
 
     private static Path findFontFile(String family) {
+        ensureIndex();
         String want = normalize(family);
-        Path best = null;
-        int bestScore = 0;
+        Path exact = indexed.get(want);
+        if (exact != null) {
+            return exact;
+        }
+        boolean wantWeight = want.matches(".*(bold|black|medium|light|thin).*");
+        if (!wantWeight) {
+            Path regular = indexed.get(want + "regular");
+            if (regular != null) {
+                return regular;
+            }
+            Path variable = null;
+            for (Map.Entry<String, Path> entry : indexed.entrySet()) {
+                String name = entry.getKey();
+                if (name.startsWith(want) && name.contains("variable") && !name.contains("italic")) {
+                    variable = entry.getValue();
+                    break;
+                }
+            }
+            return variable;
+        }
+        return null;
+    }
+
+    private static void ensureIndex() {
+        if (indexed != null) {
+            return;
+        }
+        Map<String, Path> found = new java.util.HashMap<>();
         for (Path dir : fontDirs()) {
             if (!Files.isDirectory(dir)) {
                 continue;
@@ -143,28 +191,13 @@ final class Fonts {
                     if (!name.endsWith(".ttf") && !name.endsWith(".otf")) {
                         continue;
                     }
-                    int score = score(normalize(name.substring(0, name.length() - 4)), want);
-                    if (score > bestScore) {
-                        bestScore = score;
-                        best = file;
-                    }
+                    found.putIfAbsent(normalize(name.substring(0, name.length() - 4)), file);
                 }
             } catch (IOException ignored) {
                 // Try the next font directory.
             }
         }
-        return bestScore == 0 ? null : best;
-    }
-
-    private static int score(String fileName, String want) {
-        if (fileName.equals(want)) {
-            return 100;
-        }
-        boolean wantWeight = want.matches(".*(bold|black|medium|light|thin).*");
-        if (!wantWeight && fileName.equals(want + "regular")) {
-            return 90;
-        }
-        return 0;
+        indexed = found;
     }
 
     private static String normalize(String value) {
@@ -203,6 +236,25 @@ final class Fonts {
         }
         dirs.add(Path.of("/usr/local/share/fonts"));
         dirs.add(Path.of("/usr/share/fonts"));
+        addWindowsUserFonts(dirs);
         return dirs;
+    }
+
+    private static void addWindowsUserFonts(List<Path> dirs) {
+        Path users = Path.of("/mnt/c/Users");
+        if (!Files.isDirectory(users)) {
+            return;
+        }
+        try (var list = Files.list(users)) {
+            for (Path user : list.filter(Files::isDirectory).toList()) {
+                String name = user.getFileName().toString().toLowerCase(Locale.ROOT);
+                if (name.equals("public") || name.equals("default") || name.equals("default user") || name.equals("all users")) {
+                    continue;
+                }
+                dirs.add(user.resolve("AppData/Local/Microsoft/Windows/Fonts"));
+            }
+        } catch (IOException ignored) {
+            // The system font folders are still searched.
+        }
     }
 }

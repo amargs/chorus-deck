@@ -1,6 +1,7 @@
 package org.amargs.chorusdeck.deck;
 
 import org.amargs.chorusdeck.text.BoldMarkup;
+import org.amargs.chorusdeck.text.FitCache;
 import org.amargs.chorusdeck.text.TextFit;
 
 import org.apache.poi.xslf.usermodel.XMLSlideShow;
@@ -69,15 +70,25 @@ public final class TemplateLayouts {
     }
 
     public static void setShapeText(XSLFSlide slide, String shapeName, String text) {
-        setShapeText(slide, shapeName, text, "semibold");
+        setShapeText(slide, shapeName, text, true);
     }
 
-    public static void setShapeText(XSLFSlide slide, String shapeName, String text, String boldWeight) {
+    public static void setShapeText(XSLFSlide slide, String shapeName, String text, boolean fit) {
         XSLFTextShape shape = findTextShape(slide, shapeName);
         String marked = text == null ? "" : text;
         shape.setText(BoldMarkup.plain(marked));
-        BoldMarkup.apply(shape, marked, boldWeight);
-        TextFit.apply(shape);
+        BoldMarkup.apply(shape, marked);
+        if (fit) {
+            TextFit.apply(shape, marked, null, 0, 0);
+        }
+    }
+
+    public static void setShapeText(XSLFSlide slide, String shapeName, String text, FitCache cache, int songId, int slideNumber) {
+        XSLFTextShape shape = findTextShape(slide, shapeName);
+        String marked = text == null ? "" : text;
+        shape.setText(BoldMarkup.plain(marked));
+        BoldMarkup.apply(shape, marked);
+        TextFit.apply(shape, marked, cache, songId, slideNumber);
     }
 
     private static XSLFTextShape findTextShape(XSLFSlide slide, String shapeName) {
