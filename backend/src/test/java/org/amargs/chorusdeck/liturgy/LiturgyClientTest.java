@@ -12,6 +12,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 class LiturgyClientTest {
@@ -108,5 +109,113 @@ class LiturgyClientTest {
                 }
                 """);
         assertEquals("Aclamai o Senhor.", new SundayLibrary(file).stored(LocalDate.of(2026, 10, 18)).refrao());
+    }
+
+    @Test
+    void aWeekdaySolemnityKeepsItsNameAndCoverWithoutScriptures() throws IOException {
+        Path file = Files.createTempDirectory("sundays").resolve("sundays.json");
+        LiturgyClient client = new LiturgyClient(date -> {
+            if (date.equals(LocalDate.of(2026, 8, 15))) {
+                return day("solemnity", "The Assumption of the Blessed Virgin Mary", "ordinary", null);
+            }
+            if (date.equals(LocalDate.of(2026, 12, 8))) {
+                return day("solemnity", "The Immaculate Conception of the Blessed Virgin Mary", "advent", null);
+            }
+            if (date.equals(LocalDate.of(2026, 6, 29))) {
+                return day("solemnity", "Saints Peter and Paul", "ordinary", null);
+            }
+            throw new IOException("unexpected " + date);
+        });
+
+        LiturgyDay assumption = client.load(LocalDate.of(2026, 8, 15), file);
+        assertEquals("Assunção da Virgem Santa Maria", assumption.domingo());
+        assertEquals("Capa - Solenidade", assumption.coverLayout());
+        assertEquals("comum", assumption.seasonKey());
+        assertEquals("A", assumption.ano());
+        assertNull(assumption.evangelho());
+        assertNull(assumption.primeira());
+
+        LiturgyDay immaculate = client.load(LocalDate.of(2026, 12, 8), file);
+        assertEquals("Imaculada Conceição da Virgem Santa Maria", immaculate.domingo());
+        assertEquals("Capa - Solenidade", immaculate.coverLayout());
+        assertEquals("advento", immaculate.seasonKey());
+
+        LiturgyDay apostles = client.load(LocalDate.of(2026, 6, 29), file);
+        assertEquals("São Pedro e São Paulo, Apóstolos", apostles.domingo());
+        assertEquals("Capa - Solenidade Pedro Paulo", apostles.coverLayout());
+        assertFalse(Files.exists(file));
+    }
+
+    @Test
+    void aWeekdayCaptionComesFromTheSundayThatOpensTheWeek() throws IOException {
+        Path file = Files.createTempDirectory("sundays").resolve("sundays.json");
+        LiturgyClient client = new LiturgyClient(date -> switch (date.toString()) {
+            case "2026-10-17" -> day("memorial", "Saint Ignatius of Antioch", "ordinary", null);
+            case "2026-10-11" -> day("ferial", null, "ordinary", "ordinary-28");
+            case "2026-10-19" -> day("ferial", null, "ordinary", null);
+            case "2026-10-18" -> day("ferial", null, "ordinary", "ordinary-29");
+            case "2026-03-30" -> day("ferial", null, "holy_week", null);
+            case "2026-03-29" -> day("solemnity", "Passion Sunday (Palm Sunday)", "holy_week", "palm-sunday");
+            default -> throw new IOException("unexpected " + date);
+        });
+
+        LiturgyDay saturday = client.load(LocalDate.of(2026, 10, 17), file);
+        assertEquals("Sábado da semana XXVIII", saturday.domingo());
+        assertEquals("comum", saturday.seasonKey());
+        assertNull(saturday.coverLayout());
+        assertNull(saturday.evangelho());
+
+        assertEquals("2ªf da semana XXIX", client.load(LocalDate.of(2026, 10, 19), file).domingo());
+        assertEquals("2ªf", client.load(LocalDate.of(2026, 3, 30), file).domingo());
+        assertEquals("quaresma", client.load(LocalDate.of(2026, 3, 30), file).seasonKey());
+        assertFalse(Files.exists(file));
+    }
+
+    @Test
+    void aSundaySolemnityStaysTheSunday() throws IOException {
+        Path file = Files.createTempDirectory("sundays").resolve("sundays.json");
+        LiturgyClient client = new LiturgyClient(ignored -> """
+                {
+                  "day": {
+                    "sunday_id": "ordinary-31",
+                    "sunday_cycle": "A",
+                    "season": "ordinary",
+                    "rank": "solemnity",
+                    "name": "All Saints"
+                  },
+                  "readings": { "first_reading": "Mal 1:14-2:2, 8-10", "gospel": "Mt 23:1-12" }
+                }
+                """);
+
+        LiturgyDay day = client.load(LocalDate.of(2026, 11, 1), file);
+        assertEquals("Domingo XXXI", day.domingo());
+        assertNull(day.coverLayout());
+        assertEquals("comum", day.seasonKey());
+        assertEquals("Mt 23, 1-12", day.evangelho().referencia());
+        assertEquals(
+                "2026-11-01 is also Todos os Santos. The deck keeps Domingo XXXI (A). "
+                        + "The scriptures are that Sunday's, and this solemnity outranks it.",
+                LiturgyClient.sundaySolemnity(day.date(), day, RomanCalendar.parse("""
+                        { "day": { "sunday_cycle": "A", "season": "ordinary", "name": "All Saints" } }
+                        """), FixedSolemnity.of("All Saints")));
+        assertEquals("ordinary-31/A",
+                new ObjectMapper().readTree(file.toFile()).get("dates").get("2026-11-01").asText());
+    }
+
+    private static String day(String rank, String name, String season, String sundayId) {
+        String id = sundayId == null ? "null" : "\"" + sundayId + "\"";
+        String celebration = name == null ? "null" : "\"" + name + "\"";
+        return """
+                {
+                  "day": {
+                    "rank": "%s",
+                    "name": %s,
+                    "season": "%s",
+                    "sunday_cycle": "A",
+                    "sunday_id": %s
+                  },
+                  "readings": null
+                }
+                """.formatted(rank, celebration, season, id);
     }
 }

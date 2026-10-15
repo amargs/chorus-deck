@@ -189,7 +189,7 @@ public final class DeckService {
                     deck.interval();
                 }
             }
-            if (mass.liturgy() != null) {
+            if (mass.liturgy() != null && mass.liturgy().primeira() != null) {
                 deck.reading(TemplateLayouts.LEITURA_1, mass.liturgy().primeira());
                 deck.refrain(mass.liturgy().refrao());
                 if (mass.liturgy().segunda() != null) {
@@ -206,7 +206,7 @@ public final class DeckService {
             } else {
                 deck.song(mass.aleluia(), false);
             }
-            if (mass.liturgy() != null) {
+            if (mass.liturgy() != null && mass.liturgy().evangelho() != null) {
                 deck.gospel(mass.liturgy().evangelho());
             }
             deck.interval();

@@ -30,6 +30,9 @@ public final class SundayLibrary {
     }
 
     public LiturgyDay resolve(LocalDate date, RomanCalendar calendar) throws IOException {
+        if (calendar.sundayId() == null) {
+            throw new IllegalArgumentException("The calendar response has no Sunday.");
+        }
         load();
         String key = calendar.key();
         dates().put(date.toString(), key);
@@ -198,20 +201,56 @@ public final class SundayLibrary {
     private record SeasonChoice(String key, String cover) {
     }
 
+    static String seasonKey(RomanCalendar calendar) {
+        return season(calendar).key();
+    }
+
+    /** Roman numeral of a numbered Sunday (`ordinary-29` → `XXIX`). Other ids have none. */
+    static String week(String sundayId) {
+        if (sundayId == null) {
+            return null;
+        }
+        int dash = sundayId.lastIndexOf('-');
+        if (dash < 1) {
+            return null;
+        }
+        String kind = sundayId.substring(0, dash);
+        if (!kind.equals("ordinary") && !kind.equals("advent") && !kind.equals("lent") && !kind.equals("easter")) {
+            return null;
+        }
+        try {
+            int number = Integer.parseInt(sundayId.substring(dash + 1));
+            if (number >= 1 && number < ROMAN.length) {
+                return ROMAN[number];
+            }
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+        return null;
+    }
+
     private static SeasonChoice season(RomanCalendar calendar) {
-        return switch (calendar.sundayId()) {
+        String sundayId = calendar.sundayId();
+        if (sundayId == null) {
+            return fromSeason(calendar.season());
+        }
+        return switch (sundayId) {
             case "advent-3" -> new SeasonChoice("advento", "Capa - Domingo III Advento");
             case "lent-4" -> new SeasonChoice("quaresma", "Capa - Domingo IV Quaresma");
             case "palm-sunday" -> new SeasonChoice("ramos", null);
             case "pentecost" -> new SeasonChoice("pentecostes", null);
-            default -> switch (calendar.season()) {
-                case "advent" -> new SeasonChoice("advento", null);
-                case "lent", "holy_week" -> new SeasonChoice("quaresma", null);
-                case "easter" -> new SeasonChoice("pascoa", null);
-                case "christmas" -> new SeasonChoice("natal", null);
-                case "ordinary" -> new SeasonChoice("comum", null);
-                default -> throw new IllegalArgumentException("Unknown season from the calendar: " + calendar.season());
-            };
+            default -> fromSeason(calendar.season());
+        };
+    }
+
+    private static SeasonChoice fromSeason(String season) {
+        return switch (season) {
+            case "advent" -> new SeasonChoice("advento", null);
+            case "lent", "holy_week" -> new SeasonChoice("quaresma", null);
+            case "easter" -> new SeasonChoice("pascoa", null);
+            case "christmas" -> new SeasonChoice("natal", null);
+            case "ordinary" -> new SeasonChoice("comum", null);
+            default -> throw new IllegalArgumentException("Unknown season from the calendar: " + season);
         };
     }
 

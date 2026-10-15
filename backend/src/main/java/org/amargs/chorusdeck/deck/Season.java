@@ -62,6 +62,12 @@ public final class Season {
         if (coverOverride == null || coverOverride.isBlank()) {
             return season;
         }
+        if ("Capa - Solenidade".equals(coverOverride)) {
+            return new Season(coverOverride, FESTIVE_TITLE, null, season.tempoName);
+        }
+        if ("Capa - Solenidade Pedro Paulo".equals(coverOverride)) {
+            return new Season(coverOverride, ORDINARY_TITLE, "accent5", season.tempoName);
+        }
         Season fromCover = byCover(coverOverride);
         if (fromCover != null) {
             return fromCover;

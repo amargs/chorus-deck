@@ -120,12 +120,11 @@ public sealed interface DeckSpec permits DeckSpec.Mass, DeckSpec.Songs {
 
     public static String fileName(LocalDate date, String domingo, String season, String ano) {
         String label = domingo.trim();
-        if (!label.regionMatches(true, 0, "Domingo", 0, "Domingo".length())) {
-            label = "Domingo " + label;
-        }
-        String seasonName = seasonName(season);
-        if (!seasonName.isEmpty() && !label.toLowerCase(Locale.ROOT).contains(seasonName.toLowerCase(Locale.ROOT))) {
-            label = label + " " + seasonName;
+        if (label.regionMatches(true, 0, "Domingo", 0, "Domingo".length())) {
+            String seasonName = seasonName(season);
+            if (!seasonName.isEmpty() && !label.toLowerCase(Locale.ROOT).contains(seasonName.toLowerCase(Locale.ROOT))) {
+                label = label + " " + seasonName;
+            }
         }
         String name = label + " - Ano " + ano.trim().toUpperCase(Locale.ROOT);
         if (date != null) {

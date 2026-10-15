@@ -50,6 +50,8 @@ class TemplateLayoutsTest {
             "Capa - Ramos",
             "Capa - Páscoa",
             "Capa - Pentecostes",
+            "Capa - Solenidade",
+            "Capa - Solenidade Pedro Paulo",
             TemplateLayouts.ORDINARY_TITLE,
             TemplateLayouts.FESTIVE_TITLE,
             "Letra");
@@ -323,6 +325,10 @@ class TemplateLayoutsTest {
                   credo: longo
                 """);
         assertEquals(file.getParent().resolve("Domingo XXIX Tempo Comum - Ano A.pptx"), DeckSpec.load(file).output());
+        assertEquals("2026-08-15 Assunção da Virgem Santa Maria - Ano A.pptx",
+                DeckSpec.fileName(LocalDate.of(2026, 8, 15), "Assunção da Virgem Santa Maria", "comum", "A"));
+        assertEquals("2026-10-19 2ªf da semana XXIX - Ano A.pptx",
+                DeckSpec.fileName(LocalDate.of(2026, 10, 19), "2ªf da semana XXIX", "comum", "A"));
 
         Path named = massFile("""
                 season: comum
@@ -556,6 +562,26 @@ class TemplateLayoutsTest {
                 Season.resolve("quaresma", "Capa - Domingo IV Quaresma").scriptureBackground());
         assertEquals("background_pascoa.jpg", Season.resolve("pascoa", null).scriptureBackground());
         assertEquals("background_pascoa.jpg", Season.resolve("pentecostes", null).scriptureBackground());
+
+        Season white = Season.resolve("comum", "Capa - Solenidade");
+        assertEquals("Capa - Solenidade", white.coverLayout());
+        assertEquals(TemplateLayouts.FESTIVE_TITLE, white.titleLayout());
+        assertNull(white.headerScheme());
+        assertEquals("Tempo Comum · Ano A", white.tempo("A"));
+        assertEquals("background_comum.jpg", white.scriptureBackground());
+        assertFalse(white.omitsGloria());
+
+        Season immaculate = Season.resolve("advento", "Capa - Solenidade");
+        assertEquals(TemplateLayouts.FESTIVE_TITLE, immaculate.titleLayout());
+        assertEquals("Tempo de Advento · Ano B", immaculate.tempo("B"));
+        assertEquals("background_advento.jpg", immaculate.scriptureBackground());
+        assertTrue(immaculate.omitsGloria());
+
+        Season apostles = Season.resolve("comum", "Capa - Solenidade Pedro Paulo");
+        assertEquals(TemplateLayouts.ORDINARY_TITLE, apostles.titleLayout());
+        assertEquals("accent5", apostles.headerScheme());
+        assertEquals("Tempo Comum · Ano A", apostles.tempo("A"));
+        assertEquals("background_comum.jpg", apostles.scriptureBackground());
     }
 
     @Test

@@ -124,6 +124,9 @@ public record MassRequest(
 
     public MassRequest withLiturgy(LiturgyDay day) {
         LiturgyDay filled = day.withSentences(primeira, segunda, salmo, evangelho, louvor);
+        if (filled.primeira() == null && filled.evangelho() == null) {
+            return copy(filled);
+        }
         logSentence(day, "primeira.citacao", primeira, day.primeira());
         if (day.segunda() != null) {
             logSentence(day, "segunda.citacao", segunda, day.segunda());
@@ -142,6 +145,10 @@ public record MassRequest(
             LOG.warn(filled.domingo() + " (" + filled.ano() + ") has no Portuguese sentence for "
                     + String.join(", ", missing) + ". Citations use «» and the refrain is left empty.");
         }
+        return copy(filled);
+    }
+
+    private MassRequest copy(LiturgyDay filled) {
         return new MassRequest(
                 Cover.from(filled), interval, longCreed, oracao, entrada, kyrie, gloria, aleluia, dons, santo,
                 paiNosso, cordeiro, comunhao, acaoDeGracas, finalSong, primeira, segunda, salmo, evangelho, louvor,

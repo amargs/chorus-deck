@@ -14,6 +14,7 @@ public record RomanCalendar(
         String sundayId,
         String cycle,
         String season,
+        String name,
         String primeira,
         String segunda,
         String evangelho) {
@@ -26,22 +27,23 @@ public record RomanCalendar(
         JsonNode root = new ObjectMapper().readTree(json);
         JsonNode day = root.get("day");
         JsonNode readings = root.get("readings");
-        if (day == null || readings == null) {
+        if (day == null || day.isNull()) {
             throw new IllegalArgumentException("The calendar response has no day.");
         }
-        String sundayId = text(day, "sunday_id");
         String cycle = text(day, "sunday_cycle");
         String season = text(day, "season");
-        if (sundayId == null || cycle == null || season == null) {
-            throw new IllegalArgumentException("The calendar response has no Sunday.");
+        if (cycle == null || season == null) {
+            throw new IllegalArgumentException("The calendar response has no day.");
         }
+        boolean noReadings = readings == null || readings.isNull();
         return new RomanCalendar(
-                sundayId,
+                text(day, "sunday_id"),
                 cycle.toUpperCase(Locale.ROOT),
                 season,
-                reference(text(readings, "first_reading")),
-                reference(text(readings, "second_reading")),
-                reference(text(readings, "gospel")));
+                text(day, "name"),
+                noReadings ? null : reference(text(readings, "first_reading")),
+                noReadings ? null : reference(text(readings, "second_reading")),
+                noReadings ? null : reference(text(readings, "gospel")));
     }
 
     private static final Pattern BOOK = Pattern.compile("^(?:[1-3]\\s+)?\\p{L}+");
