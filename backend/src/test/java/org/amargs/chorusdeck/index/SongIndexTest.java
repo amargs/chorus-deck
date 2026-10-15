@@ -1,8 +1,5 @@
 package org.amargs.chorusdeck.index;
 
-import org.amargs.chorusdeck.model.SongCfg;
-import org.amargs.chorusdeck.model.SongbookItem;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import org.apache.poi.sl.usermodel.Placeholder;

@@ -1,8 +1,6 @@
 package org.amargs.chorusdeck.index;
 
 import org.amargs.chorusdeck.config.AppConfig;
-import org.amargs.chorusdeck.model.SourceSnapshot;
-import org.amargs.chorusdeck.model.StaleSources;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

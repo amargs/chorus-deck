@@ -1,6 +1,6 @@
 package org.amargs.chorusdeck;
 
-import org.amargs.chorusdeck.controller.Cli;
+import org.amargs.chorusdeck.cli.Cli;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 

@@ -1,8 +1,5 @@
 package org.amargs.chorusdeck.index;
 
-import org.amargs.chorusdeck.model.SongCfg;
-import org.amargs.chorusdeck.model.SongbookItem;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;

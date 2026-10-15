@@ -1,14 +1,7 @@
 package org.amargs.chorusdeck.deck;
 
 import org.amargs.chorusdeck.config.AppConfig;
-import org.amargs.chorusdeck.liturgia.LiturgyDay;
-import org.amargs.chorusdeck.liturgia.LiturgyPage;
-import org.amargs.chorusdeck.model.Cover;
-import org.amargs.chorusdeck.model.Interval;
-import org.amargs.chorusdeck.model.DeckSpec;
-import org.amargs.chorusdeck.model.MassRequest;
-import org.amargs.chorusdeck.model.Season;
-import org.amargs.chorusdeck.service.DeckService;
+import org.amargs.chorusdeck.liturgy.LiturgyDay;
 import org.amargs.chorusdeck.text.FitCache;
 
 import org.apache.poi.sl.usermodel.Placeholder;
@@ -358,13 +351,17 @@ class TemplateLayoutsTest {
         assertNull(spec.request().cover());
         assertEquals(LocalDate.of(2026, 10, 18), spec.request().date());
 
-        LiturgyDay day = LiturgyPage.parse(LocalDate.of(2026, 10, 18), """
-                <h4>DOMINGO XXIX DO TEMPO COMUM</h4>
-                <p>LEITURA I Is 45, 1.4-6 «Tomei Ciro»</p>
-                <p>SALMO RESPONSORIAL Refrão: Aclamai o Senhor. Repete-se</p>
-                <p>LEITURA II 1Ts 1, 1-5b «Recordamos a vossa fé»</p>
-                <p>EVANGELHO Mt 22, 15-21 «Dai a César o que é de César e a Deus o que é de Deus»</p>
-                """);
+        LiturgyDay day = new LiturgyDay(
+                LocalDate.of(2026, 10, 18),
+                "Domingo XXIX",
+                "comum",
+                null,
+                "A",
+                new LiturgyDay.Reading("Is 45, 1.4-6", "Tomei Ciro"),
+                new LiturgyDay.Reading("1Ts 1, 1-5b", "Recordamos a vossa fé"),
+                "Aclamai o Senhor.",
+                new LiturgyDay.Reading("Mt 22, 15-21", "Dai a César o que é de César e a Deus o que é de Deus"),
+                null);
         MassRequest ready = spec.request().withLiturgy(day);
         assertEquals("«Dai a César o que é de César e a Deus o que é de Deus»", ready.cover().quotedFrase());
         assertEquals(file.getParent().resolve("2026-10-18 Domingo XXIX Tempo Comum - Ano A.pptx"),
@@ -504,13 +501,17 @@ class TemplateLayoutsTest {
                 opcoes:
                   credo: longo
                 """);
-        LiturgyDay day = LiturgyPage.parse(LocalDate.of(2026, 10, 18), """
-                <h4>DOMINGO XXIX DO TEMPO COMUM</h4>
-                <p>LEITURA I Is 45, 1.4-6 «Tomei Ciro pela mão»</p>
-                <p>SALMO RESPONSORIAL Refrão: Aclamai a glória do Senhor. Repete-se</p>
-                <p>LEITURA II 1Ts 1, 1-5b «Recordamos a vossa fé»</p>
-                <p>EVANGELHO Mt 22, 15-21 «Dai a César o que é de César e a Deus o que é de Deus»</p>
-                """);
+        LiturgyDay day = new LiturgyDay(
+                LocalDate.of(2026, 10, 18),
+                "Domingo XXIX",
+                "comum",
+                null,
+                "A",
+                new LiturgyDay.Reading("Is 45, 1.4-6", "Tomei Ciro pela mão"),
+                new LiturgyDay.Reading("1Ts 1, 1-5b", "Recordamos a vossa fé"),
+                "Aclamai a glória do Senhor.",
+                new LiturgyDay.Reading("Mt 22, 15-21", "Dai a César o que é de César e a Deus o que é de Deus"),
+                null);
         Path out = Files.createTempFile("chorus-deck", ".pptx");
         new DeckService().generateMass(
                 new AppConfig(Path.of("unused.pptx"), indexFile(), template(), out),

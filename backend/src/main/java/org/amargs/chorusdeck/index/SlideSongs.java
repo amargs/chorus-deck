@@ -1,6 +1,5 @@
 package org.amargs.chorusdeck.index;
 
-import org.amargs.chorusdeck.model.SongCfg;
 import org.amargs.chorusdeck.text.BoldMarkup;
 
 import org.apache.poi.sl.usermodel.Placeholder;
