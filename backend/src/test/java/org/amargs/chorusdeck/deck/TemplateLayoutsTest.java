@@ -1,10 +1,13 @@
 package org.amargs.chorusdeck.deck;
 
 import org.amargs.chorusdeck.config.AppConfig;
+import org.amargs.chorusdeck.liturgia.LiturgyDay;
+import org.amargs.chorusdeck.liturgia.LiturgyPage;
 import org.amargs.chorusdeck.model.Cover;
 import org.amargs.chorusdeck.model.Interval;
 import org.amargs.chorusdeck.model.DeckSpec;
 import org.amargs.chorusdeck.model.MassRequest;
+import org.amargs.chorusdeck.model.Season;
 import org.amargs.chorusdeck.service.DeckService;
 import org.amargs.chorusdeck.text.FitCache;
 
@@ -19,19 +22,26 @@ import org.apache.poi.xslf.usermodel.XSLFSlideLayout;
 import org.apache.poi.xslf.usermodel.XSLFTextParagraph;
 import org.apache.poi.xslf.usermodel.XSLFTextRun;
 import org.apache.poi.xslf.usermodel.XSLFTextShape;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.openxmlformats.schemas.presentationml.x2006.main.CTShape;
 
+import java.awt.image.BufferedImage;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import javax.imageio.ImageIO;
+import java.time.LocalDate;
 import java.util.Base64;
 import java.util.List;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -280,9 +290,10 @@ class TemplateLayoutsTest {
                 domingo: Domingo XXIX
                 frase: frase
                 versiculo: Mt 1, 1
-                credo: longo
+                opcoes:
+                  credo: longo
                 """);
-        assertEquals(file.getParent().resolve("Domingo XXIX_A.pptx"), DeckSpec.load(file).output());
+        assertEquals(file.getParent().resolve("Domingo XXIX Tempo Comum - Ano A.pptx"), DeckSpec.load(file).output());
 
         Path named = massFile("""
                 season: comum
@@ -290,10 +301,247 @@ class TemplateLayoutsTest {
                 domingo: Domingo III
                 frase: frase
                 versiculo: Mt 1, 1
-                credo: breve
                 output: data/especial
+                opcoes:
+                  credo: breve
                 """);
         assertEquals(named.getParent().resolve("data").resolve("especial.pptx"), DeckSpec.load(named).output());
+    }
+
+    @Test
+    void aDatedMassDefersTheSundayUntilThePageIsRead() throws Exception {
+        Path file = massFile("""
+                date: 2026-10-18
+                songs:
+                  entrada: "2"
+                opcoes:
+                  credo: longo
+                """);
+        DeckSpec.Mass spec = (DeckSpec.Mass) DeckSpec.load(file);
+        assertNull(spec.output());
+        assertNull(spec.request().cover());
+        assertEquals(LocalDate.of(2026, 10, 18), spec.request().date());
+
+        LiturgyDay day = LiturgyPage.parse(LocalDate.of(2026, 10, 18), """
+                <h4>DOMINGO XXIX DO TEMPO COMUM</h4>
+                <p>LEITURA I Is 45, 1.4-6 «Tomei Ciro»</p>
+                <p>SALMO RESPONSORIAL Refrão: Aclamai o Senhor. Repete-se</p>
+                <p>LEITURA II 1Ts 1, 1-5b «Recordamos a vossa fé»</p>
+                <p>EVANGELHO Mt 22, 15-21 «Dai a César o que é de César e a Deus o que é de Deus»</p>
+                """);
+        MassRequest ready = spec.request().withLiturgy(day);
+        assertEquals("«Dai a César o que é de César e a Deus o que é de Deus»", ready.cover().quotedFrase());
+        assertEquals(file.getParent().resolve("2026-10-18 Domingo XXIX Tempo Comum - Ano A.pptx"),
+                file.getParent().resolve(DeckSpec.fileName(
+                        ready.date(), ready.cover().domingo(), ready.cover().season(), ready.cover().ano())));
+
+        IllegalArgumentException bad = assertThrows(IllegalArgumentException.class, () -> MassRequest.load(massFile("""
+                date: 18/10/2026
+                opcoes:
+                  credo: longo
+                """)));
+        assertEquals("date must be YYYY-MM-DD.", bad.getMessage());
+    }
+
+    @Test
+    void aMassFileFillsSentencesTheSundayFileLeftBlank() throws Exception {
+        Path yaml = massFile("""
+                date: 2026-12-06
+                leituras:
+                  primeira: "Preparai o caminho do Senhor"
+                  salmo: "Mostrai-nos, Senhor, o vosso amor"
+                  evangelho: "Arrependei-vos, porque está perto o reino de Deus"
+                opcoes:
+                  credo: longo
+                """);
+        LiturgyDay blank = new LiturgyDay(
+                LocalDate.of(2026, 12, 6),
+                "Domingo II",
+                "advento",
+                null,
+                "B",
+                new LiturgyDay.Reading("Is 40, 1-5, 9-11", null),
+                new LiturgyDay.Reading("2Pe 3, 8-14", null),
+                null,
+                new LiturgyDay.Reading("Mc 1, 1-8", null),
+                null);
+        MassRequest ready = MassRequest.load(yaml).withLiturgy(blank);
+        assertEquals("Preparai o caminho do Senhor", ready.liturgy().primeira().citacao());
+        assertNull(ready.liturgy().segunda().citacao());
+        assertEquals("Mostrai-nos, Senhor, o vosso amor", ready.liturgy().refrao());
+        assertEquals("Arrependei-vos, porque está perto o reino de Deus", ready.cover().frase());
+
+        LiturgyDay stored = new LiturgyDay(
+                blank.date(), blank.domingo(), blank.seasonKey(), blank.coverLayout(), blank.ano(),
+                new LiturgyDay.Reading("Is 40, 1-5, 9-11", "Consolai o meu povo"),
+                new LiturgyDay.Reading("2Pe 3, 8-14", "Esperamos novos céus"),
+                "Já guardado",
+                new LiturgyDay.Reading("Mc 1, 1-8", "Está cumprido"),
+                "Verso guardado");
+        MassRequest overridden = MassRequest.load(yaml).withLiturgy(stored);
+        assertEquals("Preparai o caminho do Senhor", overridden.liturgy().primeira().citacao());
+        assertEquals("Esperamos novos céus", overridden.liturgy().segunda().citacao());
+        assertEquals("Mostrai-nos, Senhor, o vosso amor", overridden.liturgy().refrao());
+        assertEquals("Arrependei-vos, porque está perto o reino de Deus", overridden.cover().frase());
+    }
+
+    @Test
+    void blankSentencesStillGenerateCitationMarksAndAnEmptyRefrain() throws Exception {
+        Path yaml = massFile("""
+                date: 2026-12-06
+                opcoes:
+                  credo: longo
+                """);
+        LiturgyDay blank = new LiturgyDay(
+                LocalDate.of(2026, 12, 6),
+                "Domingo II",
+                "advento",
+                null,
+                "B",
+                new LiturgyDay.Reading("Is 40, 1-5, 9-11", null),
+                new LiturgyDay.Reading("2Pe 3, 8-14", null),
+                null,
+                new LiturgyDay.Reading("Mc 1, 1-8", null),
+                null);
+        Path out = Files.createTempFile("chorus-deck", ".pptx");
+        new DeckService().generateMass(
+                new AppConfig(Path.of("unused.pptx"), indexFile(), template(), out),
+                MassRequest.load(yaml).withLiturgy(blank));
+
+        try (XMLSlideShow ppt = open(out)) {
+            List<String> layouts = layoutNames(ppt);
+            int first = layouts.indexOf(TemplateLayouts.LEITURA_1);
+            int psalm = layouts.indexOf(TemplateLayouts.SALMO);
+            int gospel = layouts.indexOf(TemplateLayouts.EVANGELHO);
+            assertEquals("«»", textShape(ppt.getSlides().get(first), "Citação").getText());
+            assertEquals("", textShape(ppt.getSlides().get(psalm), "Citação").getText());
+            assertEquals("«»", textShape(ppt.getSlides().get(gospel), "Citação").getText());
+            assertEquals("«»", textShape(ppt.getSlides().get(0), "Frase").getText());
+            assertFalse(layouts.contains(TemplateLayouts.GLORIA_1));
+        }
+    }
+
+    @Test
+    void quaresmaReplacesTheAlleluiaWithLouvor() throws Exception {
+        try (XMLSlideShow templatePpt = new XMLSlideShow(Files.newInputStream(template()))) {
+            Assumptions.assumeTrue(hasLayout(templatePpt, TemplateLayouts.LOUVOR),
+                    "Layout Louvor a vós is not in the template yet");
+        }
+        Path yaml = massFile("""
+                date: 2026-03-01
+                songs:
+                  aleluia: "2"
+                opcoes:
+                  credo: longo
+                """);
+        LiturgyDay day = new LiturgyDay(
+                LocalDate.of(2026, 3, 1),
+                "Domingo III",
+                "quaresma",
+                null,
+                "B",
+                new LiturgyDay.Reading("Ex 17, 3-7", "Dai-nos água"),
+                new LiturgyDay.Reading("Rom 5, 1-2", "A paz"),
+                "Aclamai",
+                new LiturgyDay.Reading("Jo 4, 5-42", "Água viva"),
+                "Deus amou tanto o mundo");
+        Path out = Files.createTempFile("chorus-deck", ".pptx");
+        new DeckService().generateMass(
+                new AppConfig(Path.of("unused.pptx"), indexFile(), template(), out),
+                MassRequest.load(yaml).withLiturgy(day));
+        try (XMLSlideShow ppt = open(out)) {
+            List<String> layouts = layoutNames(ppt);
+            int louvor = layouts.indexOf(TemplateLayouts.LOUVOR);
+            int gospel = layouts.indexOf(TemplateLayouts.EVANGELHO);
+            assertTrue(louvor >= 0);
+            assertTrue(louvor < gospel);
+            assertEquals("Deus amou tanto o mundo", textShape(ppt.getSlides().get(louvor), "Verso").getText());
+            assertFalse(notes(ppt.getSlides().get(0)).contains("2 -"));
+            assertFalse(layouts.contains(TemplateLayouts.GLORIA_1));
+        }
+    }
+
+    @Test
+    void datedMassFillsTheScriptureSlidesInMassOrder() throws Exception {
+        Path yaml = massFile("""
+                date: 2026-10-18
+                opcoes:
+                  credo: longo
+                """);
+        LiturgyDay day = LiturgyPage.parse(LocalDate.of(2026, 10, 18), """
+                <h4>DOMINGO XXIX DO TEMPO COMUM</h4>
+                <p>LEITURA I Is 45, 1.4-6 «Tomei Ciro pela mão»</p>
+                <p>SALMO RESPONSORIAL Refrão: Aclamai a glória do Senhor. Repete-se</p>
+                <p>LEITURA II 1Ts 1, 1-5b «Recordamos a vossa fé»</p>
+                <p>EVANGELHO Mt 22, 15-21 «Dai a César o que é de César e a Deus o que é de Deus»</p>
+                """);
+        Path out = Files.createTempFile("chorus-deck", ".pptx");
+        new DeckService().generateMass(
+                new AppConfig(Path.of("unused.pptx"), indexFile(), template(), out),
+                MassRequest.load(yaml).withLiturgy(day));
+
+        try (XMLSlideShow ppt = open(out)) {
+            List<String> layouts = layoutNames(ppt);
+            int first = layouts.indexOf(TemplateLayouts.LEITURA_1);
+            int psalm = layouts.indexOf(TemplateLayouts.SALMO);
+            int gospel = layouts.indexOf(TemplateLayouts.EVANGELHO);
+            int gloria = layouts.indexOf(TemplateLayouts.GLORIA_1);
+            assertTrue(gloria < first);
+            assertTrue(first < psalm);
+            assertEquals(TemplateLayouts.LEITURA_2, layouts.get(psalm + 1));
+            assertTrue(psalm < gospel);
+            assertEquals(TemplateLayouts.INTERVAL_BLANK, layouts.get(gospel + 1));
+            assertEquals("Is 45, 1.4-6", textShape(ppt.getSlides().get(first), "Referência").getText());
+            assertEquals("«Tomei Ciro pela mão»", textShape(ppt.getSlides().get(first), "Citação").getText());
+            assertEquals("«Aclamai a glória do Senhor.»", textShape(ppt.getSlides().get(psalm), "Citação").getText());
+            assertEquals("«Dai a César o que é de César e a Deus o que é de Deus»",
+                    textShape(ppt.getSlides().get(gospel), "Citação").getText());
+            assertEquals("«Dai a César o que é de César e a Deus o que é de Deus»",
+                    textShape(ppt.getSlides().get(0), "Frase").getText());
+            Path comum = template().toAbsolutePath().normalize().getParent()
+                    .resolve("../../assets/background_comum.jpg").normalize();
+            if (Files.isRegularFile(comum)) {
+                assertArrayEquals(Files.readAllBytes(comum), TemplateLayouts.scriptureBackground(ppt));
+            }
+        }
+    }
+
+    @Test
+    void scriptureBackgroundFollowsTheSeasonIncludingRoseSundays() {
+        assertEquals("background_comum.jpg", Season.resolve("comum", null).scriptureBackground());
+        assertEquals("background_advento.jpg", Season.resolve("advento", null).scriptureBackground());
+        assertEquals("background_advento_rosa.jpg",
+                Season.resolve("advento", "Capa - Domingo III Advento").scriptureBackground());
+        assertEquals("background_natal.jpg", Season.resolve("natal", null).scriptureBackground());
+        assertEquals("background_quaresma.jpg", Season.resolve("quaresma", null).scriptureBackground());
+        assertEquals("background_quaresma.jpg", Season.resolve("ramos", null).scriptureBackground());
+        assertEquals("background_quaresma_rosa.jpg",
+                Season.resolve("quaresma", "Capa - Domingo IV Quaresma").scriptureBackground());
+        assertEquals("background_pascoa.jpg", Season.resolve("pascoa", null).scriptureBackground());
+        assertEquals("background_pascoa.jpg", Season.resolve("pentecostes", null).scriptureBackground());
+    }
+
+    @Test
+    void scriptureBackgroundReplacesTheSharedLayoutImage() throws Exception {
+        BufferedImage picture = new BufferedImage(8, 8, BufferedImage.TYPE_INT_RGB);
+        Path jpeg = Files.createTempFile("background", ".jpg");
+        ImageIO.write(picture, "jpg", jpeg.toFile());
+        byte[] want = Files.readAllBytes(jpeg);
+        Path out = Files.createTempFile("chorus-deck", ".pptx");
+        try (XMLSlideShow ppt = new XMLSlideShow(Files.newInputStream(template()))) {
+            TemplateLayouts.setScriptureBackground(ppt, want);
+            try (OutputStream stream = Files.newOutputStream(out)) {
+                ppt.write(stream);
+            }
+        }
+        try (XMLSlideShow ppt = open(out)) {
+            assertArrayEquals(want, TemplateLayouts.scriptureBackground(ppt));
+            for (String name : new String[]{
+                    TemplateLayouts.LEITURA_1, TemplateLayouts.LEITURA_2,
+                    TemplateLayouts.SALMO, TemplateLayouts.EVANGELHO}) {
+                assertArrayEquals(want, TemplateLayouts.scriptureBackground(ppt, name));
+            }
+        }
     }
 
     @Test
@@ -306,8 +554,8 @@ class TemplateLayoutsTest {
                   "domingo": "XXVIII Domingo",
                   "frase": "frase",
                   "versiculo": "Mt 1, 1",
-                  "credo": "breve",
-                  "songs": { "entrada": "2", "final": "1" }
+                  "songs": { "entrada": "2", "final": "1" },
+                  "opcoes": { "credo": "breve" }
                 }
                 """);
         Path renamed = json.resolveSibling("deck.json");
@@ -355,9 +603,11 @@ class TemplateLayoutsTest {
                 domingo: XXVIII Domingo
                 frase: frase
                 versiculo: Mt 1, 1
-                credo: longo
-                entrada: "2"
-                final: "1"
+                songs:
+                  entrada: "2"
+                  final: "1"
+                opcoes:
+                  credo: longo
                 """);
         Path out = Files.createTempFile("chorus-deck", ".pptx");
         new DeckService().generateMass(new AppConfig(Path.of("unused.pptx"), indexFile(), template(), out), MassRequest.load(yaml));
@@ -388,10 +638,12 @@ class TemplateLayoutsTest {
                 domingo: Domingo III
                 frase: frase
                 versiculo: Fl 4, 4-5
-                credo: breve
-                oracao: Ouvi-nos, Senhor
-                paiNosso: P1
-                gloria: "2"
+                songs:
+                  paiNosso: P1
+                  gloria: "2"
+                opcoes:
+                  credo: breve
+                  oracao: Ouvi-nos, Senhor
                 """);
         Path out = Files.createTempFile("chorus-deck", ".pptx");
         new DeckService().generateMass(new AppConfig(Path.of("unused.pptx"), indexFile(), template(), out), MassRequest.load(yaml));
@@ -612,6 +864,15 @@ class TemplateLayoutsTest {
             return nested;
         }
         throw new IllegalStateException("index.json not found");
+    }
+
+    private static boolean hasLayout(XMLSlideShow ppt, String name) {
+        try {
+            TemplateLayouts.findLayout(ppt, name);
+            return true;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
     private static Path template() {

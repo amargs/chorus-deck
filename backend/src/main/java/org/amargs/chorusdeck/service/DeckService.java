@@ -6,6 +6,7 @@ import org.amargs.chorusdeck.deck.TemplateLayouts;
 import org.amargs.chorusdeck.index.SongIndex;
 import org.amargs.chorusdeck.model.Cover;
 import org.amargs.chorusdeck.model.Interval;
+import org.amargs.chorusdeck.liturgia.LiturgyDay;
 import org.amargs.chorusdeck.model.MassRequest;
 import org.amargs.chorusdeck.model.Season;
 import org.amargs.chorusdeck.model.SongCfg;
@@ -160,13 +161,21 @@ public final class DeckService {
         try (InputStream in = Files.newInputStream(config.template4x3());
              XMLSlideShow templatePpt = new XMLSlideShow(in)) {
             LOG.info("Opened template");
+            if (mass.cover() == null) {
+                throw new IllegalArgumentException("Load the liturgy for " + mass.date() + " before generating.");
+            }
             Season season = Season.resolve(mass.cover().season(), mass.cover().cover());
             XSLFSlideLayout titleLayout = TemplateLayouts.findLayout(templatePpt, season.titleLayout());
             XSLFSlideLayout lyricLayout = TemplateLayouts.findLayout(templatePpt, TemplateLayouts.LYRICS);
             if (season.headerScheme() != null) {
                 TemplateLayouts.setHeaderScheme(titleLayout, season.headerScheme());
+                if (season.usesLouvor()) {
+                    TemplateLayouts.setHeaderScheme(
+                            TemplateLayouts.findLayout(templatePpt, TemplateLayouts.LOUVOR), season.headerScheme());
+                }
             }
             LOG.info("Resolved layouts (" + season.coverLayout() + ", " + season.titleLayout() + ")");
+            applyScriptureBackground(templatePpt, config.template4x3(), season);
             XSLFPictureData picture = mass.interval().needsImage()
                     ? templatePpt.addPicture(Files.readAllBytes(mass.interval().image()), mass.interval().pictureType())
                     : null;
@@ -186,7 +195,26 @@ public final class DeckService {
                     deck.interval();
                 }
             }
-            deck.song(mass.aleluia(), false);
+            if (mass.liturgy() != null) {
+                deck.reading(TemplateLayouts.LEITURA_1, mass.liturgy().primeira());
+                deck.refrain(mass.liturgy().refrao());
+                if (mass.liturgy().segunda() != null) {
+                    deck.reading(TemplateLayouts.LEITURA_2, mass.liturgy().segunda());
+                }
+            }
+            if (season.usesLouvor()) {
+                if (mass.liturgy() == null || mass.liturgy().louvor() == null || mass.liturgy().louvor().isBlank()) {
+                    if (mass.liturgy() == null) {
+                        LOG.warn("Quaresma has no verse for louvor. The refrain stays and Verso is left empty.");
+                    }
+                }
+                deck.louvor(mass.liturgy() == null ? null : mass.liturgy().louvor());
+            } else {
+                deck.song(mass.aleluia(), false);
+            }
+            if (mass.liturgy() != null) {
+                deck.gospel(mass.liturgy().evangelho());
+            }
             deck.interval();
             deck.layouts(mass.longCreed() ? TemplateLayouts.CREDO_LONG : TemplateLayouts.CREDO_SHORT);
             deck.interval();
@@ -268,6 +296,38 @@ public final class DeckService {
             }
         }
 
+        private void reading(String layout, LiturgyDay.Reading reading) {
+            citation(layout, reading.referencia(), reading.citacao());
+        }
+
+        private void gospel(LiturgyDay.Reading reading) {
+            citation(TemplateLayouts.EVANGELHO, reading.referencia(), reading.citacao());
+        }
+
+        private void citation(String layout, String referencia, String citacao) {
+            XSLFSlide slide = TemplateLayouts.addSlide(ppt, layout);
+            TemplateLayouts.setShapeText(slide, "Referência", referencia, false);
+            TemplateLayouts.setShapeText(slide, "Citação", quoted(citacao), true);
+            slides++;
+            markContent();
+        }
+
+        private void louvor(String verse) {
+            XSLFSlide slide = TemplateLayouts.addSlide(ppt, TemplateLayouts.LOUVOR);
+            String body = verse == null ? "" : verse;
+            TemplateLayouts.setShapeText(slide, "Verso", body, !body.isEmpty());
+            slides++;
+            markContent();
+        }
+
+        private void refrain(String text) {
+            XSLFSlide slide = TemplateLayouts.addSlide(ppt, TemplateLayouts.SALMO);
+            String body = text == null || text.isBlank() ? "" : quoted(text);
+            TemplateLayouts.setShapeText(slide, "Citação", body, !body.isEmpty());
+            slides++;
+            markContent();
+        }
+
         private void layouts(String... names) {
             for (String name : names) {
                 TemplateLayouts.addSlide(ppt, name);
@@ -307,6 +367,27 @@ public final class DeckService {
             case TEXTO -> TemplateLayouts.INTERVAL_TEXT;
             case TEXTO_IMAGEM -> TemplateLayouts.INTERVAL_TEXT_IMAGE;
         };
+    }
+
+    private static String quoted(String text) {
+        String trimmed = text == null ? "" : text.trim();
+        if (trimmed.startsWith("«") && trimmed.endsWith("»")) {
+            return trimmed;
+        }
+        return "«" + trimmed + "»";
+    }
+
+    private static void applyScriptureBackground(XMLSlideShow ppt, Path template, Season season) throws IOException {
+        Path image = template.toAbsolutePath().normalize().getParent()
+                .resolve("../../assets")
+                .resolve(season.scriptureBackground())
+                .normalize();
+        if (!Files.isRegularFile(image)) {
+            LOG.info("Scripture background " + image.getFileName() + " is not in assets yet");
+            return;
+        }
+        TemplateLayouts.setScriptureBackground(ppt, Files.readAllBytes(image));
+        LOG.info("Scripture background " + image.getFileName());
     }
 
     private static void fillCover(XSLFSlide coverSlide, Cover cover, Season season) {

@@ -7,6 +7,7 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -29,7 +30,10 @@ public sealed interface DeckSpec permits DeckSpec.Mass, DeckSpec.Songs {
         }
         if (mode == null || mode.equals("mass")) {
             MassRequest request = MassRequest.from(node, file);
-            return new Mass(request, resolveOutput(node, file, request.cover().domingo(), request.cover().ano()));
+            Path output = request.date() == null
+                    ? resolveOutput(node, file, null, request.cover())
+                    : namedOutput(node, file);
+            return new Mass(request, output);
         }
         if (!mode.equals("songs")) {
             throw new IllegalArgumentException("mode must be mass or songs.");
@@ -83,36 +87,70 @@ public sealed interface DeckSpec permits DeckSpec.Mass, DeckSpec.Songs {
         Path base = file.toAbsolutePath().getParent();
         String image = text(node, "intervalImage");
         Path imagePath = image == null ? null : base.resolve(image).normalize();
-        String domingo = cover == null ? null : cover.domingo();
-        String ano = cover == null ? null : cover.ano();
         return new Songs(ids, bookIds, cover,
                 Interval.parse(text(node, "interval"), imagePath, text(node, "intervalText")),
-                resolveOutput(node, file, domingo, ano));
+                resolveOutput(node, file, null, cover));
     }
 
-    static Path resolveOutput(JsonNode node, Path file, String domingo, String ano) {
-        Path base = file.toAbsolutePath().getParent();
-        String given = text(node, "output");
-        if (given != null) {
-            String name = given.toLowerCase(Locale.ROOT).endsWith(".pptx") ? given : given + ".pptx";
-            Path path = Path.of(name);
-            if (!path.isAbsolute()) {
-                path = base.resolve(path);
-            }
-            return path.normalize();
+    static Path resolveOutput(JsonNode node, Path file, LocalDate date, Cover cover) {
+        Path named = namedOutput(node, file);
+        if (named != null) {
+            return named;
         }
-        if (domingo == null || ano == null) {
+        if (cover == null || cover.domingo() == null || cover.ano() == null) {
             throw new IllegalArgumentException("This deck needs an output name, or a Sunday and year.");
         }
-        return base.resolve(fileName(domingo, ano)).normalize();
+        return file.toAbsolutePath().getParent()
+                .resolve(fileName(date, cover.domingo(), cover.season(), cover.ano()))
+                .normalize();
     }
 
-    public static String fileName(String domingo, String ano) {
-        String label = domingo.trim().replaceAll("[\\\\/:*?\"<>|]", "");
+    private static Path namedOutput(JsonNode node, Path file) {
+        String given = text(node, "output");
+        if (given == null) {
+            return null;
+        }
+        String name = given.toLowerCase(Locale.ROOT).endsWith(".pptx") ? given : given + ".pptx";
+        Path path = Path.of(name);
+        if (!path.isAbsolute()) {
+            path = file.toAbsolutePath().getParent().resolve(path);
+        }
+        return path.normalize();
+    }
+
+    public static String fileName(LocalDate date, String domingo, String season, String ano) {
+        String label = domingo.trim();
         if (!label.regionMatches(true, 0, "Domingo", 0, "Domingo".length())) {
             label = "Domingo " + label;
         }
-        return label + "_" + ano.toUpperCase(Locale.ROOT) + ".pptx";
+        String seasonName = seasonName(season);
+        if (!seasonName.isEmpty() && !label.toLowerCase(Locale.ROOT).contains(seasonName.toLowerCase(Locale.ROOT))) {
+            label = label + " " + seasonName;
+        }
+        String name = label + " - Ano " + ano.trim().toUpperCase(Locale.ROOT);
+        if (date != null) {
+            name = date + " " + name;
+        }
+        return name.replaceAll("[\\\\/:*?\"<>|]", "") + ".pptx";
+    }
+
+    private static String seasonName(String season) {
+        if (season == null || season.isBlank()) {
+            return "";
+        }
+        String key = season.trim().toLowerCase(Locale.ROOT)
+                .replace("á", "a")
+                .replace("ã", "a");
+        return switch (key) {
+            case "advento" -> "Advento";
+            case "quaresma" -> "Quaresma";
+            case "natal" -> "Natal";
+            case "pascoa" -> "Páscoa";
+            case "comum" -> "Tempo Comum";
+            case "ramos" -> "Ramos";
+            case "pentecostes" -> "Pentecostes";
+            default -> season.trim();
+        };
     }
 
     private static String text(JsonNode node, String field) {

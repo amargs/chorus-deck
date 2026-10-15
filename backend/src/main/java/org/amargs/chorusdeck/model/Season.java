@@ -39,6 +39,24 @@ public final class Season {
         return tempoName.startsWith("Tempo de Advento") || tempoName.startsWith("Tempo de Quaresma");
     }
 
+    public boolean usesLouvor() {
+        return tempoName.startsWith("Tempo de Quaresma");
+    }
+
+    public String scriptureBackground() {
+        return switch (coverLayout) {
+            case "Capa - Domingo III Advento" -> "background_advento_rosa.jpg";
+            case "Capa - Domingo IV Quaresma" -> "background_quaresma_rosa.jpg";
+            default -> switch (tempoName) {
+                case "Tempo de Advento" -> "background_advento.jpg";
+                case "Tempo de Natal" -> "background_natal.jpg";
+                case "Tempo de Quaresma" -> "background_quaresma.jpg";
+                case "Tempo Pascal" -> "background_pascoa.jpg";
+                default -> "background_comum.jpg";
+            };
+        };
+    }
+
     public static Season resolve(String seasonKey, String coverOverride) {
         Season season = byKey(seasonKey);
         if (coverOverride == null || coverOverride.isBlank()) {

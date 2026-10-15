@@ -1,1 +1,15 @@
-season: comumano: Adomingo: Domingo XXIXfrase: Dai a César o que é de César e a Deus o que é de Deusversiculo: Mt 22, 15-21credo: longooracao: Ouvi-nos, Senhorentrada: 20kyrie: RP8aleluia: A4dons: 134santo: S7paiNosso: P2cordeiro: C2comunhao: 167acaoDeGracas: 30final: 125
+date: 2027-03-21
+songs:
+  entrada: 20
+  kyrie: RP8
+  aleluia: A4
+  dons: 134
+  santo: S7
+  paiNosso: P2
+  cordeiro: C2
+  comunhao: 167
+  acaoDeGracas: 30
+  final: 125
+opcoes:
+  credo: longo
+  oracao: Ouvi-nos, Senhor

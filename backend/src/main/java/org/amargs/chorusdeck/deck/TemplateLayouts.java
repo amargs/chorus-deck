@@ -5,6 +5,8 @@ import org.amargs.chorusdeck.text.FitCache;
 import org.amargs.chorusdeck.text.TextFit;
 
 import org.apache.poi.ooxml.POIXMLDocumentPart;
+import org.apache.poi.openxml4j.opc.PackagePart;
+import org.apache.poi.openxml4j.opc.PackageRelationship;
 import org.apache.poi.sl.usermodel.Placeholder;
 import org.apache.poi.sl.usermodel.TextParagraph;
 import org.apache.poi.xslf.usermodel.XMLSlideShow;
@@ -26,6 +28,7 @@ import java.util.List;
 import org.openxmlformats.schemas.drawingml.x2006.main.CTSchemeColor;
 import org.openxmlformats.schemas.drawingml.x2006.main.CTShapeStyle;
 import org.openxmlformats.schemas.drawingml.x2006.main.STSchemeColorVal;
+import org.openxmlformats.schemas.presentationml.x2006.main.CTBackground;
 import org.openxmlformats.schemas.presentationml.x2006.main.CTPicture;
 import org.openxmlformats.schemas.presentationml.x2006.main.CTPlaceholder;
 import org.openxmlformats.schemas.presentationml.x2006.main.CTShape;
@@ -34,6 +37,9 @@ import org.openxmlformats.schemas.presentationml.x2006.main.STPlaceholderType;
 import java.awt.geom.Rectangle2D;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import javax.imageio.ImageIO;
 
 public final class TemplateLayouts {
@@ -57,6 +63,11 @@ public final class TemplateLayouts {
     public static final String CREDO_SHORT_1 = "Credo - Breve - 1";
     public static final String CREDO_SHORT_2 = "Credo - Breve - 2";
     public static final String CREDO_SHORT_3 = "Credo - Breve - 3";
+    public static final String LEITURA_1 = "Leitura 1";
+    public static final String LEITURA_2 = "Leitura 2";
+    public static final String SALMO = "Salmo";
+    public static final String EVANGELHO = "Evangelho";
+    public static final String LOUVOR = "Louvor a vós";
     public static final String ORACAO = "Oração Universal";
     public static final String PREPARACAO = "Preparação das oferendas";
     public static final String DIALOGO = "Diálogo Prefácio";
@@ -74,6 +85,46 @@ public final class TemplateLayouts {
 
     public static XSLFSlide addSlide(XMLSlideShow ppt, String layoutName) {
         return ppt.createSlide(findLayout(ppt, layoutName));
+    }
+
+    public static void setScriptureBackground(XMLSlideShow ppt, byte[] jpeg) throws IOException {
+        Set<PackagePart> parts = new LinkedHashSet<>();
+        for (String name : new String[]{LEITURA_1, LEITURA_2, SALMO, EVANGELHO}) {
+            parts.add(backgroundPart(findLayout(ppt, name)));
+        }
+        for (PackagePart part : parts) {
+            try (OutputStream out = part.getOutputStream()) {
+                out.write(jpeg);
+            }
+        }
+    }
+
+    static byte[] scriptureBackground(XMLSlideShow ppt) throws IOException {
+        return scriptureBackground(ppt, LEITURA_1);
+    }
+
+    static byte[] scriptureBackground(XMLSlideShow ppt, String layout) throws IOException {
+        return backgroundPart(findLayout(ppt, layout)).getInputStream().readAllBytes();
+    }
+
+    private static PackagePart backgroundPart(XSLFSlideLayout layout) {
+        if (layout.getXmlObject().getCSld() == null || !layout.getXmlObject().getCSld().isSetBg()) {
+            throw new IllegalArgumentException("Scripture background not found on " + layout.getName());
+        }
+        CTBackground bg = layout.getXmlObject().getCSld().getBg();
+        if (bg.getBgPr() == null || !bg.getBgPr().isSetBlipFill() || bg.getBgPr().getBlipFill().getBlip() == null) {
+            throw new IllegalArgumentException("Scripture background not found on " + layout.getName());
+        }
+        String embed = bg.getBgPr().getBlipFill().getBlip().getEmbed();
+        PackageRelationship rel = layout.getPackagePart().getRelationship(embed);
+        if (rel == null) {
+            throw new IllegalArgumentException("Scripture background not found on " + layout.getName());
+        }
+        try {
+            return layout.getPackagePart().getRelatedPart(rel);
+        } catch (org.apache.poi.openxml4j.exceptions.InvalidFormatException e) {
+            throw new IllegalArgumentException("Scripture background not found on " + layout.getName(), e);
+        }
     }
 
     public static void setIntervalPicture(XSLFSlide slide, XSLFPictureData picture) throws IOException {
