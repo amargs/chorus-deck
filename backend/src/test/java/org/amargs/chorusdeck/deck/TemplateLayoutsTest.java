@@ -2,6 +2,7 @@ package org.amargs.chorusdeck.deck;
 
 import org.amargs.chorusdeck.config.AppConfig;
 import org.amargs.chorusdeck.model.Cover;
+import org.amargs.chorusdeck.model.Interval;
 import org.amargs.chorusdeck.service.DeckService;
 import org.amargs.chorusdeck.text.FitCache;
 
@@ -9,6 +10,7 @@ import org.apache.poi.sl.usermodel.Placeholder;
 import org.apache.poi.sl.usermodel.TextParagraph;
 import org.apache.poi.xslf.usermodel.XMLSlideShow;
 import org.apache.poi.xslf.usermodel.XSLFNotes;
+import org.apache.poi.xslf.usermodel.XSLFPictureShape;
 import org.apache.poi.xslf.usermodel.XSLFShape;
 import org.apache.poi.xslf.usermodel.XSLFSlide;
 import org.apache.poi.xslf.usermodel.XSLFSlideLayout;
@@ -21,6 +23,7 @@ import org.openxmlformats.schemas.presentationml.x2006.main.CTShape;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Base64;
 import java.util.List;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -258,6 +261,41 @@ class TemplateLayoutsTest {
     }
 
     @Test
+    void dropboxLogoIsAcceptedAsAnIntervalImage() {
+        Path logo = Path.of("..", "assets", "logo_comunhao.png");
+        if (!Files.exists(logo)) {
+            logo = Path.of("assets", "logo_comunhao.png");
+        }
+        Interval interval = Interval.parse("imagem", logo, null);
+        assertEquals(Interval.Kind.IMAGEM, interval.kind());
+    }
+
+    @Test
+    void songDeckUsesTheSamePictureAndCaptionOnEveryInterval() throws Exception {
+        Path image = Files.createTempFile("chorus-deck", ".png");
+        Files.write(image, Base64.getDecoder().decode(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="));
+        Path out = Files.createTempFile("chorus-deck", ".pptx");
+        AppConfig config = new AppConfig(Path.of("unused.pptx"), indexFile(), template(), out);
+        Interval interval = Interval.parse("texto+imagem", image, "Primeira comunhão");
+        new DeckService().generateSongs(config, new DeckService.Selection.Ids(List.of(2, 2)), null, interval);
+
+        try (XMLSlideShow ppt = open(out)) {
+            assertEquals(3, ppt.getSlides().size());
+            XSLFSlide between = ppt.getSlides().get(1);
+            assertEquals(TemplateLayouts.INTERVAL_TEXT_IMAGE, between.getSlideLayout().getName());
+            assertEquals("Primeira comunhão", textShape(between, "Letra").getText());
+            assertFalse(textShape(between, "Letra").getText().contains("Texto a apresentar"));
+            XSLFPictureShape picture = picture(between);
+            assertEquals(Placeholder.PICTURE, picture.getPlaceholder());
+            assertEquals(Files.size(image), picture.getPictureData().getData().length);
+            double side = picture.getAnchor().getWidth();
+            assertEquals(side, picture.getAnchor().getHeight(), 0.5);
+            assertTrue(side < picturePlaceholderAnchor(between).getWidth() - 1);
+        }
+    }
+
+    @Test
     void songDeckNotesUseTheTitleWhenTheBookIdIsMissing() throws Exception {
         Path index = Files.createTempFile("chorus-deck", ".json");
         Files.writeString(index, """
@@ -334,6 +372,31 @@ class TemplateLayoutsTest {
 
     private static Cover cover(String season) {
         return new Cover(season, null, "XXVIII Domingo", "frase", "Mt 25, 14-30", "A");
+    }
+
+    private static java.awt.geom.Rectangle2D picturePlaceholderAnchor(XSLFSlide slide) {
+        for (XSLFShape shape : slide.getSlideLayout().getShapes()) {
+            if (shape.getPlaceholder() == Placeholder.PICTURE) {
+                return shape.getAnchor();
+            }
+        }
+        throw new IllegalStateException("Picture placeholder not found");
+    }
+
+    private static XSLFPictureShape picture(XSLFSlide slide) {
+        XSLFPictureShape found = null;
+        for (XSLFShape shape : slide.getShapes()) {
+            if (shape instanceof XSLFPictureShape picture) {
+                if (found != null) {
+                    throw new IllegalStateException("More than one picture on the interval slide");
+                }
+                found = picture;
+            }
+        }
+        if (found == null) {
+            throw new IllegalStateException("Picture not found");
+        }
+        return found;
     }
 
     private static String notes(XSLFSlide slide) {

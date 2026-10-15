@@ -2,6 +2,7 @@ package org.amargs.chorusdeck.controller;
 
 import org.amargs.chorusdeck.config.AppConfig;
 import org.amargs.chorusdeck.model.Cover;
+import org.amargs.chorusdeck.model.Interval;
 import org.amargs.chorusdeck.model.SongCfg;
 import org.amargs.chorusdeck.model.SongbookItem;
 import org.amargs.chorusdeck.model.SourceSnapshot;
@@ -42,6 +43,9 @@ public final class Cli {
         String ano = null;
         String mode = null;
         boolean withCover = false;
+        String interval = null;
+        Path intervalImage = null;
+        String intervalText = null;
 
         for (int i = 1; i < args.length; i++) {
             String arg = args[i];
@@ -101,6 +105,21 @@ public final class Cli {
                     }
                     withCover = true;
                 }
+                case "--interval" -> {
+                    requireGenerate(command, "--interval");
+                    interval = single(interval, requireValue(args, ++i, "--interval"), "--interval");
+                }
+                case "--interval-image" -> {
+                    requireGenerate(command, "--interval-image");
+                    if (intervalImage != null) {
+                        throw new IllegalArgumentException("Duplicate --interval-image.\n" + usage());
+                    }
+                    intervalImage = Path.of(requireValue(args, ++i, "--interval-image"));
+                }
+                case "--interval-text" -> {
+                    requireGenerate(command, "--interval-text");
+                    intervalText = single(intervalText, requireValue(args, ++i, "--interval-text"), "--interval-text");
+                }
                 default -> throw new IllegalArgumentException("Unknown argument: " + arg + "\n" + usage());
             }
         }
@@ -125,6 +144,9 @@ public final class Cli {
                 if (withCover && !songs) {
                     throw new IllegalArgumentException("--with-cover is only valid with --mode songs.\n" + usage());
                 }
+                if (!songs && (interval != null || intervalImage != null || intervalText != null)) {
+                    throw new IllegalArgumentException("Interval options are only valid with --mode songs.\n" + usage());
+                }
                 boolean includeCover = !songs || withCover;
                 if (includeCover && (season == null || domingo == null || frase == null || versiculo == null || ano == null)) {
                     throw new IllegalArgumentException(
@@ -145,7 +167,7 @@ public final class Cli {
                     Cover coverFields = withCover
                             ? new Cover(season, cover, domingo, frase, versiculo, year(ano))
                             : null;
-                    decks.generateSongs(config, selection, coverFields);
+                    decks.generateSongs(config, selection, coverFields, Interval.parse(interval, intervalImage, intervalText));
                 } else {
                     decks.generate(config, selection, new Cover(
                             season, cover, domingo, frase, versiculo, year(ano)));
@@ -332,6 +354,6 @@ public final class Cli {
                   diff-sources [--config <file>]
                   songbook [--config <file>]
                   generate (--ids <id,id,...> | --book-ids <bookId,bookId,...>) --season <season> --ano <A|B|C> --domingo <text> --frase <text> --versiculo <text> [--cover <layout>] [--config <file>]
-                  generate --mode songs (--ids <id,id,...> | --book-ids <bookId,bookId,...>) [--with-cover --season <season> --ano <A|B|C> --domingo <text> --frase <text> --versiculo <text> [--cover <layout>]] [--config <file>]""";
+                  generate --mode songs (--ids <id,id,...> | --book-ids <bookId,bookId,...>) [--interval vazio|imagem|texto|texto+imagem] [--interval-image <file>] [--interval-text <text>] [--with-cover --season <season> --ano <A|B|C> --domingo <text> --frase <text> --versiculo <text> [--cover <layout>]] [--config <file>]""";
     }
 }

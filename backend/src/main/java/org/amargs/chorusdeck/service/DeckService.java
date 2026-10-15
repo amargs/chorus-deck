@@ -5,6 +5,7 @@ import org.amargs.chorusdeck.deck.DeckFile;
 import org.amargs.chorusdeck.deck.TemplateLayouts;
 import org.amargs.chorusdeck.index.SongIndex;
 import org.amargs.chorusdeck.model.Cover;
+import org.amargs.chorusdeck.model.Interval;
 import org.amargs.chorusdeck.model.Season;
 import org.amargs.chorusdeck.model.SongCfg;
 import org.amargs.chorusdeck.text.BoldMarkup;
@@ -13,6 +14,7 @@ import org.amargs.chorusdeck.text.FitCache;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.poi.xslf.usermodel.XMLSlideShow;
+import org.apache.poi.xslf.usermodel.XSLFPictureData;
 import org.apache.poi.xslf.usermodel.XSLFSlide;
 import org.apache.poi.xslf.usermodel.XSLFSlideLayout;
 
@@ -79,6 +81,10 @@ public final class DeckService {
     }
 
     public Generated generateSongs(AppConfig config, Selection selection, Cover cover) throws IOException {
+        return generateSongs(config, selection, cover, Interval.blank());
+    }
+
+    public Generated generateSongs(AppConfig config, Selection selection, Cover cover, Interval interval) throws IOException {
         long started = System.nanoTime();
         BoldMarkup.requireDeckFonts();
         long mark = step(started, "Found " + BoldMarkup.SEMIBOLD + ", " + BoldMarkup.PLAYFAIR + ", " + BoldMarkup.PLAYFAIR_BOLD);
@@ -113,18 +119,21 @@ public final class DeckService {
 
             List<Generated.Song> placed = new ArrayList<>();
             int slideCount = 0;
+            XSLFPictureData picture = interval.needsImage()
+                    ? templatePpt.addPicture(Files.readAllBytes(interval.image()), interval.pictureType())
+                    : null;
             if (cover != null) {
                 XSLFSlide coverSlide = templatePpt.createSlide(TemplateLayouts.findLayout(templatePpt, season.coverLayout()));
                 fillCover(coverSlide, cover, season);
                 TemplateLayouts.setNotes(coverSlide, notes(picked));
                 slideCount++;
-                TemplateLayouts.addSlide(templatePpt, TemplateLayouts.INTERVAL_BLANK);
+                addInterval(templatePpt, interval, picture);
                 slideCount++;
             }
             for (int i = 0; i < picked.size(); i++) {
                 slideCount += appendSong(templatePpt, titleLayout, lyricLayout, fits, picked.get(i), placed);
                 if (i < picked.size() - 1) {
-                    TemplateLayouts.addSlide(templatePpt, TemplateLayouts.INTERVAL_BLANK);
+                    addInterval(templatePpt, interval, picture);
                     slideCount++;
                 }
             }
@@ -139,6 +148,25 @@ public final class DeckService {
         } finally {
             fits.save();
         }
+    }
+
+    private static void addInterval(XMLSlideShow ppt, Interval interval, XSLFPictureData picture) throws IOException {
+        XSLFSlide slide = TemplateLayouts.addSlide(ppt, intervalLayout(interval));
+        if (interval.needsText()) {
+            TemplateLayouts.setShapeText(slide, "Letra", interval.text(), false);
+        }
+        if (interval.needsImage()) {
+            TemplateLayouts.setIntervalPicture(slide, picture);
+        }
+    }
+
+    private static String intervalLayout(Interval interval) {
+        return switch (interval.kind()) {
+            case VAZIO -> TemplateLayouts.INTERVAL_BLANK;
+            case IMAGEM -> TemplateLayouts.INTERVAL_IMAGE;
+            case TEXTO -> TemplateLayouts.INTERVAL_TEXT;
+            case TEXTO_IMAGEM -> TemplateLayouts.INTERVAL_TEXT_IMAGE;
+        };
     }
 
     private static void fillCover(XSLFSlide coverSlide, Cover cover, Season season) {

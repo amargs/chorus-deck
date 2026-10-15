@@ -9,9 +9,12 @@ import org.apache.poi.sl.usermodel.Placeholder;
 import org.apache.poi.sl.usermodel.TextParagraph;
 import org.apache.poi.xslf.usermodel.XMLSlideShow;
 import org.apache.poi.xslf.usermodel.XSLFNotes;
+import org.apache.poi.xslf.usermodel.XSLFPictureData;
+import org.apache.poi.xslf.usermodel.XSLFPictureShape;
 import org.apache.poi.xslf.usermodel.XSLFRelation;
 import org.apache.poi.xslf.usermodel.XSLFShape;
 import org.apache.poi.xslf.usermodel.XSLFSlide;
+import org.apache.poi.xslf.usermodel.XSLFSheet;
 import org.apache.poi.xslf.usermodel.XSLFSlideLayout;
 import org.apache.poi.xslf.usermodel.XSLFSlideMaster;
 import org.apache.poi.xslf.usermodel.XSLFTextParagraph;
@@ -23,7 +26,15 @@ import java.util.List;
 import org.openxmlformats.schemas.drawingml.x2006.main.CTSchemeColor;
 import org.openxmlformats.schemas.drawingml.x2006.main.CTShapeStyle;
 import org.openxmlformats.schemas.drawingml.x2006.main.STSchemeColorVal;
+import org.openxmlformats.schemas.presentationml.x2006.main.CTPicture;
+import org.openxmlformats.schemas.presentationml.x2006.main.CTPlaceholder;
 import org.openxmlformats.schemas.presentationml.x2006.main.CTShape;
+import org.openxmlformats.schemas.presentationml.x2006.main.STPlaceholderType;
+
+import java.awt.geom.Rectangle2D;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import javax.imageio.ImageIO;
 
 public final class TemplateLayouts {
 
@@ -31,12 +42,86 @@ public final class TemplateLayouts {
     public static final String FESTIVE_TITLE = "Título e letra - Natal e Páscoa";
     public static final String LYRICS = "Letra";
     public static final String INTERVAL_BLANK = "Transição - Vazio";
+    public static final String INTERVAL_TEXT = "Transição - Texto";
+    public static final String INTERVAL_IMAGE = "Transição - Imagem";
+    public static final String INTERVAL_TEXT_IMAGE = "Transição - Texto + Imagem";
 
     private TemplateLayouts() {
     }
 
     public static XSLFSlide addSlide(XMLSlideShow ppt, String layoutName) {
         return ppt.createSlide(findLayout(ppt, layoutName));
+    }
+
+    public static void setIntervalPicture(XSLFSlide slide, XSLFPictureData picture) throws IOException {
+        XSLFShape placeholder = picturePlaceholder(slide);
+        boolean onSlide = placeholder != null;
+        if (placeholder == null) {
+            placeholder = picturePlaceholder(slide.getSlideLayout());
+        }
+        if (placeholder == null || placeholder.getAnchor() == null) {
+            throw new IllegalArgumentException("Picture placeholder not found");
+        }
+        Rectangle2D anchor = placeholder.getAnchor();
+        CTPlaceholder source = picturePlaceholderXml(placeholder);
+        boolean hasIdx = source != null && source.isSetIdx();
+        long idx = hasIdx ? source.getIdx() : 0;
+        boolean hasType = source != null && source.isSetType();
+        STPlaceholderType.Enum type = hasType ? source.getType() : null;
+        if (onSlide) {
+            slide.removeShape(placeholder);
+        }
+        XSLFPictureShape inserted = slide.createPicture(picture);
+        inserted.setAnchor(fittedAnchor(anchor, picture));
+        if (source != null && inserted.getXmlObject() instanceof CTPicture ctPicture) {
+            CTPlaceholder target = ctPicture.getNvPicPr().getNvPr().isSetPh()
+                    ? ctPicture.getNvPicPr().getNvPr().getPh()
+                    : ctPicture.getNvPicPr().getNvPr().addNewPh();
+            if (hasType) {
+                target.setType(type);
+            }
+            if (hasIdx) {
+                target.setIdx(idx);
+            }
+        }
+    }
+
+    private static Rectangle2D fittedAnchor(Rectangle2D frame, XSLFPictureData data) throws IOException {
+        java.awt.image.BufferedImage image = ImageIO.read(new ByteArrayInputStream(data.getData()));
+        if (image == null || image.getWidth() <= 0 || image.getHeight() <= 0 || frame.getWidth() <= 0 || frame.getHeight() <= 0) {
+            throw new IOException("Cannot read the interval image size.");
+        }
+        double imageRatio = (double) image.getWidth() / image.getHeight();
+        double frameRatio = frame.getWidth() / frame.getHeight();
+        double width = frame.getWidth();
+        double height = frame.getHeight();
+        if (imageRatio > frameRatio) {
+            height = width / imageRatio;
+        } else {
+            width = height * imageRatio;
+        }
+        double x = frame.getX() + (frame.getWidth() - width) / 2.0;
+        double y = frame.getY() + (frame.getHeight() - height) / 2.0;
+        return new java.awt.geom.Rectangle2D.Double(x, y, width, height);
+    }
+
+    private static XSLFShape picturePlaceholder(XSLFSheet sheet) {
+        for (XSLFShape shape : sheet.getShapes()) {
+            if (shape.getPlaceholder() == Placeholder.PICTURE || shape.getPlaceholder() == Placeholder.CLIP_ART) {
+                return shape;
+            }
+        }
+        return null;
+    }
+
+    private static CTPlaceholder picturePlaceholderXml(XSLFShape shape) {
+        if (shape.getXmlObject() instanceof CTShape ctShape
+                && ctShape.getNvSpPr() != null
+                && ctShape.getNvSpPr().getNvPr() != null
+                && ctShape.getNvSpPr().getNvPr().isSetPh()) {
+            return ctShape.getNvSpPr().getNvPr().getPh();
+        }
+        return null;
     }
 
     public static void setNotes(XSLFSlide slide, String text) {
