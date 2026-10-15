@@ -4,12 +4,22 @@ import org.amargs.chorusdeck.text.BoldMarkup;
 import org.amargs.chorusdeck.text.FitCache;
 import org.amargs.chorusdeck.text.TextFit;
 
+import org.apache.poi.ooxml.POIXMLDocumentPart;
+import org.apache.poi.sl.usermodel.Placeholder;
+import org.apache.poi.sl.usermodel.TextParagraph;
 import org.apache.poi.xslf.usermodel.XMLSlideShow;
+import org.apache.poi.xslf.usermodel.XSLFNotes;
+import org.apache.poi.xslf.usermodel.XSLFRelation;
 import org.apache.poi.xslf.usermodel.XSLFShape;
 import org.apache.poi.xslf.usermodel.XSLFSlide;
 import org.apache.poi.xslf.usermodel.XSLFSlideLayout;
 import org.apache.poi.xslf.usermodel.XSLFSlideMaster;
+import org.apache.poi.xslf.usermodel.XSLFTextParagraph;
 import org.apache.poi.xslf.usermodel.XSLFTextShape;
+import org.apache.poi.xslf.usermodel.XSLFTheme;
+
+import java.util.ArrayList;
+import java.util.List;
 import org.openxmlformats.schemas.drawingml.x2006.main.CTSchemeColor;
 import org.openxmlformats.schemas.drawingml.x2006.main.CTShapeStyle;
 import org.openxmlformats.schemas.drawingml.x2006.main.STSchemeColorVal;
@@ -20,8 +30,52 @@ public final class TemplateLayouts {
     public static final String ORDINARY_TITLE = "Título e letra";
     public static final String FESTIVE_TITLE = "Título e letra - Natal e Páscoa";
     public static final String LYRICS = "Letra";
+    public static final String INTERVAL_BLANK = "Transição - Vazio";
 
     private TemplateLayouts() {
+    }
+
+    public static XSLFSlide addSlide(XMLSlideShow ppt, String layoutName) {
+        return ppt.createSlide(findLayout(ppt, layoutName));
+    }
+
+    public static void setNotes(XSLFSlide slide, String text) {
+        XMLSlideShow ppt = slide.getSlideShow();
+        linkNestedThemes(ppt);
+        XSLFNotes notes = ppt.getNotesSlide(slide);
+        String body = text == null ? "" : text;
+        for (XSLFShape shape : notes.getShapes()) {
+            if (shape instanceof XSLFTextShape textShape && textShape.getTextType() == Placeholder.BODY) {
+                textShape.setText(body);
+                for (XSLFTextParagraph paragraph : textShape.getTextParagraphs()) {
+                    paragraph.setTextAlign(TextParagraph.TextAlign.CENTER);
+                }
+                return;
+            }
+        }
+        throw new IllegalArgumentException("Notes placeholder not found");
+    }
+
+    /**
+     * POI creates a new theme for the notes master and picks the next index from the
+     * presentation's own theme parts. This template already stores theme2 on the handout
+     * master, so that index collides. Linking those nested themes makes POI take a free index.
+     */
+    private static void linkNestedThemes(XMLSlideShow ppt) {
+        List<XSLFTheme> linked = new ArrayList<>();
+        for (POIXMLDocumentPart part : ppt.getRelations()) {
+            if (part instanceof XSLFTheme theme) {
+                linked.add(theme);
+            }
+        }
+        for (POIXMLDocumentPart part : List.copyOf(ppt.getRelations())) {
+            for (POIXMLDocumentPart child : part.getRelations()) {
+                if (child instanceof XSLFTheme theme && !linked.contains(theme)) {
+                    ppt.addRelation(null, XSLFRelation.THEME, theme);
+                    linked.add(theme);
+                }
+            }
+        }
     }
 
     public static XSLFSlideLayout findLayout(XMLSlideShow ppt, String name) {

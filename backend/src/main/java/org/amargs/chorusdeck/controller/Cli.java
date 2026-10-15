@@ -40,6 +40,8 @@ public final class Cli {
         String frase = null;
         String versiculo = null;
         String ano = null;
+        String mode = null;
+        boolean withCover = false;
 
         for (int i = 1; i < args.length; i++) {
             String arg = args[i];
@@ -88,6 +90,17 @@ public final class Cli {
                     requireGenerate(command, "--ano");
                     ano = single(ano, requireValue(args, ++i, "--ano"), "--ano");
                 }
+                case "--mode" -> {
+                    requireGenerate(command, "--mode");
+                    mode = single(mode, requireValue(args, ++i, "--mode"), "--mode");
+                }
+                case "--with-cover" -> {
+                    requireGenerate(command, "--with-cover");
+                    if (withCover) {
+                        throw new IllegalArgumentException("Duplicate --with-cover.\n" + usage());
+                    }
+                    withCover = true;
+                }
                 default -> throw new IllegalArgumentException("Unknown argument: " + arg + "\n" + usage());
             }
         }
@@ -105,9 +118,21 @@ public final class Cli {
                 if (ids != null && bookIds != null) {
                     throw new IllegalArgumentException("generate takes --ids or --book-ids, not both.\n" + usage());
                 }
-                if (season == null || domingo == null || frase == null || versiculo == null || ano == null) {
+                boolean songs = "songs".equals(mode);
+                if (mode != null && !songs) {
+                    throw new IllegalArgumentException("Unknown mode: " + mode + "\n" + usage());
+                }
+                if (withCover && !songs) {
+                    throw new IllegalArgumentException("--with-cover is only valid with --mode songs.\n" + usage());
+                }
+                boolean includeCover = !songs || withCover;
+                if (includeCover && (season == null || domingo == null || frase == null || versiculo == null || ano == null)) {
                     throw new IllegalArgumentException(
                             "generate requires --season, --ano, --domingo, --frase, and --versiculo.\n" + usage());
+                }
+                if (songs && !withCover && (season != null || cover != null || domingo != null || frase != null || versiculo != null || ano != null)) {
+                    throw new IllegalArgumentException(
+                            "A song deck without --with-cover does not take cover fields.\n" + usage());
                 }
                 DeckService.Selection selection = ids != null
                         ? new DeckService.Selection.Ids(ids)
@@ -115,8 +140,16 @@ public final class Cli {
                 long staleStart = System.nanoTime();
                 printStale(new IndexService().warnIfStale(configFile, config));
                 LOG.info("Checked sources (" + (System.nanoTime() - staleStart) / 1_000_000 + " ms)");
-                new DeckService().generate(config, selection, new Cover(
-                        season, cover, domingo, frase, versiculo, year(ano)));
+                DeckService decks = new DeckService();
+                if (songs) {
+                    Cover coverFields = withCover
+                            ? new Cover(season, cover, domingo, frase, versiculo, year(ano))
+                            : null;
+                    decks.generateSongs(config, selection, coverFields);
+                } else {
+                    decks.generate(config, selection, new Cover(
+                            season, cover, domingo, frase, versiculo, year(ano)));
+                }
             }
             default -> throw new IllegalArgumentException("Unknown command: " + command + "\n" + usage());
         }
@@ -298,6 +331,7 @@ public final class Cli {
                   index [--config <file>]
                   diff-sources [--config <file>]
                   songbook [--config <file>]
-                  generate (--ids <id,id,...> | --book-ids <bookId,bookId,...>) --season <season> --ano <A|B|C> --domingo <text> --frase <text> --versiculo <text> [--cover <layout>] [--config <file>]""";
+                  generate (--ids <id,id,...> | --book-ids <bookId,bookId,...>) --season <season> --ano <A|B|C> --domingo <text> --frase <text> --versiculo <text> [--cover <layout>] [--config <file>]
+                  generate --mode songs (--ids <id,id,...> | --book-ids <bookId,bookId,...>) [--with-cover --season <season> --ano <A|B|C> --domingo <text> --frase <text> --versiculo <text> [--cover <layout>]] [--config <file>]""";
     }
 }

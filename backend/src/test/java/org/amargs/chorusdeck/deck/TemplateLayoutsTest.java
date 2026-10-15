@@ -5,10 +5,14 @@ import org.amargs.chorusdeck.model.Cover;
 import org.amargs.chorusdeck.service.DeckService;
 import org.amargs.chorusdeck.text.FitCache;
 
+import org.apache.poi.sl.usermodel.Placeholder;
+import org.apache.poi.sl.usermodel.TextParagraph;
 import org.apache.poi.xslf.usermodel.XMLSlideShow;
+import org.apache.poi.xslf.usermodel.XSLFNotes;
 import org.apache.poi.xslf.usermodel.XSLFShape;
 import org.apache.poi.xslf.usermodel.XSLFSlide;
 import org.apache.poi.xslf.usermodel.XSLFSlideLayout;
+import org.apache.poi.xslf.usermodel.XSLFTextParagraph;
 import org.apache.poi.xslf.usermodel.XSLFTextRun;
 import org.apache.poi.xslf.usermodel.XSLFTextShape;
 import org.junit.jupiter.api.Test;
@@ -219,6 +223,61 @@ class TemplateLayoutsTest {
     }
 
     @Test
+    void songDeckPutsABlackSlideBetweenSongsAndNotesOnTheCover() throws Exception {
+        Path out = Files.createTempFile("chorus-deck", ".pptx");
+        AppConfig config = new AppConfig(Path.of("unused.pptx"), indexFile(), template(), out);
+        new DeckService().generateSongs(config, new DeckService.Selection.Ids(List.of(1, 2)), cover("comum"));
+
+        try (XMLSlideShow ppt = open(out)) {
+            assertEquals(8, ppt.getSlides().size());
+            assertEquals("Capa - Tempo Comum", ppt.getSlides().get(0).getSlideLayout().getName());
+            assertEquals(TemplateLayouts.INTERVAL_BLANK, ppt.getSlides().get(1).getSlideLayout().getName());
+            assertTrue(ppt.getSlides().get(1).getShapes().isEmpty());
+            assertEquals(TemplateLayouts.ORDINARY_TITLE, ppt.getSlides().get(2).getSlideLayout().getName());
+            assertEquals(TemplateLayouts.INTERVAL_BLANK, ppt.getSlides().get(6).getSlideLayout().getName());
+            assertEquals(TemplateLayouts.ORDINARY_TITLE, ppt.getSlides().get(7).getSlideLayout().getName());
+            assertEquals("2 - A festa da música\n1 - A minh’alma descansa em paz", notes(ppt.getSlides().get(0)));
+            for (XSLFTextParagraph paragraph : notesBody(ppt.getSlides().get(0)).getTextParagraphs()) {
+                assertEquals(TextParagraph.TextAlign.CENTER, paragraph.getTextAlign());
+            }
+        }
+    }
+
+    @Test
+    void songDeckWithoutACoverHasNoTrailingInterval() throws Exception {
+        Path out = Files.createTempFile("chorus-deck", ".pptx");
+        AppConfig config = new AppConfig(Path.of("unused.pptx"), indexFile(), template(), out);
+        new DeckService().generateSongs(config, new DeckService.Selection.Ids(List.of(1, 2)), null);
+
+        try (XMLSlideShow ppt = open(out)) {
+            assertEquals(6, ppt.getSlides().size());
+            assertEquals(TemplateLayouts.ORDINARY_TITLE, ppt.getSlides().get(0).getSlideLayout().getName());
+            assertEquals(TemplateLayouts.INTERVAL_BLANK, ppt.getSlides().get(4).getSlideLayout().getName());
+            assertEquals(TemplateLayouts.ORDINARY_TITLE, ppt.getSlides().get(5).getSlideLayout().getName());
+        }
+    }
+
+    @Test
+    void songDeckNotesUseTheTitleWhenTheBookIdIsMissing() throws Exception {
+        Path index = Files.createTempFile("chorus-deck", ".json");
+        Files.writeString(index, """
+                [
+                  {"id":1,"title":"Sem número","content":["verso"]},
+                  {"id":2,"bookId":"A1","title":"Com número","content":["verso"]}
+                ]
+                """, UTF_8);
+        Path out = Files.createTempFile("chorus-deck", ".pptx");
+        AppConfig config = new AppConfig(Path.of("unused.pptx"), index, template(), out);
+        new DeckService().generateSongs(config, new DeckService.Selection.Ids(List.of(1, 2)), cover("comum"));
+
+        try (XMLSlideShow ppt = open(out)) {
+            assertEquals("Sem número\nA1 - Com número", notes(ppt.getSlides().get(0)));
+            assertEquals(TemplateLayouts.INTERVAL_BLANK, ppt.getSlides().get(1).getSlideLayout().getName());
+            assertEquals(TemplateLayouts.ORDINARY_TITLE, ppt.getSlides().get(4).getSlideLayout().getName());
+        }
+    }
+
+    @Test
     void generateByBookIdUsesTheSongbookNumber() throws Exception {
         Path out = Files.createTempFile("chorus-deck", ".pptx");
         AppConfig config = new AppConfig(Path.of("unused.pptx"), indexFile(), template(), out);
@@ -275,6 +334,23 @@ class TemplateLayoutsTest {
 
     private static Cover cover(String season) {
         return new Cover(season, null, "XXVIII Domingo", "frase", "Mt 25, 14-30", "A");
+    }
+
+    private static String notes(XSLFSlide slide) {
+        return notesBody(slide).getText();
+    }
+
+    private static XSLFTextShape notesBody(XSLFSlide slide) {
+        XSLFNotes notes = slide.getNotes();
+        if (notes == null) {
+            throw new IllegalStateException("Notes placeholder not found");
+        }
+        for (XSLFShape shape : notes.getShapes()) {
+            if (shape instanceof XSLFTextShape textShape && textShape.getTextType() == Placeholder.BODY) {
+                return textShape;
+            }
+        }
+        throw new IllegalStateException("Notes placeholder not found");
     }
 
     private static String headerScheme(XMLSlideShow ppt) {
