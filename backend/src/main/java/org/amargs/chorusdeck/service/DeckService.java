@@ -33,7 +33,7 @@ public final class DeckService {
 
     public Generated generate(AppConfig config, Selection selection, Cover cover) throws IOException {
         BoldMarkup.requireDeckFonts();
-        LOG.info("Found " + BoldMarkup.SEMIBOLD + ", " + BoldMarkup.PLAYFAIR + ", " + BoldMarkup.PLAYFAIR_BOLD);
+        LOG.info("Found " + BoldMarkup.SEMIBOLD + ", " + BoldMarkup.TITLE + ", " + BoldMarkup.PLAYFAIR + ", " + BoldMarkup.PLAYFAIR_BOLD);
         DeckFile.ensureWritable(config.outputFile());
         LOG.info("Checked the output file is writable");
 
@@ -84,7 +84,7 @@ public final class DeckService {
 
     public Generated generateSongs(AppConfig config, Selection selection, Cover cover, Interval interval) throws IOException {
         BoldMarkup.requireDeckFonts();
-        LOG.info("Found " + BoldMarkup.SEMIBOLD + ", " + BoldMarkup.PLAYFAIR + ", " + BoldMarkup.PLAYFAIR_BOLD);
+        LOG.info("Found " + BoldMarkup.SEMIBOLD + ", " + BoldMarkup.TITLE + ", " + BoldMarkup.PLAYFAIR + ", " + BoldMarkup.PLAYFAIR_BOLD);
         DeckFile.ensureWritable(config.outputFile());
         LOG.info("Checked the output file is writable");
 
@@ -147,7 +147,7 @@ public final class DeckService {
 
     public Generated generateMass(AppConfig config, MassRequest mass) throws IOException {
         BoldMarkup.requireDeckFonts();
-        LOG.info("Found " + BoldMarkup.SEMIBOLD + ", " + BoldMarkup.PLAYFAIR + ", " + BoldMarkup.PLAYFAIR_BOLD);
+        LOG.info("Found " + BoldMarkup.SEMIBOLD + ", " + BoldMarkup.TITLE + ", " + BoldMarkup.PLAYFAIR + ", " + BoldMarkup.PLAYFAIR_BOLD);
         DeckFile.ensureWritable(config.outputFile());
         LOG.info("Checked the output file is writable");
         List<SongCfg> songs = SongIndex.read(config.indexFile());

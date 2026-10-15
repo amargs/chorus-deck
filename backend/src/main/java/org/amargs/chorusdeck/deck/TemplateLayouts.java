@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.openxmlformats.schemas.drawingml.x2006.main.CTSchemeColor;
 import org.openxmlformats.schemas.drawingml.x2006.main.CTShapeStyle;
+import org.openxmlformats.schemas.drawingml.x2006.main.CTTextCharacterProperties;
 import org.openxmlformats.schemas.drawingml.x2006.main.STSchemeColorVal;
 import org.openxmlformats.schemas.presentationml.x2006.main.CTBackground;
 import org.openxmlformats.schemas.presentationml.x2006.main.CTPicture;
@@ -257,10 +258,29 @@ public final class TemplateLayouts {
             throw new IllegalArgumentException("Unknown theme color: " + schemeColor);
         }
         for (XSLFShape shape : layout.getShapes()) {
-            if ("Header".equals(shape.getShapeName()) && shape.getXmlObject() instanceof CTShape ctShape) {
+            if (!(shape.getXmlObject() instanceof CTShape ctShape)) {
+                continue;
+            }
+            if ("Header".equals(shape.getShapeName())) {
                 paint(ctShape, color);
+            } else if ("Título".equals(shape.getShapeName())) {
+                paintTitle(ctShape, color);
             }
         }
+    }
+
+    /** Title text uses a light tint of the header accent. Keep the tint and point it at the new accent. */
+    private static void paintTitle(CTShape shape, STSchemeColorVal.Enum color) {
+        if (shape.getTxBody() == null
+                || shape.getTxBody().getLstStyle() == null
+                || !shape.getTxBody().getLstStyle().isSetLvl1PPr()) {
+            return;
+        }
+        CTTextCharacterProperties defaults = shape.getTxBody().getLstStyle().getLvl1PPr().getDefRPr();
+        if (defaults == null || !defaults.isSetSolidFill() || !defaults.getSolidFill().isSetSchemeClr()) {
+            return;
+        }
+        defaults.getSolidFill().getSchemeClr().setVal(color);
     }
 
     private static void paint(CTShape shape, STSchemeColorVal.Enum color) {

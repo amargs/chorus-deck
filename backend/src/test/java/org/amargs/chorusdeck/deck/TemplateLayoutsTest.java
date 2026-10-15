@@ -72,6 +72,42 @@ class TemplateLayoutsTest {
     }
 
     @Test
+    void ordinaryTitleKeepsSmallCapsAndFollowsTheHeaderAccent() throws Exception {
+        try (XMLSlideShow ppt = openTemplate()) {
+            XSLFSlideLayout layout = TemplateLayouts.findLayout(ppt, TemplateLayouts.ORDINARY_TITLE);
+            TemplateLayouts.setHeaderScheme(layout, "accent5");
+            XSLFSlide slide = ppt.createSlide(layout);
+            TemplateLayouts.setShapeText(slide, "Título", "A minh’alma descansa em paz");
+
+            var title = ((CTShape) textShape(slide, "Título").getXmlObject()).getTxBody().getLstStyle().getLvl1PPr().getDefRPr();
+            assertEquals("small", title.getCap().toString());
+            assertEquals("Livvic SemiBold", title.getLatin().getTypeface());
+            String fill = title.getSolidFill().getSchemeClr().xmlText();
+            assertTrue(fill.contains("accent5"), fill);
+            assertTrue(fill.contains("lumMod"), fill);
+            assertTrue(fill.contains("20000"), fill);
+            assertTrue(fill.contains("lumOff"), fill);
+            assertTrue(fill.contains("80000"), fill);
+            assertEquals("accent5", headerScheme(ppt));
+        }
+    }
+
+    @Test
+    void festiveTitleKeepsGoldSmallCaps() throws Exception {
+        try (XMLSlideShow ppt = openTemplate()) {
+            XSLFSlide slide = ppt.createSlide(TemplateLayouts.findLayout(ppt, TemplateLayouts.FESTIVE_TITLE));
+            TemplateLayouts.setShapeText(slide, "Título", "Adoramus te");
+
+            var title = ((CTShape) textShape(slide, "Título").getXmlObject()).getTxBody().getLstStyle().getLvl1PPr().getDefRPr();
+            assertEquals("small", title.getCap().toString());
+            assertEquals("Livvic SemiBold", title.getLatin().getTypeface());
+            String fill = title.getSolidFill().getSchemeClr().xmlText();
+            assertTrue(fill.contains("accent4"), fill);
+            assertFalse(fill.contains("lumMod"), fill);
+        }
+    }
+
+    @Test
     void festiveTitleSlideHasTitleShape() throws Exception {
         try (XMLSlideShow ppt = openTemplate()) {
             XSLFSlide slide = ppt.createSlide(TemplateLayouts.findLayout(ppt, TemplateLayouts.FESTIVE_TITLE));
@@ -94,9 +130,9 @@ class TemplateLayoutsTest {
             assertTrue(slide.getSlideLayout().getShapes().stream().anyMatch(shape -> "Header".equals(shape.getShapeName())));
 
             CTShape ctShape = (CTShape) lyrics.getXmlObject();
-            assertEquals(6000, ctShape.getTxBody().getLstStyle().getLvl1PPr().getDefRPr().getSz());
+            assertEquals(5400, ctShape.getTxBody().getLstStyle().getLvl1PPr().getDefRPr().getSz());
             assertEquals(2, ctShape.getTxBody().sizeOfPArray());
-            assertEquals(6_000, fontSize(lyrics));
+            assertEquals(5_400, fontSize(lyrics));
         }
     }
 
@@ -118,9 +154,9 @@ class TemplateLayoutsTest {
 
     @Test
     void boldLinesShrinkMoreThanTheSamePlainLines() throws Exception {
-        String line = "nunca estou sozinha.";
-        String plain = (line + "\n").repeat(4);
-        String bold = ("**" + line + "**\n").repeat(4);
+        String line = "nunca estou sozinha ".repeat(12).trim();
+        String plain = line;
+        String bold = "**" + line + "**";
         try (XMLSlideShow ppt = openTemplate()) {
             XSLFSlide plainSlide = ppt.createSlide(TemplateLayouts.findLayout(ppt, TemplateLayouts.LYRICS));
             TemplateLayouts.setShapeText(plainSlide, "Letra", plain);

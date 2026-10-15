@@ -33,6 +33,8 @@ public final class TextFit {
     /** Lyric boxes are fitted inside this fraction of the measured box so the last line stays inside. */
     private static final double LYRIC_BOX_FRACTION = 0.88;
     private static final FontRenderContext RENDER_CONTEXT = new FontRenderContext(null, true, true);
+    /** PowerPoint draws lowercase as capitals at this fraction of the font size when {@code cap="small"}. */
+    private static final double SMALL_CAPS_SCALE = 0.8;
 
     private TextFit() {
     }
@@ -63,13 +65,14 @@ public final class TextFit {
         boolean lyric = !Fonts.titlePlaceholder(shape);
         double textWidth = widthPt * (lyric ? 0.92 : 0.98);
         double targetHeight = lyric ? heightPt * LYRIC_BOX_FRACTION : heightPt;
-        CTTextParagraphProperties level = level(txBody);
-        String box = box(textWidth, targetHeight, level == null ? 18 : fontPt(level, 18));
-        String hash = FitCache.hash(BoldMarkup.SEMIBOLD + "\0" + marked);
+        TextStyle style = textStyle(shape, txBody);
+        String box = box(textWidth, targetHeight, style.fontPt());
+        String hash = FitCache.hash(BoldMarkup.SEMIBOLD + "\0" + style.typeface() + "\0"
+                + (style.smallCaps() ? "small" : "") + "\0" + marked);
         Integer remembered = cache == null ? null : cache.recall(songId, slide, shape.getShapeName(), box, hash);
         int hundredths = remembered != null
                 ? remembered
-                : fittedHundredths(shape, txBody, textWidth, targetHeight);
+                : fittedHundredths(shape, style, textWidth, targetHeight);
         if (remembered == null && cache != null) {
             cache.remember(songId, slide, layoutName(shape), shape.getShapeName(), box, hash, hundredths);
         }
@@ -81,8 +84,7 @@ public final class TextFit {
         }
     }
 
-    private static int fittedHundredths(XSLFTextShape shape, CTTextBody txBody, double textWidth, double targetHeight) {
-        TextStyle style = textStyle(shape, txBody);
+    private static int fittedHundredths(XSLFTextShape shape, TextStyle style, double textWidth, double targetHeight) {
         List<XSLFTextParagraph> paragraphs = shape.getTextParagraphs();
         int fontScale = FULL_SCALE;
         if (!fits(paragraphs, style, textWidth, targetHeight, 1, 0)) {
@@ -166,13 +168,13 @@ public final class TextFit {
                 : fontPt * style.linePct() * (1 - lineReduction);
         double total = 0;
         for (XSLFTextParagraph paragraph : paragraphs) {
-            int lines = wrapLines(paragraph, widthPt, fontPt, style.font(), style.boldFont());
+            int lines = wrapLines(paragraph, widthPt, fontPt, style.font(), style.boldFont(), style.smallCaps());
             total += style.spaceBeforePt() + lines * linePt + style.spaceAfterPt();
         }
         return total <= heightPt + 0.5;
     }
 
-    private static int wrapLines(XSLFTextParagraph paragraph, double widthPt, double fontPt, Font regular, Font bold) {
+    private static int wrapLines(XSLFTextParagraph paragraph, double widthPt, double fontPt, Font regular, Font bold, boolean smallCaps) {
         List<XSLFTextRun> runs = paragraph.getTextRuns();
         if (runs.isEmpty()) {
             return 1;
@@ -193,7 +195,7 @@ public final class TextFit {
                     used = 0;
                     continue;
                 }
-                double width = textWidth(token, face, fontPt);
+                double width = textWidth(token, face, fontPt, smallCaps && runSmallCaps(run));
                 if (token.equals(" ")) {
                     if (used > 0 && used + width <= widthPt) {
                         used += width;
@@ -262,6 +264,36 @@ public final class TextFit {
         return tokens;
     }
 
+    private static boolean runSmallCaps(XSLFTextRun run) {
+        if (run.getXmlObject() instanceof CTRegularTextRun ctRun && ctRun.isSetRPr() && ctRun.getRPr().isSetCap()) {
+            return "small".equals(ctRun.getRPr().getCap().toString());
+        }
+        return true;
+    }
+
+    private static double textWidth(String text, Font font, double fontPt, boolean smallCaps) {
+        if (!smallCaps) {
+            return textWidth(text, font, fontPt);
+        }
+        double width = 0;
+        int i = 0;
+        while (i < text.length()) {
+            boolean lower = Character.isLowerCase(text.charAt(i));
+            int end = i + 1;
+            while (end < text.length() && Character.isLowerCase(text.charAt(end)) == lower) {
+                end++;
+            }
+            String chunk = text.substring(i, end);
+            if (lower) {
+                width += textWidth(chunk.toUpperCase(Locale.ROOT), font, fontPt * SMALL_CAPS_SCALE);
+            } else {
+                width += textWidth(chunk, font, fontPt);
+            }
+            i = end;
+        }
+        return width;
+    }
+
     private static double textWidth(String text, Font font, double fontPt) {
         if (text.isEmpty()) {
             return 0;
@@ -281,10 +313,12 @@ public final class TextFit {
         double spaceBeforePt = 0;
         double spaceAfterPt = 0;
         String typeface = null;
+        boolean smallCaps = false;
         CTTextParagraphProperties level = level(txBody);
         if (level != null) {
             fontPt = fontPt(level, fontPt);
             typeface = Fonts.typeface(level, typeface);
+            smallCaps = smallCaps(level);
             linePct = linePct(level, linePct);
             exactLinePt = exactLinePt(level, exactLinePt);
             spaceBeforePt = spacingPt(level.isSetSpcBef() ? level.getSpcBef() : null, spaceBeforePt);
@@ -294,7 +328,12 @@ public final class TextFit {
             typeface = Fonts.latinFamily(shape, typeface);
         }
         Font regular = Fonts.baseFont(typeface);
-        return new TextStyle(fontPt, linePct, exactLinePt, spaceBeforePt, spaceAfterPt, regular, Fonts.boldFont(typeface, regular));
+        return new TextStyle(fontPt, linePct, exactLinePt, spaceBeforePt, spaceAfterPt, typeface, smallCaps, regular, Fonts.boldFont(typeface, regular));
+    }
+
+    private static boolean smallCaps(CTTextParagraphProperties level) {
+        CTTextCharacterProperties rPr = level.isSetDefRPr() ? level.getDefRPr() : null;
+        return rPr != null && rPr.isSetCap() && "small".equals(rPr.getCap().toString());
     }
 
     private static double fontPt(CTTextParagraphProperties level, double fallback) {
@@ -329,6 +368,7 @@ public final class TextFit {
         return fallback;
     }
 
-    private record TextStyle(double fontPt, double linePct, double exactLinePt, double spaceBeforePt, double spaceAfterPt, Font font, Font boldFont) {
+    private record TextStyle(double fontPt, double linePct, double exactLinePt, double spaceBeforePt, double spaceAfterPt,
+                             String typeface, boolean smallCaps, Font font, Font boldFont) {
     }
 }

@@ -13,6 +13,7 @@ import java.util.List;
 public final class BoldMarkup {
 
     public static final String SEMIBOLD = "IBM Plex Sans SemiBold";
+    public static final String TITLE = "Livvic SemiBold";
     public static final String PLAYFAIR = "Playfair Display";
     public static final String PLAYFAIR_BOLD = "Playfair Display Bold";
 
@@ -20,7 +21,7 @@ public final class BoldMarkup {
     }
 
     public static void requireDeckFonts() {
-        List<String> missing = Fonts.preload(SEMIBOLD, PLAYFAIR, PLAYFAIR_BOLD);
+        List<String> missing = Fonts.preload(SEMIBOLD, TITLE, PLAYFAIR, PLAYFAIR_BOLD);
         if (!missing.isEmpty()) {
             throw new IllegalArgumentException(
                     String.join(", ", missing) + (missing.size() == 1 ? " was not found." : " were not found.")
