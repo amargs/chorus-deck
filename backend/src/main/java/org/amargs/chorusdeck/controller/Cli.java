@@ -2,6 +2,7 @@ package org.amargs.chorusdeck.controller;
 
 import org.amargs.chorusdeck.config.AppConfig;
 import org.amargs.chorusdeck.model.Cover;
+import org.amargs.chorusdeck.model.DeckSpec;
 import org.amargs.chorusdeck.model.Interval;
 import org.amargs.chorusdeck.model.SongCfg;
 import org.amargs.chorusdeck.model.SongbookItem;
@@ -46,6 +47,7 @@ public final class Cli {
         String interval = null;
         Path intervalImage = null;
         String intervalText = null;
+        Path massFile = null;
 
         for (int i = 1; i < args.length; i++) {
             String arg = args[i];
@@ -116,6 +118,13 @@ public final class Cli {
                     }
                     intervalImage = Path.of(requireValue(args, ++i, "--interval-image"));
                 }
+                case "--mass" -> {
+                    requireGenerate(command, "--mass");
+                    if (massFile != null) {
+                        throw new IllegalArgumentException("Duplicate --mass.\n" + usage());
+                    }
+                    massFile = Path.of(requireValue(args, ++i, "--mass"));
+                }
                 case "--interval-text" -> {
                     requireGenerate(command, "--interval-text");
                     intervalText = single(intervalText, requireValue(args, ++i, "--interval-text"), "--interval-text");
@@ -131,6 +140,28 @@ public final class Cli {
             case "songbook" -> printSongbooks(configFile.getParent());
             case "diff-sources" -> printDiff(new DiffService().compare(config));
             case "generate" -> {
+                if (massFile != null) {
+                    if (ids != null || bookIds != null || mode != null || withCover || season != null || cover != null
+                            || domingo != null || frase != null || versiculo != null || ano != null
+                            || interval != null || intervalImage != null || intervalText != null) {
+                        throw new IllegalArgumentException("--mass is used instead of the other generate flags.\n" + usage());
+                    }
+                    printStale(new IndexService().warnIfStale(configFile, config));
+                    LOG.info("Checked sources");
+                    DeckSpec spec = DeckSpec.load(massFile);
+                    config = config.withOutput(spec.output());
+                    DeckService decks = new DeckService();
+                    if (spec instanceof DeckSpec.Mass mass) {
+                        decks.generateMass(config, mass.request());
+                    } else {
+                        DeckSpec.Songs songs = (DeckSpec.Songs) spec;
+                        DeckService.Selection selection = songs.ids() != null
+                                ? new DeckService.Selection.Ids(songs.ids())
+                                : new DeckService.Selection.BookIds(songs.bookIds());
+                        decks.generateSongs(config, selection, songs.cover(), songs.interval());
+                    }
+                    break;
+                }
                 if (ids == null && bookIds == null) {
                     throw new IllegalArgumentException("generate requires --ids or --book-ids.\n" + usage());
                 }
@@ -159,9 +190,15 @@ public final class Cli {
                 DeckService.Selection selection = ids != null
                         ? new DeckService.Selection.Ids(ids)
                         : new DeckService.Selection.BookIds(bookIds);
-                long staleStart = System.nanoTime();
                 printStale(new IndexService().warnIfStale(configFile, config));
-                LOG.info("Checked sources (" + (System.nanoTime() - staleStart) / 1_000_000 + " ms)");
+                LOG.info("Checked sources");
+                if (config.outputFile() == null) {
+                    if (!includeCover) {
+                        throw new IllegalArgumentException(
+                                "Set outputFile in config.json for a song deck without a Sunday.\n" + usage());
+                    }
+                    config = config.withOutput(configFile.getParent().resolve(DeckSpec.fileName(domingo, year(ano))).normalize());
+                }
                 DeckService decks = new DeckService();
                 if (songs) {
                     Cover coverFields = withCover
@@ -354,6 +391,7 @@ public final class Cli {
                   diff-sources [--config <file>]
                   songbook [--config <file>]
                   generate (--ids <id,id,...> | --book-ids <bookId,bookId,...>) --season <season> --ano <A|B|C> --domingo <text> --frase <text> --versiculo <text> [--cover <layout>] [--config <file>]
-                  generate --mode songs (--ids <id,id,...> | --book-ids <bookId,bookId,...>) [--interval vazio|imagem|texto|texto+imagem] [--interval-image <file>] [--interval-text <text>] [--with-cover --season <season> --ano <A|B|C> --domingo <text> --frase <text> --versiculo <text> [--cover <layout>]] [--config <file>]""";
+                  generate --mode songs (--ids <id,id,...> | --book-ids <bookId,bookId,...>) [--interval vazio|imagem|texto|texto+imagem] [--interval-image <file>] [--interval-text <text>] [--with-cover --season <season> --ano <A|B|C> --domingo <text> --frase <text> --versiculo <text> [--cover <layout>]] [--config <file>]
+                  generate --mass <file.json|file.yaml> [--config <file>]""";
     }
 }

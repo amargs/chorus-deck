@@ -6,6 +6,7 @@ import org.amargs.chorusdeck.deck.TemplateLayouts;
 import org.amargs.chorusdeck.index.SongIndex;
 import org.amargs.chorusdeck.model.Cover;
 import org.amargs.chorusdeck.model.Interval;
+import org.amargs.chorusdeck.model.MassRequest;
 import org.amargs.chorusdeck.model.Season;
 import org.amargs.chorusdeck.model.SongCfg;
 import org.amargs.chorusdeck.text.BoldMarkup;
@@ -30,26 +31,24 @@ public final class DeckService {
     private static final Logger LOG = LogManager.getLogger(DeckService.class);
 
     public Generated generate(AppConfig config, Selection selection, Cover cover) throws IOException {
-        long started = System.nanoTime();
         BoldMarkup.requireDeckFonts();
-        long mark = step(started, "Found " + BoldMarkup.SEMIBOLD + ", " + BoldMarkup.PLAYFAIR + ", " + BoldMarkup.PLAYFAIR_BOLD);
+        LOG.info("Found " + BoldMarkup.SEMIBOLD + ", " + BoldMarkup.PLAYFAIR + ", " + BoldMarkup.PLAYFAIR_BOLD);
         DeckFile.ensureWritable(config.outputFile());
-        mark = step(mark, "Checked the output file is writable");
+        LOG.info("Checked the output file is writable");
 
         List<SongCfg> songs = SongIndex.read(config.indexFile());
-        mark = step(mark, "Read index (" + songs.size() + " songs)");
+        LOG.info("Read index (" + songs.size() + " songs)");
 
         Path parent = config.outputFile().getParent();
         if (parent != null) {
             Files.createDirectories(parent);
         }
 
-        long loadFits = System.nanoTime();
         FitCache fits = FitCache.load(config.indexFile().resolveSibling("fit.json"));
-        mark = step(loadFits, "Loaded fit cache");
+        LOG.info("Loaded fit cache");
         try (InputStream in = Files.newInputStream(config.template4x3());
              XMLSlideShow templatePpt = new XMLSlideShow(in)) {
-            mark = step(mark, "Opened template");
+            LOG.info("Opened template");
             Season season = Season.resolve(cover.season(), cover.cover());
             XSLFSlideLayout coverLayout = TemplateLayouts.findLayout(templatePpt, season.coverLayout());
             XSLFSlideLayout titleLayout = TemplateLayouts.findLayout(templatePpt, season.titleLayout());
@@ -57,23 +56,21 @@ public final class DeckService {
             if (season.headerScheme() != null) {
                 TemplateLayouts.setHeaderScheme(titleLayout, season.headerScheme());
             }
-            mark = step(mark, "Resolved layouts (" + season.coverLayout() + ", " + season.titleLayout() + ")");
+            LOG.info("Resolved layouts (" + season.coverLayout() + ", " + season.titleLayout() + ")");
 
             XSLFSlide coverSlide = templatePpt.createSlide(coverLayout);
-            long coverText = System.nanoTime();
             fillCover(coverSlide, cover, season);
-            mark = step(coverText, "Filled cover text");
+            LOG.info("Filled cover text");
             List<Generated.Song> placed = new ArrayList<>();
             int slideCount = 1;
             for (Picked picked : pick(songs, selection)) {
                 slideCount += appendSong(templatePpt, titleLayout, lyricLayout, fits, picked, placed);
             }
 
-            mark = System.nanoTime();
             DeckFile.write(templatePpt, config.outputFile());
-            step(mark, "Wrote " + config.outputFile().toAbsolutePath() + " (" + slideCount + " slides)");
+            LOG.info("Wrote " + config.outputFile().toAbsolutePath() + " (" + slideCount + " slides)");
             LOG.info("Fit cache: " + fits.reused() + " reused, " + fits.stored() + " new");
-            LOG.info("Generate finished (" + ms(System.nanoTime() - started) + " ms)");
+            LOG.info("Generate finished");
             return new Generated(songs.size(), season.coverLayout(), placed, slideCount);
         } finally {
             fits.save();
@@ -85,14 +82,13 @@ public final class DeckService {
     }
 
     public Generated generateSongs(AppConfig config, Selection selection, Cover cover, Interval interval) throws IOException {
-        long started = System.nanoTime();
         BoldMarkup.requireDeckFonts();
-        long mark = step(started, "Found " + BoldMarkup.SEMIBOLD + ", " + BoldMarkup.PLAYFAIR + ", " + BoldMarkup.PLAYFAIR_BOLD);
+        LOG.info("Found " + BoldMarkup.SEMIBOLD + ", " + BoldMarkup.PLAYFAIR + ", " + BoldMarkup.PLAYFAIR_BOLD);
         DeckFile.ensureWritable(config.outputFile());
-        mark = step(mark, "Checked the output file is writable");
+        LOG.info("Checked the output file is writable");
 
         List<SongCfg> songs = SongIndex.read(config.indexFile());
-        mark = step(mark, "Read index (" + songs.size() + " songs)");
+        LOG.info("Read index (" + songs.size() + " songs)");
         List<Picked> picked = pick(songs, selection);
         if (picked.isEmpty()) {
             throw new IllegalArgumentException("A song deck needs at least one song.");
@@ -103,12 +99,11 @@ public final class DeckService {
             Files.createDirectories(parent);
         }
 
-        long loadFits = System.nanoTime();
         FitCache fits = FitCache.load(config.indexFile().resolveSibling("fit.json"));
-        mark = step(loadFits, "Loaded fit cache");
+        LOG.info("Loaded fit cache");
         try (InputStream in = Files.newInputStream(config.template4x3());
              XMLSlideShow templatePpt = new XMLSlideShow(in)) {
-            mark = step(mark, "Opened template");
+            LOG.info("Opened template");
             Season season = cover == null ? null : Season.resolve(cover.season(), cover.cover());
             String titleName = season == null ? TemplateLayouts.ORDINARY_TITLE : season.titleLayout();
             XSLFSlideLayout titleLayout = TemplateLayouts.findLayout(templatePpt, titleName);
@@ -138,15 +133,160 @@ public final class DeckService {
                 }
             }
 
-            mark = System.nanoTime();
             DeckFile.write(templatePpt, config.outputFile());
-            step(mark, "Wrote " + config.outputFile().toAbsolutePath() + " (" + slideCount + " slides)");
+            LOG.info("Wrote " + config.outputFile().toAbsolutePath() + " (" + slideCount + " slides)");
             LOG.info("Fit cache: " + fits.reused() + " reused, " + fits.stored() + " new");
-            LOG.info("Generate finished (" + ms(System.nanoTime() - started) + " ms)");
+            LOG.info("Generate finished");
             String coverLayout = season == null ? null : season.coverLayout();
             return new Generated(songs.size(), coverLayout, placed, slideCount);
         } finally {
             fits.save();
+        }
+    }
+
+    public Generated generateMass(AppConfig config, MassRequest mass) throws IOException {
+        BoldMarkup.requireDeckFonts();
+        LOG.info("Found " + BoldMarkup.SEMIBOLD + ", " + BoldMarkup.PLAYFAIR + ", " + BoldMarkup.PLAYFAIR_BOLD);
+        DeckFile.ensureWritable(config.outputFile());
+        LOG.info("Checked the output file is writable");
+        List<SongCfg> songs = SongIndex.read(config.indexFile());
+        LOG.info("Read index (" + songs.size() + " songs)");
+        Path parent = config.outputFile().getParent();
+        if (parent != null) {
+            Files.createDirectories(parent);
+        }
+        FitCache fits = FitCache.load(config.indexFile().resolveSibling("fit.json"));
+        LOG.info("Loaded fit cache");
+        try (InputStream in = Files.newInputStream(config.template4x3());
+             XMLSlideShow templatePpt = new XMLSlideShow(in)) {
+            LOG.info("Opened template");
+            Season season = Season.resolve(mass.cover().season(), mass.cover().cover());
+            XSLFSlideLayout titleLayout = TemplateLayouts.findLayout(templatePpt, season.titleLayout());
+            XSLFSlideLayout lyricLayout = TemplateLayouts.findLayout(templatePpt, TemplateLayouts.LYRICS);
+            if (season.headerScheme() != null) {
+                TemplateLayouts.setHeaderScheme(titleLayout, season.headerScheme());
+            }
+            LOG.info("Resolved layouts (" + season.coverLayout() + ", " + season.titleLayout() + ")");
+            XSLFPictureData picture = mass.interval().needsImage()
+                    ? templatePpt.addPicture(Files.readAllBytes(mass.interval().image()), mass.interval().pictureType())
+                    : null;
+            MassAssembler deck = new MassAssembler(
+                    templatePpt, titleLayout, lyricLayout, fits, songs, mass.interval(), picture);
+            XSLFSlide coverSlide = templatePpt.createSlide(TemplateLayouts.findLayout(templatePpt, season.coverLayout()));
+            fillCover(coverSlide, mass.cover(), season);
+            deck.slides++;
+            deck.interval();
+            deck.song(mass.entrada(), true);
+            deck.song(mass.kyrie(), true);
+            if (!season.omitsGloria()) {
+                if (mass.gloria() != null) {
+                    deck.song(mass.gloria(), true);
+                } else {
+                    deck.layouts(TemplateLayouts.GLORIA);
+                    deck.interval();
+                }
+            }
+            deck.song(mass.aleluia(), false);
+            deck.interval();
+            deck.layouts(mass.longCreed() ? TemplateLayouts.CREDO_LONG : TemplateLayouts.CREDO_SHORT);
+            deck.interval();
+            if (mass.oracao() != null) {
+                XSLFSlide oracao = TemplateLayouts.addSlide(templatePpt, TemplateLayouts.ORACAO);
+                TemplateLayouts.setShapeText(oracao, "Letra", mass.oracao(), false);
+                deck.slides++;
+                deck.markContent();
+                deck.interval();
+            }
+            deck.song(mass.dons(), true);
+            deck.layouts(TemplateLayouts.PREPARACAO);
+            deck.interval();
+            deck.layouts(TemplateLayouts.DIALOGO);
+            deck.interval();
+            deck.song(mass.santo(), true);
+            deck.layouts(TemplateLayouts.MEMORIAL);
+            deck.interval();
+            deck.song(mass.paiNosso(), true);
+            deck.layouts(TemplateLayouts.ACLAMACAO);
+            deck.interval();
+            deck.song(mass.cordeiro(), true);
+            deck.layouts(TemplateLayouts.CONVITE);
+            deck.interval();
+            deck.song(mass.comunhao(), true);
+            deck.song(mass.acaoDeGracas(), true);
+            deck.song(mass.finalSong(), false);
+            TemplateLayouts.setNotes(coverSlide, notes(deck.placedSongs));
+            DeckFile.write(templatePpt, config.outputFile());
+            LOG.info("Wrote " + config.outputFile().toAbsolutePath() + " (" + deck.slides + " slides)");
+            LOG.info("Fit cache: " + fits.reused() + " reused, " + fits.stored() + " new");
+            LOG.info("Generate finished");
+            return new Generated(songs.size(), season.coverLayout(), deck.placed, deck.slides);
+        } finally {
+            fits.save();
+        }
+    }
+
+    private static final class MassAssembler {
+        private final XMLSlideShow ppt;
+        private final XSLFSlideLayout titleLayout;
+        private final XSLFSlideLayout lyricLayout;
+        private final FitCache fits;
+        private final List<SongCfg> songs;
+        private final Interval intervalChoice;
+        private final XSLFPictureData picture;
+        private final List<Picked> placedSongs = new ArrayList<>();
+        private final List<Generated.Song> placed = new ArrayList<>();
+        private int slides;
+        private boolean intervalOpen;
+
+        private MassAssembler(
+                XMLSlideShow ppt,
+                XSLFSlideLayout titleLayout,
+                XSLFSlideLayout lyricLayout,
+                FitCache fits,
+                List<SongCfg> songs,
+                Interval intervalChoice,
+                XSLFPictureData picture) {
+            this.ppt = ppt;
+            this.titleLayout = titleLayout;
+            this.lyricLayout = lyricLayout;
+            this.fits = fits;
+            this.songs = songs;
+            this.intervalChoice = intervalChoice;
+            this.picture = picture;
+        }
+
+        private void song(String bookId, boolean trailingInterval) throws IOException {
+            if (bookId == null) {
+                return;
+            }
+            Picked picked = new Picked(bookId, findBook(songs, bookId));
+            slides += appendSong(ppt, titleLayout, lyricLayout, fits, picked, placed);
+            placedSongs.add(picked);
+            markContent();
+            if (trailingInterval) {
+                interval();
+            }
+        }
+
+        private void layouts(String... names) {
+            for (String name : names) {
+                TemplateLayouts.addSlide(ppt, name);
+                slides++;
+            }
+            markContent();
+        }
+
+        private void interval() throws IOException {
+            if (intervalOpen) {
+                return;
+            }
+            addInterval(ppt, intervalChoice, picture);
+            slides++;
+            intervalOpen = true;
+        }
+
+        private void markContent() {
+            intervalOpen = false;
         }
     }
 
@@ -204,33 +344,17 @@ public final class DeckService {
         if (song.content() == null || song.content().isEmpty()) {
             throw new IllegalArgumentException("Song " + picked.key() + " has no verses.");
         }
-        long songStart = System.nanoTime();
         int verseCount = song.content().size();
         placed.add(new Generated.Song(picked.key(), song.title().trim(), verseCount));
         XSLFSlide firstSlide = ppt.createSlide(titleLayout);
-        long textStart = System.nanoTime();
         TemplateLayouts.setShapeText(firstSlide, "Título", song.title(), fits, song.id(), 1);
         TemplateLayouts.setShapeText(firstSlide, "Letra", song.content().get(0), fits, song.id(), 1);
-        long text = System.nanoTime() - textStart;
         for (int i = 1; i < verseCount; i++) {
             XSLFSlide slide = ppt.createSlide(lyricLayout);
-            textStart = System.nanoTime();
             TemplateLayouts.setShapeText(slide, "Letra", song.content().get(i), fits, song.id(), i + 1);
-            text += System.nanoTime() - textStart;
         }
-        LOG.info("Song " + picked.key() + ": " + song.title().trim()
-                + " (" + verseCount + " verses, " + ms(System.nanoTime() - songStart) + " ms, text " + ms(text) + " ms)");
+        LOG.info("Song " + picked.key() + ": " + song.title().trim() + " (" + verseCount + " verses)");
         return verseCount;
-    }
-
-    private static long step(long since, String message) {
-        long now = System.nanoTime();
-        LOG.info(message + " (" + ms(now - since) + " ms)");
-        return now;
-    }
-
-    private static long ms(long nanos) {
-        return nanos / 1_000_000;
     }
 
     public record Generated(int loadedSongs, String coverLayout, List<Song> songs, int slides) {

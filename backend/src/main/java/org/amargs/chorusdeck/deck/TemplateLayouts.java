@@ -45,6 +45,29 @@ public final class TemplateLayouts {
     public static final String INTERVAL_TEXT = "Transição - Texto";
     public static final String INTERVAL_IMAGE = "Transição - Imagem";
     public static final String INTERVAL_TEXT_IMAGE = "Transição - Texto + Imagem";
+    public static final String GLORIA_1 = "Glória - 1";
+    public static final String GLORIA_2 = "Glória - 2";
+    public static final String GLORIA_3 = "Glória - 3";
+    public static final String CREDO_LONG_1 = "Credo - Longo - 1";
+    public static final String CREDO_LONG_2 = "Credo - Longo - 2";
+    public static final String CREDO_LONG_3 = "Credo - Longo - 3";
+    public static final String CREDO_LONG_4 = "Credo - Longo - 4";
+    public static final String CREDO_LONG_5 = "Credo - Longo - 5";
+    public static final String CREDO_LONG_6 = "Credo - Longo - 6";
+    public static final String CREDO_SHORT_1 = "Credo - Breve - 1";
+    public static final String CREDO_SHORT_2 = "Credo - Breve - 2";
+    public static final String CREDO_SHORT_3 = "Credo - Breve - 3";
+    public static final String ORACAO = "Oração Universal";
+    public static final String PREPARACAO = "Preparação das oferendas";
+    public static final String DIALOGO = "Diálogo Prefácio";
+    public static final String MEMORIAL = "Aclamação Memorial";
+    public static final String ACLAMACAO = "Aclamação";
+    public static final String CONVITE = "Convite à Comunhão";
+    public static final String[] CREDO_LONG = {
+            CREDO_LONG_1, CREDO_LONG_2, CREDO_LONG_3, CREDO_LONG_4, CREDO_LONG_5, CREDO_LONG_6
+    };
+    public static final String[] CREDO_SHORT = {CREDO_SHORT_1, CREDO_SHORT_2, CREDO_SHORT_3};
+    public static final String[] GLORIA = {GLORIA_1, GLORIA_2, GLORIA_3};
 
     private TemplateLayouts() {
     }

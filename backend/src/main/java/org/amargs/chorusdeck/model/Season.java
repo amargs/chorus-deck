@@ -35,6 +35,10 @@ public final class Season {
         return tempoName + " · Ano " + ano;
     }
 
+    public boolean omitsGloria() {
+        return tempoName.startsWith("Tempo de Advento") || tempoName.startsWith("Tempo de Quaresma");
+    }
+
     public static Season resolve(String seasonKey, String coverOverride) {
         Season season = byKey(seasonKey);
         if (coverOverride == null || coverOverride.isBlank()) {

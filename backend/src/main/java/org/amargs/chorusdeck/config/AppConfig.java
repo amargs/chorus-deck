@@ -19,7 +19,11 @@ public record AppConfig(Path sourcePptx, Path indexFile, Path template4x3, Path 
                 resolve(base, text(node, "sourcePptx")),
                 resolve(base, text(node, "indexFile")),
                 resolve(base, text(node, "template4x3")),
-                resolve(base, text(node, "outputFile")));
+                optionalPath(base, node, "outputFile"));
+    }
+
+    public AppConfig withOutput(Path outputFile) {
+        return new AppConfig(sourcePptx, indexFile, template4x3, outputFile);
     }
 
     public static Path findConfig(Path explicit) {
@@ -48,6 +52,17 @@ public record AppConfig(Path sourcePptx, Path indexFile, Path template4x3, Path 
             throw new IllegalArgumentException("Config is missing a non-empty \"" + field + "\" string.");
         }
         return value.asText();
+    }
+
+    private static Path optionalPath(Path base, JsonNode node, String field) {
+        JsonNode value = node.get(field);
+        if (value == null || value.isNull()) {
+            return null;
+        }
+        if (!value.isTextual() || value.asText().isBlank()) {
+            throw new IllegalArgumentException("Config \"" + field + "\" must be a non-empty string.");
+        }
+        return resolve(base, value.asText());
     }
 
     private static Path resolve(Path base, String value) {
