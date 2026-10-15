@@ -8,6 +8,8 @@ import org.amargs.chorusdeck.model.Cover;
 import org.amargs.chorusdeck.model.Season;
 import org.amargs.chorusdeck.model.SongCfg;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.poi.xslf.usermodel.XMLSlideShow;
 import org.apache.poi.xslf.usermodel.XSLFSlide;
 import org.apache.poi.xslf.usermodel.XSLFSlideLayout;
@@ -21,10 +23,14 @@ import java.util.List;
 
 public final class DeckService {
 
+    private static final Logger LOG = LogManager.getLogger(DeckService.class);
+
     public Generated generate(AppConfig config, Selection selection, Cover cover) throws IOException {
         DeckFile.ensureWritable(config.outputFile());
+        LOG.info("Checked the output file is writable");
 
         List<SongCfg> songs = SongIndex.read(config.indexFile());
+        LOG.info("Read index (" + songs.size() + " songs)");
 
         Path parent = config.outputFile().getParent();
         if (parent != null) {
@@ -33,6 +39,7 @@ public final class DeckService {
 
         try (InputStream in = Files.newInputStream(config.template4x3());
              XMLSlideShow templatePpt = new XMLSlideShow(in)) {
+            LOG.info("Opened template");
             Season season = Season.resolve(cover.season(), cover.cover());
             XSLFSlideLayout coverLayout = TemplateLayouts.findLayout(templatePpt, season.coverLayout());
             XSLFSlideLayout titleLayout = TemplateLayouts.findLayout(templatePpt, season.titleLayout());
@@ -40,12 +47,14 @@ public final class DeckService {
             if (season.headerScheme() != null) {
                 TemplateLayouts.setHeaderScheme(titleLayout, season.headerScheme());
             }
+            LOG.info("Resolved layouts (" + season.coverLayout() + ", " + season.titleLayout() + ")");
 
             XSLFSlide coverSlide = templatePpt.createSlide(coverLayout);
             TemplateLayouts.setShapeText(coverSlide, "Domingo", cover.domingo());
             TemplateLayouts.setShapeText(coverSlide, "Frase", cover.quotedFrase());
             TemplateLayouts.setShapeText(coverSlide, "Versiculo", cover.versiculo());
             TemplateLayouts.setShapeText(coverSlide, "Tempo", season.tempo(cover.ano()));
+            LOG.info("Filled cover text");
             List<Generated.Song> placed = new ArrayList<>();
             int slideCount = 1;
             for (Picked picked : pick(songs, selection)) {
@@ -66,9 +75,12 @@ public final class DeckService {
                     TemplateLayouts.setShapeText(slide, "Letra", song.content().get(i), config.boldWeight());
                     slideCount++;
                 }
+                LOG.info("Song " + picked.key() + ": " + song.title().trim() + " (" + verseCount + " verses)");
             }
 
             DeckFile.write(templatePpt, config.outputFile());
+            LOG.info("Wrote " + config.outputFile().toAbsolutePath() + " (" + slideCount + " slides)");
+            LOG.info("Done");
             return new Generated(songs.size(), season.coverLayout(), placed, slideCount);
         }
     }

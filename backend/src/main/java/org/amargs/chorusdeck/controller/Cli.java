@@ -10,6 +10,8 @@ import org.amargs.chorusdeck.service.DeckService;
 import org.amargs.chorusdeck.service.DiffService;
 import org.amargs.chorusdeck.service.IndexService;
 import org.amargs.chorusdeck.service.SongbookService;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -17,6 +19,8 @@ import java.util.List;
 import java.util.Locale;
 
 public final class Cli {
+
+    private static final Logger LOG = LogManager.getLogger(Cli.class);
 
     private Cli() {
     }
@@ -109,8 +113,9 @@ public final class Cli {
                         ? new DeckService.Selection.Ids(ids)
                         : new DeckService.Selection.BookIds(bookIds);
                 printStale(new IndexService().warnIfStale(configFile, config));
-                printGenerated(config, new DeckService().generate(config, selection, new Cover(
-                        season, cover, domingo, frase, versiculo, year(ano))));
+                LOG.info("Checked sources");
+                new DeckService().generate(config, selection, new Cover(
+                        season, cover, domingo, frase, versiculo, year(ano)));
             }
             default -> throw new IllegalArgumentException("Unknown command: " + command + "\n" + usage());
         }
@@ -129,41 +134,41 @@ public final class Cli {
 
     private static void printIndex(IndexService.IndexResult result) {
         if (result.refresh() == SourceSnapshot.Refresh.UNCHANGED) {
-            System.out.println("Sources unchanged");
+            LOG.info("Sources unchanged");
             return;
         }
         if (result.refresh() == SourceSnapshot.Refresh.SONGBOOK) {
-            System.out.println("Songbook changed");
+            LOG.info("Songbook changed");
         }
         for (IndexService.IndexResult.Notice notice : result.notices()) {
             if (notice instanceof IndexService.IndexResult.Notice.Song song) {
-                System.out.println(song.title());
+                LOG.info(song.title());
             } else if (notice instanceof IndexService.IndexResult.Notice.Skipped skipped) {
-                System.out.println("Skipped " + skipped.title());
+                LOG.info("Skipped " + skipped.title());
             }
         }
         for (SongbookItem.MissingPrefix missing : result.missingPrefixes()) {
-            System.out.println(SongbookItem.line(missing));
+            LOG.info(SongbookItem.line(missing));
         }
         for (SongCfg song : result.removed()) {
-            System.out.println("Removed " + song.id() + ": " + song.title().trim());
+            LOG.info("Removed " + song.id() + ": " + song.title().trim());
         }
         for (SongCfg song : result.added()) {
-            System.out.println("New " + song.id() + ": " + song.title().trim());
+            LOG.info("New " + song.id() + ": " + song.title().trim());
         }
         for (String warning : result.warnings()) {
-            System.out.println(warning);
+            LOG.info(warning);
         }
         if (result.bookIdCount() != null) {
-            System.out.println("bookId on " + result.bookIdCount() + " of " + result.songCount() + " songs");
+            LOG.info("bookId on " + result.bookIdCount() + " of " + result.songCount() + " songs");
         }
     }
 
     private static void printStale(StaleSources stale) {
         if (stale.missing()) {
-            System.err.println("Source hashes are missing. Run index before trusting this deck.");
+            LOG.error("Source hashes are missing. Run index before trusting this deck.");
         } else if (!stale.changed().isEmpty()) {
-            System.err.println("Changed since last index: " + String.join(", ", stale.changed())
+            LOG.error("Changed since last index: " + String.join(", ", stale.changed())
                     + ". Run index before trusting this deck.");
         }
     }
@@ -188,56 +193,41 @@ public final class Cli {
                 && report.ambiguous().isEmpty()
                 && report.missingPrefix().isEmpty()
                 && report.noLyrics().isEmpty()) {
-            System.out.println("Songbook and slides agree.");
+            LOG.info("Songbook and slides agree.");
         }
-    }
-
-    private static void printGenerated(AppConfig config, DeckService.Generated generated) {
-        System.out.println("Reading " + config.indexFile().toAbsolutePath());
-        System.out.println("Loaded " + generated.loadedSongs() + " songs");
-        System.out.println("Opening " + config.template4x3().toAbsolutePath());
-        System.out.println("Cover: " + generated.coverLayout());
-        for (DeckService.Generated.Song song : generated.songs()) {
-            System.out.println("Song " + song.key() + ": " + song.title() + " (" + song.verses() + " verses)");
-            for (int verse = 1; verse <= song.verses(); verse++) {
-                System.out.println("  Verse " + verse + " of " + song.verses());
-            }
-        }
-        System.out.println("Writing " + config.outputFile().toAbsolutePath() + " (" + generated.slides() + " slides)");
-        System.out.println("Done");
     }
 
     private static void printLines(String heading, List<String> lines) {
         if (lines.isEmpty()) {
             return;
         }
-        System.out.println(heading);
+        LOG.info(heading);
         for (String line : lines) {
-            System.out.println(line);
+            LOG.info(line);
         }
-        System.out.println();
+        LOG.info("");
     }
 
     private static void printTable(String heading, List<List<String>> rows, String... headers) {
         if (rows.isEmpty()) {
             return;
         }
-        System.out.println(heading);
+        LOG.info(heading);
         for (String line : TextTable.format(rows, headers)) {
-            System.out.println(line);
+            LOG.info(line);
         }
-        System.out.println();
+        LOG.info("");
     }
 
     private static void printSongbooks(Path configDir) throws Exception {
         SongbookService books = new SongbookService();
         for (String name : List.of("songbook_default.docx", "songbook_rites.docx")) {
             Path docx = configDir.resolve("data").resolve(name);
-            System.out.println(docx.getFileName());
+            LOG.info(docx.getFileName());
             for (SongbookItem item : books.read(docx)) {
-                System.out.println(SongbookItem.line(item));
+                LOG.info(SongbookItem.line(item));
             }
-            System.out.println();
+            LOG.info("");
         }
     }
 
