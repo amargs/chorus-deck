@@ -2,12 +2,15 @@ package org.amargs.chorusdeck.web;
 
 import org.junit.jupiter.api.Test;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TodayThemeTest {
 
@@ -27,34 +30,64 @@ class TodayThemeTest {
 
     @Test
     void secondCallTheSameDayDoesNotFetch() throws Exception {
-        Path cache = Files.createTempDirectory("today-theme").resolve("calendar-cache.json");
         AtomicInteger fetches = new AtomicInteger();
         LocalDate today = LocalDate.of(2026, 10, 16);
         TodayTheme.Fetcher fetcher = date -> {
             fetches.incrementAndGet();
             return day("ordinary", "white", null);
         };
-        TodayTheme theme = new TodayTheme(fetcher, cache);
-        assertEquals("comum", theme.resolve(today).season());
-        assertEquals("comum", theme.resolve(today).season());
+        TodayTheme theme = new TodayTheme(fetcher);
+        TodayTheme.Answer first = theme.resolve(today, null);
+        assertEquals("comum", first.snapshot().season());
+        assertTrue(first.store());
+        assertEquals("comum", theme.resolve(today, null).snapshot().season());
         assertEquals(1, fetches.get());
 
         TodayTheme restarted = new TodayTheme(date -> {
             fetches.incrementAndGet();
             return day("advent", "purple", "advent-1");
-        }, cache);
-        assertEquals("comum", restarted.resolve(today).season());
+        });
+        TodayTheme.Answer again = restarted.resolve(today, TodayTheme.cookieValue(first.snapshot()));
+        assertEquals("comum", again.snapshot().season());
+        assertTrue(again.store());
         assertEquals(1, fetches.get());
     }
 
     @Test
-    void networkFailureKeepsAStaleCache() throws Exception {
-        Path cache = Files.createTempDirectory("today-theme").resolve("calendar-cache.json");
-        Files.writeString(cache, "{\"date\":\"2026-10-15\",\"season\":\"advento\"}");
+    void networkFailureKeepsAStaleCookie() {
         TodayTheme theme = new TodayTheme(date -> {
             throw new java.io.IOException("offline");
-        }, cache);
-        assertEquals("advento", theme.resolve(LocalDate.of(2026, 10, 16)).season());
+        });
+        TodayTheme.Answer answer = theme.resolve(LocalDate.of(2026, 10, 16), "2026-10-15.advento");
+        assertEquals("advento", answer.snapshot().season());
+        assertFalse(answer.store());
+    }
+
+    @Test
+    void aBadCookieIsIgnored() throws Exception {
+        AtomicInteger fetches = new AtomicInteger();
+        TodayTheme theme = new TodayTheme(date -> {
+            fetches.incrementAndGet();
+            return day("ordinary", "white", null);
+        });
+        assertNull(TodayTheme.parse(null));
+        assertNull(TodayTheme.parse("2026-10-16"));
+        assertNull(TodayTheme.parse("2026-10-16.gold"));
+        assertNull(TodayTheme.parse("yesterday.comum"));
+        assertEquals("comum", theme.resolve(LocalDate.of(2026, 10, 16), "nope").snapshot().season());
+        assertEquals(1, fetches.get());
+    }
+
+    @Test
+    void cookieLastsUntilLocalMidnight() {
+        ZoneId lisbon = ZoneId.of("Europe/Lisbon");
+        ZonedDateTime evening = ZonedDateTime.of(2026, 10, 16, 21, 0, 0, 0, lisbon);
+        assertEquals(3 * 60 * 60, TodayTheme.maxAgeSeconds(evening));
+        ZonedDateTime lastSecond = ZonedDateTime.of(2026, 10, 16, 23, 59, 59, 0, lisbon);
+        assertEquals(1, TodayTheme.maxAgeSeconds(lastSecond));
+        assertEquals(
+                "chorus-today=2026-10-16.advento; Path=/; Max-Age=10800; HttpOnly; SameSite=Lax",
+                TodayTheme.setCookie(new TodayTheme.Snapshot("2026-10-16", "advento"), 10800));
     }
 
     private static String day(String season, String colour, String sundayId) {

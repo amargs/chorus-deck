@@ -43,12 +43,13 @@ public final class SongDeckServer {
         });
         app.get("/api/songs", ctx -> ctx.json(SongDeckRequests.songs(SongIndex.read(config.indexFile()))));
         app.get("/api/fonts", ctx -> ctx.json(Map.of("missing", BoldMarkup.missingFontLinks())));
-        TodayTheme today = new TodayTheme(
-                TodayTheme::httpGet,
-                directory.resolve("data").resolve("calendar-cache.json"));
+        TodayTheme today = new TodayTheme(TodayTheme::httpGet);
         app.get("/api/today", ctx -> {
-            TodayTheme.Snapshot snapshot = today.resolve(LocalDate.now());
-            ctx.json(Map.of("date", snapshot.date(), "season", snapshot.season()));
+            TodayTheme.Answer answer = today.resolve(LocalDate.now(), ctx.cookie(TodayTheme.COOKIE));
+            if (answer.store()) {
+                ctx.header("Set-Cookie", TodayTheme.setCookie(answer.snapshot()));
+            }
+            ctx.json(Map.of("date", answer.snapshot().date(), "season", answer.snapshot().season()));
         });
         app.get("/api/directory", ctx -> ctx.json(Map.of("directory", directory.toString())));
         app.post("/api/choose-folder", ctx -> {
