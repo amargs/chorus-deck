@@ -252,9 +252,11 @@ class TemplateLayoutsTest {
             assertEquals("Capa - Tempo Comum", ppt.getSlides().get(0).getSlideLayout().getName());
             assertEquals("XXVIII Domingo", textShape(ppt.getSlides().get(0), "Domingo").getText());
             assertEquals("«frase»", textShape(ppt.getSlides().get(0), "Frase").getText());
-            XSLFTextRun domingo = textShape(ppt.getSlides().get(0), "Domingo").getTextParagraphs().get(0).getTextRuns().get(0);
+            XSLFTextShape domingoShape = textShape(ppt.getSlides().get(0), "Domingo");
+            XSLFTextRun domingo = domingoShape.getTextParagraphs().get(0).getTextRuns().get(0);
             assertTrue(domingo.isBold());
             assertEquals("Playfair Display", domingo.getFontFamily());
+            assertEquals(6_600, fontSize(domingoShape));
             assertEquals("Tempo Comum · Ano A", textShape(ppt.getSlides().get(0), "Tempo").getText());
             assertEquals(TemplateLayouts.ORDINARY_TITLE, ppt.getSlides().get(1).getSlideLayout().getName());
             assertEquals(TemplateLayouts.LYRICS, ppt.getSlides().get(2).getSlideLayout().getName());
@@ -265,6 +267,26 @@ class TemplateLayoutsTest {
             assertFalse(lyrics.contains("Música"));
             assertEquals("A festa da música", textShape(ppt.getSlides().get(1), "Título").getText());
             assertEquals("A minh’alma descansa em paz", textShape(ppt.getSlides().get(5), "Título").getText());
+        }
+    }
+
+    @Test
+    void coverTitleShrinksWhenTheFreeTextDoesNotFit() throws Exception {
+        Path out = Files.createTempFile("chorus-deck", ".pptx");
+        AppConfig config = new AppConfig(Path.of("unused.pptx"), indexFile(), template(), out);
+        Cover longTitle = new Cover(
+                "comum",
+                null,
+                "Oração de Taizé, Vigília do Crisma na paróquia",
+                "frase",
+                "Mt 25, 14-30",
+                "A");
+        new DeckService().generate(config, new DeckService.Selection.Ids(List.of(1)), longTitle);
+
+        try (XMLSlideShow ppt = open(out)) {
+            XSLFTextShape domingo = textShape(ppt.getSlides().get(0), "Domingo");
+            assertEquals(longTitle.domingo(), domingo.getText());
+            assertTrue(fontSize(domingo) < 6_600);
         }
     }
 

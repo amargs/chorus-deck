@@ -63,11 +63,11 @@ const emit = defineEmits(['update:enabled'])
         <div class="occasion">
           <label class="field">
             <span>Título</span>
-            <input v-model="cover.domingo" type="text" placeholder="Ensaio" />
+            <input v-model="cover.domingo" type="text" placeholder="Oração de Taizé, Vigília do Crisma..." />
           </label>
           <label class="field">
             <span>Cabeçalho</span>
-            <input v-model="cover.header" type="text" placeholder="Ensaio do coro" />
+            <input v-model="cover.header" type="text" placeholder="29/04/2026 - Esgueira" />
           </label>
         </div>
       </template>

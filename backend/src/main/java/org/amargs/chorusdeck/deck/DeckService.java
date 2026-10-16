@@ -385,7 +385,7 @@ public final class DeckService {
     }
 
     private static void fillCover(XSLFSlide coverSlide, Cover cover, Season season) {
-        TemplateLayouts.setShapeText(coverSlide, "Domingo", cover.domingo(), false);
+        TemplateLayouts.setShapeText(coverSlide, "Domingo", cover.domingo(), true);
         TemplateLayouts.setShapeText(coverSlide, "Frase", cover.quotedFrase(), true);
         TemplateLayouts.setShapeText(coverSlide, "Versiculo", cover.versiculo(), false);
         TemplateLayouts.setShapeText(coverSlide, "Tempo", tempoLine(cover, season), false);
