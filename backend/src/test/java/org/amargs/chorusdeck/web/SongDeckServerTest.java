@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.javalin.Javalin;
 import org.amargs.chorusdeck.config.AppConfig;
 import org.amargs.chorusdeck.deck.Cover;
+import org.amargs.chorusdeck.text.BoldMarkup;
 import org.amargs.chorusdeck.index.SongCfg;
 import org.amargs.chorusdeck.index.SongIndex;
 import org.junit.jupiter.api.Test;
@@ -27,6 +28,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SongDeckServerTest {
 
     private static final ObjectMapper JSON = new ObjectMapper();
+
+    @Test
+    void fontsListsTheTemplateFacesThatAreNotInstalled() throws Exception {
+        Path dir = Files.createTempDirectory("chorus-deck");
+        HttpResponse<String> response = get(app(dir, dir.resolve("index.json")), "/api/fonts");
+        assertEquals(200, response.statusCode());
+        assertEquals(JSON.valueToTree(Map.of("missing", BoldMarkup.missingFontLinks())), JSON.readTree(response.body()));
+    }
 
     @Test
     void songListMarksASongWithoutVerses() throws Exception {

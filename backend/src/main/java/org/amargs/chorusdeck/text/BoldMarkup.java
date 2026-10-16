@@ -8,7 +8,9 @@ import org.openxmlformats.schemas.drawingml.x2006.main.CTTextCharacterProperties
 import org.openxmlformats.schemas.presentationml.x2006.main.CTShape;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 public final class BoldMarkup {
 
@@ -20,6 +22,18 @@ public final class BoldMarkup {
     private BoldMarkup() {
     }
 
+    public record FontLink(String family, String url) {
+    }
+
+    private record FontFace(String installedName, String family, String url) {
+    }
+
+    private static final List<FontFace> FACES = List.of(
+            new FontFace(SEMIBOLD, "IBM Plex Sans", "https://fonts.google.com/specimen/IBM+Plex+Sans"),
+            new FontFace(TITLE, "Livvic", "https://fonts.google.com/specimen/Livvic"),
+            new FontFace(PLAYFAIR, "Playfair Display", "https://fonts.google.com/specimen/Playfair+Display"),
+            new FontFace(PLAYFAIR_BOLD, "Playfair Display", "https://fonts.google.com/specimen/Playfair+Display"));
+
     public static void requireDeckFonts() {
         List<String> missing = Fonts.preload(SEMIBOLD, TITLE, PLAYFAIR, PLAYFAIR_BOLD);
         if (!missing.isEmpty()) {
@@ -27,6 +41,23 @@ public final class BoldMarkup {
                     String.join(", ", missing) + (missing.size() == 1 ? " was not found." : " were not found.")
                             + " Install the missing font and run generate again.");
         }
+    }
+
+    /** Installed names that are absent, collapsed to one Google Fonts page per family. */
+    public static List<FontLink> missingFontLinks() {
+        return fontLinks(Fonts.preload(SEMIBOLD, TITLE, PLAYFAIR, PLAYFAIR_BOLD));
+    }
+
+    static List<FontLink> fontLinks(List<String> missing) {
+        Set<String> names = new LinkedHashSet<>(missing);
+        List<FontLink> links = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
+        for (FontFace face : FACES) {
+            if (names.contains(face.installedName()) && seen.add(face.family())) {
+                links.add(new FontLink(face.family(), face.url()));
+            }
+        }
+        return links;
     }
 
     public static String mark(XSLFTextShape shape) {

@@ -7,6 +7,8 @@ import org.apache.poi.xslf.usermodel.XSLFTextParagraph;
 import org.apache.poi.xslf.usermodel.XSLFTextRun;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class BoldMarkupTest {
@@ -23,6 +25,19 @@ class BoldMarkupTest {
             addRun(chorus, "Hoje eu vou celebrar", true);
             assertEquals("**Hoje eu vou celebrar**", BoldMarkup.mark(chorus));
         }
+    }
+
+    @Test
+    void missingFacesCollapseToOneGoogleFontsPagePerFamily() {
+        assertEquals(List.of(), BoldMarkup.fontLinks(List.of()));
+        assertEquals(List.of(
+                new BoldMarkup.FontLink("IBM Plex Sans", "https://fonts.google.com/specimen/IBM+Plex+Sans"),
+                new BoldMarkup.FontLink("Playfair Display", "https://fonts.google.com/specimen/Playfair+Display")),
+                BoldMarkup.fontLinks(List.of(
+                        "Playfair Display Bold",
+                        "IBM Plex Sans SemiBold",
+                        "Playfair Display",
+                        "not a deck font")));
     }
 
     @Test

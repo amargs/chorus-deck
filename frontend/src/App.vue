@@ -27,6 +27,7 @@ const savedPath = ref('')
 const error = ref('')
 const busy = ref(false)
 const loadError = ref('')
+const missingFonts = ref([])
 
 const coverReady = computed(() => {
   const text = (value) => value && value.trim()
@@ -86,6 +87,7 @@ function onKeydown(event) {
 
 onMounted(() => {
   loadSongs()
+  loadFonts()
   loadTheme()
   loadDirectory()
   window.addEventListener('keydown', onKeydown)
@@ -104,6 +106,19 @@ async function loadSongs() {
     library.value = await response.json()
   } catch (e) {
     loadError.value = e.message
+  }
+}
+
+async function loadFonts() {
+  try {
+    const response = await fetch('/api/fonts')
+    if (!response.ok) {
+      return
+    }
+    const payload = await response.json()
+    missingFonts.value = Array.isArray(payload.missing) ? payload.missing : []
+  } catch {
+    // Generating still checks the fonts when this request fails.
   }
 }
 
@@ -267,6 +282,14 @@ async function errorText(response) {
 </script>
 
 <template>
+  <div v-if="missingFonts.length" class="font-banner">
+    <p>
+      Identificados tipos de letra em falta. A apresentação pode não corresponder ao modelo até os instalar:
+      <template v-for="(font, index) in missingFonts" :key="font.family">
+        <a :href="font.url" target="_blank" rel="noopener noreferrer">{{ font.family }}</a><span v-if="index < missingFonts.length - 1">, </span>
+      </template>.
+    </p>
+  </div>
   <main class="page">
     <header>
       <h1>Cânticos</h1>

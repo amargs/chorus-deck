@@ -76,6 +76,23 @@ select {
   background: #fff;
 }
 
+.font-banner {
+  background: #f4e4c4;
+  color: #5c3b12;
+  border-bottom: 1px solid #e0c48a;
+  padding: 0.75rem 1.5rem;
+}
+
+.font-banner p {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.font-banner a {
+  color: #5c3b12;
+  font-weight: 650;
+}
+
 .page {
   max-width: 1100px;
   margin: 0 auto;

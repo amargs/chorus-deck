@@ -7,6 +7,7 @@ import io.javalin.http.staticfiles.Location;
 import org.amargs.chorusdeck.config.AppConfig;
 import org.amargs.chorusdeck.deck.DeckService;
 import org.amargs.chorusdeck.deck.Interval;
+import org.amargs.chorusdeck.text.BoldMarkup;
 import org.amargs.chorusdeck.index.SongCfg;
 import org.amargs.chorusdeck.index.SongIndex;
 import org.apache.logging.log4j.LogManager;
@@ -41,6 +42,7 @@ public final class SongDeckServer {
             }
         });
         app.get("/api/songs", ctx -> ctx.json(SongDeckRequests.songs(SongIndex.read(config.indexFile()))));
+        app.get("/api/fonts", ctx -> ctx.json(Map.of("missing", BoldMarkup.missingFontLinks())));
         TodayTheme today = new TodayTheme(
                 TodayTheme::httpGet,
                 directory.resolve("data").resolve("calendar-cache.json"));
