@@ -106,8 +106,81 @@ header h1 {
 }
 
 header p {
-  margin: 0.25rem 0 1.25rem;
+  margin: 0;
   color: #5c564c;
+}
+
+.subtitle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0.25rem 0 1.25rem;
+}
+
+header .index-line {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  color: #8a8378;
+}
+
+header .alter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.45rem;
+  border-color: transparent;
+  background: transparent;
+  color: #8a8378;
+}
+
+header .alter:hover {
+  background: #e7e2d6;
+}
+
+header .alter svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.welcome {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2.5rem 1.5rem;
+}
+
+.welcome h1 {
+  margin: 0 0 0.75rem;
+  font-size: 3.25rem;
+  font-weight: 650;
+}
+
+.welcome p {
+  max-width: 36rem;
+  margin: 0 0 1.5rem;
+  color: #5c564c;
+  font-size: 1.15rem;
+}
+
+.welcome .path-row {
+  width: min(28rem, 100%);
+}
+
+.welcome .status {
+  max-width: 36rem;
+  margin-top: 1rem;
+  font-size: 1rem;
 }
 
 .columns {

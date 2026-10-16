@@ -3,7 +3,6 @@ package org.amargs.chorusdeck.web;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.javalin.Javalin;
-import org.amargs.chorusdeck.config.AppConfig;
 import org.amargs.chorusdeck.deck.Cover;
 import org.amargs.chorusdeck.text.BoldMarkup;
 import org.amargs.chorusdeck.index.SongCfg;
@@ -28,6 +27,47 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SongDeckServerTest {
 
     private static final ObjectMapper JSON = new ObjectMapper();
+
+    @Test
+    void thePageAsksForAnIndexAndThenReadsThatFile() throws Exception {
+        Path dir = Files.createTempDirectory("chorus-deck");
+        Path configIndex = dir.resolve("config-index.json");
+        Path chosen = dir.resolve("shared").resolve("index.json");
+        SongIndex.write(configIndex, List.of(new SongCfg(1, "From config", List.of("verso"))));
+        SongIndex.write(chosen, List.of(new SongCfg(7, "From dropbox", List.of("verso"), "118")));
+        Javalin app = app(dir, configIndex, false);
+        try {
+            HttpResponse<String> missing = send(app, HttpRequest.newBuilder(uri(app, "/api/songs")).GET().build());
+            assertEquals(400, missing.statusCode());
+            assertTrue(missing.body().contains("Choose the song index first."));
+
+            HttpResponse<String> saved = send(app, HttpRequest.newBuilder(uri(app, "/api/library"))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(JSON.writeValueAsString(Map.of("index", chosen.toString()))))
+                    .build());
+            assertEquals(200, saved.statusCode());
+            JsonNode library = JSON.readTree(saved.body());
+            assertEquals(chosen.toAbsolutePath().normalize().toString(), library.get("index").asText());
+            assertEquals(chosen.getParent().toAbsolutePath().normalize().toString(), library.get("directory").asText());
+
+            JsonNode songs = JSON.readTree(send(app, HttpRequest.newBuilder(uri(app, "/api/songs")).GET().build()).body());
+            assertEquals(1, songs.size());
+            assertEquals(7, songs.get(0).get("id").asInt());
+
+            HttpResponse<String> other = post(app, "{\"ids\":[1],\"output\":\"a.pptx\"}");
+            assertEquals(400, other.statusCode());
+            assertTrue(other.body().contains("Unknown song id: 1"));
+
+            HttpResponse<String> generated = post(app, "{\"ids\":[7],\"output\":\"canto.pptx\"}");
+            assertEquals(200, generated.statusCode());
+            Path output = chosen.getParent().resolve("canto.pptx");
+            assertEquals(output.toAbsolutePath().normalize().toString(), JSON.readTree(generated.body()).get("output").asText());
+            assertTrue(Files.isRegularFile(output));
+            assertFalse(Files.exists(dir.resolve("no-template.pptx")));
+        } finally {
+            app.stop();
+        }
+    }
 
     @Test
     void fontsListsTheTemplateFacesThatAreNotInstalled() throws Exception {
@@ -259,14 +299,15 @@ class SongDeckServerTest {
         }
     }
 
-    private static Javalin app(Path dir, Path index) {
-        Path configFile = dir.resolve("config.json");
-        AppConfig config = new AppConfig(
-                dir.resolve("input.pptx"),
-                index,
-                dir.resolve("template.pptx"),
-                null);
-        return SongDeckServer.create(configFile, config).start("127.0.0.1", 0);
+    private static Javalin app(Path dir, Path index) throws Exception {
+        return app(dir, index, true);
+    }
+
+    private static Javalin app(Path dir, Path index, boolean remember) throws Exception {
+        if (remember && Files.isRegularFile(index)) {
+            new LibraryStore(dir).save(index);
+        }
+        return SongDeckServer.create(dir.resolve("config.json")).start("127.0.0.1", 0);
     }
 
     private static HttpResponse<String> get(Javalin app, String path) throws Exception {

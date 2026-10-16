@@ -41,4 +41,5 @@ bin/
 node_modules/
 
 backend/data/fit.json
+backend/library.json
 backend/data/liturgia/

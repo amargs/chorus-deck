@@ -23,11 +23,15 @@ const cover = reactive({
 const output = ref('cânticos.pptx')
 const outputEdited = ref(false)
 const folder = ref('')
+const folderEdited = ref(false)
 const savedPath = ref('')
 const error = ref('')
 const busy = ref(false)
 const loadError = ref('')
 const missingFonts = ref([])
+const indexPath = ref('')
+const indexMissing = ref(false)
+const libraryReady = ref(false)
 
 const coverReady = computed(() => {
   const text = (value) => value && value.trim()
@@ -50,6 +54,8 @@ const savedName = computed(() => {
   const name = path.split(/[/\\]/).pop()
   return name || output.value.trim()
 })
+
+const indexName = computed(() => indexPath.value.split(/[/\\]/).pop())
 
 watch([coverOn, () => cover.kind, () => cover.season, () => cover.ano, () => cover.domingo], () => {
   if (outputEdited.value) {
@@ -86,16 +92,37 @@ function onKeydown(event) {
 }
 
 onMounted(() => {
-  loadSongs()
+  loadLibrary()
   loadFonts()
   loadTheme()
-  loadDirectory()
   window.addEventListener('keydown', onKeydown)
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', onKeydown)
 })
+
+async function loadLibrary() {
+  try {
+    const response = await fetch('/api/library')
+    if (!response.ok) {
+      throw new Error(await errorText(response))
+    }
+    const payload = await response.json()
+    indexMissing.value = payload.missing === true
+    if (payload.index) {
+      indexPath.value = payload.index
+      if (!folderEdited.value && payload.directory) {
+        folder.value = payload.directory
+      }
+      await loadSongs()
+    }
+  } catch (e) {
+    loadError.value = e.message
+  } finally {
+    libraryReady.value = true
+  }
+}
 
 async function loadSongs() {
   try {
@@ -119,21 +146,6 @@ async function loadFonts() {
     missingFonts.value = Array.isArray(payload.missing) ? payload.missing : []
   } catch {
     // Generating still checks the fonts when this request fails.
-  }
-}
-
-async function loadDirectory() {
-  try {
-    const response = await fetch('/api/directory')
-    if (!response.ok) {
-      return
-    }
-    const payload = await response.json()
-    if (!folder.value && payload.directory) {
-      folder.value = payload.directory
-    }
-  } catch {
-    // generate still uses the folder beside the config when this is empty
   }
 }
 
@@ -188,7 +200,32 @@ function editOutput(value) {
   output.value = value
 }
 
+async function chooseIndex() {
+  error.value = ''
+  try {
+    const response = await fetch('/api/choose-index', { method: 'POST' })
+    const payload = await response.json()
+    if (!response.ok) {
+      throw new Error(payload.error || 'Não foi possível escolher o índice.')
+    }
+    if (!payload.index) {
+      return
+    }
+    indexPath.value = payload.index
+    indexMissing.value = false
+    if (!folderEdited.value && payload.directory) {
+      folder.value = payload.directory
+    }
+    chosen.value = []
+    loadError.value = ''
+    await loadSongs()
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : 'Não foi possível escolher o índice.'
+  }
+}
+
 async function chooseFolder() {
+  folderEdited.value = true
   error.value = ''
   try {
     const response = await fetch('/api/choose-folder', { method: 'POST' })
@@ -282,6 +319,7 @@ async function errorText(response) {
 </script>
 
 <template>
+  <div class="app">
   <div v-if="missingFonts.length" class="font-banner">
     <p>
       Identificados tipos de letra em falta. A apresentação pode não corresponder ao modelo até os instalar:
@@ -290,13 +328,44 @@ async function errorText(response) {
       </template>.
     </p>
   </div>
-  <main class="page">
+  <main v-if="libraryReady && !indexPath" class="welcome">
+    <h1>Olá! 👋</h1>
+    <p v-if="indexMissing">O índice guardado já não está nesse sítio. Escolha-o outra vez.</p>
+    <p>Para começar a gestão de cânticos, é necessária a localização do ficheiro de índice de cânticos.</p>
+    <div class="path-row">
+      <input type="text" readonly placeholder="Nenhum ficheiro escolhido" />
+      <button
+        class="browse"
+        type="button"
+        title="Escolher ficheiro"
+        aria-label="Escolher ficheiro"
+        @click="chooseIndex"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M3 7.5A1.5 1.5 0 0 1 4.5 6H9l2 2h8.5A1.5 1.5 0 0 1 21 9.5v8A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5v-10z" />
+        </svg>
+      </button>
+    </div>
+    <p v-if="error" class="status error">{{ error }}</p>
+  </main>
+  <main v-else-if="indexPath" class="page">
     <header>
       <h1>Cânticos</h1>
-      <p v-if="screen === 'songs'">Criar apresentação com um conjunto de cânticos.</p>
+      <div class="subtitle-row">
+        <p>Criar apresentação com um conjunto de cânticos.</p>
+        <p class="index-line">
+          <span>Índice: {{ indexName }}</span>
+          <button class="alter" type="button" @click="chooseIndex">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M3 7.5A1.5 1.5 0 0 1 4.5 6H9l2 2h8.5A1.5 1.5 0 0 1 21 9.5v8A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5v-10z" />
+            </svg>
+            alterar
+          </button>
+        </p>
+      </div>
     </header>
-    <p v-if="loadError" class="status error">{{ loadError }}</p>
-    <div v-else class="columns">
+    <p v-if="indexPath && loadError" class="status error">{{ loadError }}</p>
+    <div v-else-if="indexPath" class="columns">
       <SongList
         :songs="library"
         :query="query"
@@ -307,8 +376,8 @@ async function errorText(response) {
       />
       <ChosenSongs :songs="chosen" @remove="remove" @up="move($event, -1)" @down="move($event, 1)" @clear="clearChosen" />
     </div>
-    <CoverFields v-model:enabled="coverOn" :cover="cover" />
-    <section class="panel export">
+    <CoverFields v-if="indexPath" v-model:enabled="coverOn" :cover="cover" />
+    <section v-if="indexPath" class="panel export">
       <h2>Exportar</h2>
       <div class="export-fields">
         <label class="field">
@@ -361,4 +430,5 @@ async function errorText(response) {
       </div>
     </div>
   </main>
+  </div>
 </template>

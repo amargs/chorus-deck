@@ -3,6 +3,7 @@ package org.amargs.chorusdeck.web;
 import javax.swing.JDialog;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import java.awt.Component;
@@ -27,6 +28,15 @@ public final class FolderChooser {
 
     /** @return the chosen directory, or null when the dialog is cancelled */
     public static Path choose(Path start) throws Exception {
+        return choose(start, true, "Escolher pasta");
+    }
+
+    /** @return the chosen file, or null when the dialog is cancelled */
+    public static Path chooseFile(Path start) throws Exception {
+        return choose(start, false, "Escolher índice");
+    }
+
+    private static Path choose(Path start, boolean directoriesOnly, String title) throws Exception {
         if (GraphicsEnvironment.isHeadless()) {
             throw new IllegalStateException("A folder chooser needs a display.");
         }
@@ -36,7 +46,7 @@ public final class FolderChooser {
             return await(handle.result());
         }
         try {
-            Path chosen = show(start);
+            Path chosen = show(start, directoriesOnly, title);
             handle.result().complete(chosen);
             return chosen;
         } catch (Throwable error) {
@@ -68,7 +78,7 @@ public final class FolderChooser {
         }
     }
 
-    private static Path show(Path start) throws Exception {
+    private static Path show(Path start, boolean directoriesOnly, String title) throws Exception {
         Path[] chosen = new Path[1];
         SwingUtilities.invokeAndWait(() -> {
             JFrame owner = new JFrame();
@@ -100,10 +110,19 @@ public final class FolderChooser {
                         return dialog;
                     }
                 };
-                chooser.setDialogTitle("Escolher pasta");
-                chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-                if (start != null && Files.isDirectory(start)) {
-                    chooser.setCurrentDirectory(start.toFile());
+                chooser.setDialogTitle(title);
+                if (directoriesOnly) {
+                    chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+                    if (start != null && Files.isDirectory(start)) {
+                        chooser.setCurrentDirectory(start.toFile());
+                    }
+                } else {
+                    chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+                    chooser.setFileFilter(new FileNameExtensionFilter("JSON", "json"));
+                    Path folder = start != null && Files.isDirectory(start) ? start : start == null ? null : start.getParent();
+                    if (folder != null && Files.isDirectory(folder)) {
+                        chooser.setCurrentDirectory(folder.toFile());
+                    }
                 }
                 focus(owner);
                 if (chooser.showOpenDialog(owner) == JFileChooser.APPROVE_OPTION && chooser.getSelectedFile() != null) {

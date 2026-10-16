@@ -256,7 +256,7 @@ public final class Cli {
                             season, cover, domingo, frase, versiculo, year(ano)));
                 }
             }
-            case "serve" -> SongDeckServer.serve(configFile, config, port == null ? 7480 : port);
+            case "serve" -> SongDeckServer.serve(configFile, port == null ? 7480 : port);
             default -> throw new IllegalArgumentException("Unknown command: " + command + "\n" + usage());
         }
     }

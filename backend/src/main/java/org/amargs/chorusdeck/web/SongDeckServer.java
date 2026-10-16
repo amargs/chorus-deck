@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Path;
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
@@ -31,8 +32,9 @@ public final class SongDeckServer {
     private SongDeckServer() {
     }
 
-    public static Javalin create(Path configFile, AppConfig config) {
+    public static Javalin create(Path configFile) {
         Path directory = configFile.toAbsolutePath().normalize().getParent();
+        LibraryStore library = new LibraryStore(directory);
         AtomicReference<Path> lastOutput = new AtomicReference<>();
         Javalin app = Javalin.create(javalin -> {
             javalin.showJavalinBanner = false;
@@ -41,7 +43,16 @@ public final class SongDeckServer {
                 javalin.spaRoot.addFile("/", "/ui/index.html", Location.CLASSPATH);
             }
         });
-        app.get("/api/songs", ctx -> ctx.json(SongDeckRequests.songs(SongIndex.read(config.indexFile()))));
+        app.get("/api/library", ctx -> ctx.json(libraryJson(library.status())));
+        app.post("/api/library", ctx -> {
+            JsonNode body = readObject(ctx.body(), "The library request must be an object.");
+            JsonNode index = body.get("index");
+            if (index == null || !index.isTextual() || index.asText().isBlank()) {
+                throw new IllegalArgumentException("The library request needs an index path.");
+            }
+            ctx.json(libraryJson(new LibraryStore.Status(library.save(Path.of(index.asText())), false)));
+        });
+        app.get("/api/songs", ctx -> ctx.json(SongDeckRequests.songs(SongIndex.read(library.requireIndex()))));
         app.get("/api/fonts", ctx -> ctx.json(Map.of("missing", BoldMarkup.missingFontLinks())));
         TodayTheme today = new TodayTheme(TodayTheme::httpGet);
         app.get("/api/today", ctx -> {
@@ -51,10 +62,35 @@ public final class SongDeckServer {
             }
             ctx.json(Map.of("date", answer.snapshot().date(), "season", answer.snapshot().season()));
         });
-        app.get("/api/directory", ctx -> ctx.json(Map.of("directory", directory.toString())));
+        app.get("/api/directory", ctx -> {
+            LibraryStore.Status status = library.status();
+            Path folder = status.index() == null ? null : status.index().getParent();
+            ctx.json(folder == null ? Map.of() : Map.of("directory", folder.toString()));
+        });
+        app.post("/api/choose-index", ctx -> {
+            try {
+                LibraryStore.Status status = library.status();
+                Path start = status.index() == null ? directory : status.index().getParent();
+                Path chosen = FolderChooser.chooseFile(start == null ? directory : start);
+                if (chosen == null) {
+                    ctx.json(Map.of("cancelled", true));
+                } else {
+                    ctx.json(libraryJson(new LibraryStore.Status(library.save(chosen), false)));
+                }
+            } catch (IllegalArgumentException e) {
+                throw e;
+            } catch (Exception e) {
+                String message = e.getMessage();
+                throw new IOException(message == null || message.isBlank() ? "Could not open the file chooser." : message, e);
+            }
+        });
         app.post("/api/choose-folder", ctx -> {
             try {
-                Path chosen = FolderChooser.choose(directory);
+                LibraryStore.Status status = library.status();
+                Path start = status.index() == null || status.index().getParent() == null
+                        ? directory
+                        : status.index().getParent();
+                Path chosen = FolderChooser.choose(start);
                 if (chosen == null) {
                     ctx.json(Map.of("cancelled", true));
                 } else {
@@ -72,10 +108,12 @@ public final class SongDeckServer {
             } catch (IOException e) {
                 throw new IllegalArgumentException("The generate request must be an object.");
             }
-            List<SongCfg> songs = SongIndex.read(config.indexFile());
-            SongDeckRequests.Ready ready = SongDeckRequests.parse(body, songs, directory);
+            Path index = library.requireIndex();
+            List<SongCfg> songs = SongIndex.read(index);
+            Path besideIndex = index.getParent() == null ? directory : index.getParent();
+            SongDeckRequests.Ready ready = SongDeckRequests.parse(body, songs, besideIndex);
             DeckService.Generated generated = new DeckService().generateSongs(
-                    config.withOutput(ready.output()),
+                    new AppConfig(null, index, PackagedTemplate.file(), null).withOutput(ready.output()),
                     new DeckService.Selection.Ids(ready.ids()),
                     ready.cover(),
                     Interval.blank());
@@ -86,15 +124,7 @@ public final class SongDeckServer {
                     "slides", generated.slides()));
         });
         app.post("/api/open", ctx -> {
-            JsonNode body;
-            try {
-                body = JSON.readTree(ctx.body());
-            } catch (IOException e) {
-                throw new IllegalArgumentException("The open request must be an object.");
-            }
-            if (body == null || !body.isObject()) {
-                throw new IllegalArgumentException("The open request must be an object.");
-            }
+            JsonNode body = readObject(ctx.body(), "The open request must be an object.");
             JsonNode pathNode = body.get("path");
             JsonNode whatNode = body.get("what");
             if (pathNode == null || !pathNode.isTextual() || whatNode == null || !whatNode.isTextual()) {
@@ -111,12 +141,39 @@ public final class SongDeckServer {
         return app;
     }
 
-    public static void serve(Path configFile, AppConfig config, int port) {
-        Javalin app = create(configFile, config);
+    public static void serve(Path configFile, int port) {
+        Javalin app = create(configFile);
         app.start("127.0.0.1", port);
         URI uri = URI.create("http://127.0.0.1:" + app.port() + "/");
         LOG.info("Song deck at " + uri);
         open(uri);
+    }
+
+    private static JsonNode readObject(String body, String message) {
+        JsonNode node;
+        try {
+            node = JSON.readTree(body);
+        } catch (IOException e) {
+            throw new IllegalArgumentException(message);
+        }
+        if (node == null || !node.isObject()) {
+            throw new IllegalArgumentException(message);
+        }
+        return node;
+    }
+
+    private static Map<String, Object> libraryJson(LibraryStore.Status status) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        if (status.index() != null) {
+            body.put("index", status.index().toString());
+            if (status.index().getParent() != null) {
+                body.put("directory", status.index().getParent().toString());
+            }
+        }
+        if (status.missing()) {
+            body.put("missing", true);
+        }
+        return body;
     }
 
     private static void open(URI uri) {
