@@ -15,6 +15,7 @@ import org.amargs.chorusdeck.index.SourceSnapshot;
 import org.amargs.chorusdeck.index.StaleSources;
 import org.amargs.chorusdeck.liturgy.LiturgyClient;
 import org.amargs.chorusdeck.liturgy.LiturgyDay;
+import org.amargs.chorusdeck.web.SongDeckServer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -54,6 +55,7 @@ public final class Cli {
         String intervalText = null;
         Path massFile = null;
         String date = null;
+        Integer port = null;
 
         for (int i = 1; i < args.length; i++) {
             String arg = args[i];
@@ -138,6 +140,15 @@ public final class Cli {
                 case "--interval-text" -> {
                     requireGenerate(command, "--interval-text");
                     intervalText = single(intervalText, requireValue(args, ++i, "--interval-text"), "--interval-text");
+                }
+                case "--port" -> {
+                    if (!"serve".equals(command)) {
+                        throw new IllegalArgumentException("--port is only valid for serve.\n" + usage());
+                    }
+                    if (port != null) {
+                        throw new IllegalArgumentException("Duplicate --port.\n" + usage());
+                    }
+                    port = parsePort(requireValue(args, ++i, "--port"));
                 }
                 default -> throw new IllegalArgumentException("Unknown argument: " + arg + "\n" + usage());
             }
@@ -245,8 +256,21 @@ public final class Cli {
                             season, cover, domingo, frase, versiculo, year(ano)));
                 }
             }
+            case "serve" -> SongDeckServer.serve(configFile, config, port == null ? 7480 : port);
             default -> throw new IllegalArgumentException("Unknown command: " + command + "\n" + usage());
         }
+    }
+
+    private static int parsePort(String raw) {
+        try {
+            int port = Integer.parseInt(raw);
+            if (port >= 1 && port <= 65535) {
+                return port;
+            }
+        } catch (NumberFormatException ignored) {
+            // The message below covers both a non-number and an out-of-range port.
+        }
+        throw new IllegalArgumentException("--port must be between 1 and 65535.\n" + usage());
     }
 
     private static LocalDate parseDate(String raw) {
@@ -435,6 +459,7 @@ public final class Cli {
                   songbook [--config <file>]
                   generate (--ids <id,id,...> | --book-ids <bookId,bookId,...>) --season <season> --ano <A|B|C> --domingo <text> --frase <text> --versiculo <text> [--cover <layout>] [--config <file>]
                   generate --mode songs (--ids <id,id,...> | --book-ids <bookId,bookId,...>) [--interval vazio|imagem|texto|texto+imagem] [--interval-image <file>] [--interval-text <text>] [--with-cover --season <season> --ano <A|B|C> --domingo <text> --frase <text> --versiculo <text> [--cover <layout>]] [--config <file>]
-                  generate --mass <file.json|file.yaml> [--date YYYY-MM-DD] [--config <file>]""";
+                  generate --mass <file.json|file.yaml> [--date YYYY-MM-DD] [--config <file>]
+                  serve [--port <n>] [--config <file>]""";
     }
 }

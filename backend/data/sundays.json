@@ -1,0 +1,136 @@
+{
+  "dates" : {
+    "2026-10-18" : "ordinary-29/A",
+    "2026-12-06" : "advent-2/B",
+    "2026-12-13" : "advent-3/B",
+    "2027-03-07" : "lent-4/B",
+    "2027-05-16" : "pentecost/B",
+    "2027-03-21" : "palm-sunday/B",
+    "2027-08-15" : "ordinary-20/B"
+  },
+  "sundays" : {
+    "ordinary-29/A" : {
+      "domingo" : "Domingo XXIX",
+      "season" : "comum",
+      "primeira" : {
+        "referencia" : "Is 45, 1.4-6",
+        "citacao" : "Tomei Ciro pela mão direita para subjugar diante dele as nações"
+      },
+      "segunda" : {
+        "referencia" : "1Ts 1, 1-5",
+        "citacao" : "Recordamos a vossa fé, caridade e esperança"
+      },
+      "salmo" : "Aclamai a glória e o poder do Senhor.",
+      "evangelho" : {
+        "referencia" : "Mt 22, 15-21",
+        "citacao" : "Dai a César o que é de César e a Deus o que é de Deus"
+      }
+    },
+    "advent-2/B" : {
+      "domingo" : "Domingo II",
+      "season" : "advento",
+      "primeira" : {
+        "referencia" : "Is 40, 1-5, 9-11",
+        "citacao" : ""
+      },
+      "segunda" : {
+        "referencia" : "2Pe 3, 8-14",
+        "citacao" : ""
+      },
+      "salmo" : "",
+      "evangelho" : {
+        "referencia" : "Mc 1, 1-8",
+        "citacao" : ""
+      }
+    },
+    "advent-3/B" : {
+      "domingo" : "Domingo III",
+      "season" : "advento",
+      "cover" : "Capa - Domingo III Advento",
+      "primeira" : {
+        "referencia" : "Is 61, 1-2, 10-11",
+        "citacao" : ""
+      },
+      "segunda" : {
+        "referencia" : "1Ts 5, 16-24",
+        "citacao" : ""
+      },
+      "salmo" : "",
+      "evangelho" : {
+        "referencia" : "Jo 1, 6-8, 19-28",
+        "citacao" : ""
+      }
+    },
+    "lent-4/B" : {
+      "domingo" : "Domingo IV",
+      "season" : "quaresma",
+      "cover" : "Capa - Domingo IV Quaresma",
+      "primeira" : {
+        "referencia" : "2Cr 36, 14-16, 19-23",
+        "citacao" : ""
+      },
+      "segunda" : {
+        "referencia" : "Ef 2, 4-10",
+        "citacao" : ""
+      },
+      "salmo" : "",
+      "evangelho" : {
+        "referencia" : "Jo 3, 14-21",
+        "citacao" : ""
+      },
+      "louvor" : "Deus amou tanto o mundo\nque Lhe Deu o seu Filho Unigénito;\nQuem acredita n’Ele tem a vida eterna."
+    },
+    "pentecost/B" : {
+      "domingo" : "Domingo de Pentecostes",
+      "season" : "pentecostes",
+      "primeira" : {
+        "referencia" : "At 2, 1-11",
+        "citacao" : ""
+      },
+      "segunda" : {
+        "referencia" : "Gl 5, 16-25",
+        "citacao" : ""
+      },
+      "salmo" : "",
+      "evangelho" : {
+        "referencia" : "Jo 15, 26-27, 16, 12-15",
+        "citacao" : ""
+      }
+    },
+    "palm-sunday/B" : {
+      "domingo" : "Domingo de Ramos",
+      "season" : "ramos",
+      "primeira" : {
+        "referencia" : "Is 50, 4-7",
+        "citacao" : ""
+      },
+      "segunda" : {
+        "referencia" : "Flp 2, 6-11",
+        "citacao" : ""
+      },
+      "salmo" : "",
+      "evangelho" : {
+        "referencia" : "Mc 14, 1-15, 47",
+        "citacao" : ""
+      },
+      "louvor" : "Cristo obedeceu até à morte\ne morte de cruz.\nPor isso Deus O exaltou\ne Lhe deu um nome que está acima de todos os nomes."
+    },
+    "ordinary-20/B" : {
+      "domingo" : "Domingo XX",
+      "season" : "comum",
+      "primeira" : {
+        "referencia" : "Pr 9, 1-6",
+        "citacao" : ""
+      },
+      "segunda" : {
+        "referencia" : "Ef 5, 15-20",
+        "citacao" : ""
+      },
+      "salmo" : "",
+      "evangelho" : {
+        "referencia" : "Jo 6, 51-58",
+        "citacao" : ""
+      }
+    }
+  }
+}

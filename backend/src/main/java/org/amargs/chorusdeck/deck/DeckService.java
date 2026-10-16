@@ -388,7 +388,14 @@ public final class DeckService {
         TemplateLayouts.setShapeText(coverSlide, "Domingo", cover.domingo(), false);
         TemplateLayouts.setShapeText(coverSlide, "Frase", cover.quotedFrase(), true);
         TemplateLayouts.setShapeText(coverSlide, "Versiculo", cover.versiculo(), false);
-        TemplateLayouts.setShapeText(coverSlide, "Tempo", season.tempo(cover.ano()), false);
+        TemplateLayouts.setShapeText(coverSlide, "Tempo", tempoLine(cover, season), false);
+    }
+
+    private static String tempoLine(Cover cover, Season season) {
+        if (cover.header() != null && !cover.header().isBlank()) {
+            return cover.header().trim();
+        }
+        return season.tempo(cover.ano());
     }
 
     private static String notes(List<Picked> picked) {

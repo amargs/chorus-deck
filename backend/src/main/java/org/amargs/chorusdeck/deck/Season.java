@@ -1,5 +1,6 @@
 package org.amargs.chorusdeck.deck;
 
+import java.util.List;
 import java.util.Locale;
 
 public final class Season {
@@ -55,6 +56,21 @@ public final class Season {
                 default -> "background_comum.jpg";
             };
         };
+    }
+
+    public static List<String> coverLayouts() {
+        return List.of(
+                "Capa - Tempo Comum",
+                "Capa - Advento",
+                "Capa - Natal",
+                "Capa - Quaresma",
+                "Capa - Domingo III Advento",
+                "Capa - Domingo IV Quaresma",
+                "Capa - Ramos",
+                "Capa - Páscoa",
+                "Capa - Pentecostes",
+                "Capa - Solenidade",
+                "Capa - Solenidade Pedro Paulo");
     }
 
     public static Season resolve(String seasonKey, String coverOverride) {

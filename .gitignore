@@ -38,5 +38,8 @@ bin/
 ### Mac OS ###
 .DS_Store
 
+node_modules/
+
 backend/data/fit.json
+backend/data/calendar-cache.json
 backend/data/liturgia/

@@ -13,6 +13,8 @@
         </Console>
     </Appenders>
     <Loggers>
+        <Logger name="org.eclipse.jetty" level="warn"/>
+        <Logger name="io.javalin" level="warn"/>
         <Root level="info">
             <AppenderRef ref="Stdout"/>
             <AppenderRef ref="Stderr"/>
