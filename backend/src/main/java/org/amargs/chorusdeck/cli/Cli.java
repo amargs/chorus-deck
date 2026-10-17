@@ -15,6 +15,7 @@ import org.amargs.chorusdeck.index.SourceSnapshot;
 import org.amargs.chorusdeck.index.StaleSources;
 import org.amargs.chorusdeck.liturgy.LiturgyClient;
 import org.amargs.chorusdeck.liturgy.LiturgyDay;
+import org.amargs.chorusdeck.web.AppState;
 import org.amargs.chorusdeck.web.SongDeckServer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -154,6 +155,12 @@ public final class Cli {
             }
         }
 
+        if ("serve".equals(command)) {
+            SongDeckServer.serve(AppState.directory(), port == null ? 7480 : port);
+            // Stop leftover non-daemon threads so the packaged exe is not left locked.
+            System.exit(0);
+        }
+
         Path configFile = AppConfig.findConfig(configArg);
         AppConfig config = AppConfig.load(configFile);
         switch (command) {
@@ -256,7 +263,6 @@ public final class Cli {
                             season, cover, domingo, frase, versiculo, year(ano)));
                 }
             }
-            case "serve" -> SongDeckServer.serve(configFile, port == null ? 7480 : port);
             default -> throw new IllegalArgumentException("Unknown command: " + command + "\n" + usage());
         }
     }

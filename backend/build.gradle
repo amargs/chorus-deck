@@ -1,6 +1,8 @@
 plugins {
     id 'java'
     id 'application'
+    // 1.12.7 runs on the Java 8 process that launches Gradle. jlink still uses the Java 20 toolchain.
+    id 'org.beryx.runtime' version '1.12.7'
 }
 
 group = 'org.amargs.chorusdeck'
@@ -20,12 +22,79 @@ dependencies {
     implementation 'org.apache.logging.log4j:log4j-slf4j2-impl:2.25.3'
 
     implementation 'io.javalin:javalin:6.7.0'
+    implementation 'net.java.dev.jna:jna-platform:5.15.0'
 
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.1'
 }
 
 application {
     mainClass = 'org.amargs.chorusdeck.Main'
+    applicationName = 'eCoral'
+}
+
+def packageRoot = new File(System.getProperty('java.io.tmpdir'), "ecoral-package-${System.currentTimeMillis()}")
+def wixSource = layout.projectDirectory.dir('packaging/wix')
+def stagedWix = layout.buildDirectory.dir('wix')
+
+tasks.register('prepareWix', Sync) {
+    group = 'distribution'
+    description = 'Stage the installer sources with this project\'s wizard image path.'
+    into stagedWix
+    from(wixSource) {
+        exclude 'main.wxs'
+    }
+    from(wixSource.file('main.wxs')) {
+        filter(org.apache.tools.ant.filters.ReplaceTokens, tokens: [
+                DIALOG_BMP: wixSource.file('dialog.bmp').asFile.absolutePath.replace('\\', '/')
+        ])
+    }
+}
+
+runtime {
+    options = ['--strip-debug', '--compress', '2', '--no-header-files', '--no-man-pages']
+    // Modules this app loads. java.xml and java.logging come in with java.desktop and java.sql.
+    // java.management is read when logging starts. jdk.crypto.ec is the HTTPS provider.
+    // jdk.charsets covers Windows code pages in Office files.
+    modules = [
+            'java.desktop',
+            'java.management',
+            'java.net.http',
+            'java.sql',
+            'jdk.charsets',
+            'jdk.crypto.ec',
+    ]
+    jpackage {
+        skipInstaller = false
+        imageName = 'eCoral'
+        installerName = 'eCoral'
+        installerType = 'exe'
+        appVersion = '0.8.0'
+        args = ['serve']
+        jvmArgs = ['-Dfile.encoding=UTF-8']
+        def icon = layout.projectDirectory.file('packaging/ecoral.ico').asFile.absolutePath
+        imageOptions = ['--icon', icon]
+        // Without a wizard page, Windows only flashes a progress box. The directory page
+        // turns on the full setup, which stays on the last step until Finish.
+        // The WiX source gives each build its own product code so the same version replaces an install.
+        installerOptions = ['--win-menu', '--win-menu-group', 'eCoral', '--win-dir-chooser', '--vendor', 'eCoral', '--description', 'eCoral', '--icon', icon, '--resource-dir', stagedWix.get().asFile.absolutePath]
+        // A fresh folder each run, so an open eCoral.exe cannot block the next build.
+        imageOutputDir = new File(packageRoot, 'image')
+        installerOutputDir = new File(packageRoot, 'installer')
+    }
+}
+
+tasks.named('jpackage') {
+    dependsOn tasks.named('prepareWix')
+}
+
+tasks.register('packageApp', Copy) {
+    group = 'distribution'
+    description = 'Build the eCoral Windows installer.'
+    dependsOn tasks.named('jpackage')
+    from(new File(packageRoot, 'installer')) {
+        include 'eCoral-*.exe'
+    }
+    into layout.buildDirectory.dir('distributions')
 }
 
 test {

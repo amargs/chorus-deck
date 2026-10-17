@@ -13,7 +13,6 @@ import org.amargs.chorusdeck.index.SongIndex;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.awt.Desktop;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Path;
@@ -32,9 +31,8 @@ public final class SongDeckServer {
     private SongDeckServer() {
     }
 
-    public static Javalin create(Path configFile) {
-        Path directory = configFile.toAbsolutePath().normalize().getParent();
-        LibraryStore library = new LibraryStore(directory);
+    public static Javalin create(Path stateDirectory) {
+        LibraryStore library = new LibraryStore(stateDirectory);
         AtomicReference<Path> lastOutput = new AtomicReference<>();
         Javalin app = Javalin.create(javalin -> {
             javalin.showJavalinBanner = false;
@@ -70,8 +68,7 @@ public final class SongDeckServer {
         app.post("/api/choose-index", ctx -> {
             try {
                 LibraryStore.Status status = library.status();
-                Path start = status.index() == null ? directory : status.index().getParent();
-                Path chosen = FolderChooser.chooseFile(start == null ? directory : start);
+                Path chosen = FolderChooser.chooseFile(browseStart(status));
                 if (chosen == null) {
                     ctx.json(Map.of("cancelled", true));
                 } else {
@@ -87,10 +84,7 @@ public final class SongDeckServer {
         app.post("/api/choose-folder", ctx -> {
             try {
                 LibraryStore.Status status = library.status();
-                Path start = status.index() == null || status.index().getParent() == null
-                        ? directory
-                        : status.index().getParent();
-                Path chosen = FolderChooser.choose(start);
+                Path chosen = FolderChooser.choose(browseStart(status));
                 if (chosen == null) {
                     ctx.json(Map.of("cancelled", true));
                 } else {
@@ -110,7 +104,7 @@ public final class SongDeckServer {
             }
             Path index = library.requireIndex();
             List<SongCfg> songs = SongIndex.read(index);
-            Path besideIndex = index.getParent() == null ? directory : index.getParent();
+            Path besideIndex = index.getParent() == null ? stateDirectory : index.getParent();
             SongDeckRequests.Ready ready = SongDeckRequests.parse(body, songs, besideIndex);
             DeckService.Generated generated = new DeckService().generateSongs(
                     new AppConfig(null, index, PackagedTemplate.file(), null).withOutput(ready.output()),
@@ -141,12 +135,33 @@ public final class SongDeckServer {
         return app;
     }
 
-    public static void serve(Path configFile, int port) {
-        Javalin app = create(configFile);
-        app.start("127.0.0.1", port);
-        URI uri = URI.create("http://127.0.0.1:" + app.port() + "/");
-        LOG.info("Song deck at " + uri);
-        open(uri);
+    /** Opens the page and returns when that window closes. */
+    public static void serve(Path stateDirectory, int port) throws Exception {
+        serve(stateDirectory, port, AppWindow::open);
+    }
+
+    static void serve(Path stateDirectory, int port, Window window) throws Exception {
+        Javalin app = create(stateDirectory);
+        try {
+            app.start("127.0.0.1", port);
+            URI uri = URI.create("http://127.0.0.1:" + app.port() + "/");
+            LOG.info("Song deck at " + uri);
+            window.open(uri, stateDirectory.resolve("browser-profile"));
+        } finally {
+            app.stop();
+        }
+    }
+
+    @FunctionalInterface
+    interface Window {
+        void open(URI uri, Path profile) throws Exception;
+    }
+
+    private static Path browseStart(LibraryStore.Status status) {
+        if (status.index() != null && status.index().getParent() != null) {
+            return status.index().getParent();
+        }
+        return Path.of(System.getProperty("user.home"));
     }
 
     private static JsonNode readObject(String body, String message) {
@@ -174,16 +189,5 @@ public final class SongDeckServer {
             body.put("missing", true);
         }
         return body;
-    }
-
-    private static void open(URI uri) {
-        if (!Desktop.isDesktopSupported() || !Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
-            return;
-        }
-        try {
-            Desktop.getDesktop().browse(uri);
-        } catch (IOException e) {
-            LOG.warn("Could not open the browser. Open " + uri);
-        }
     }
 }

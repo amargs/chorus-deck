@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<WixLocalization Culture="pt-pt" xmlns="http://schemas.microsoft.com/wix/2006/localization" Codepage="1252">
+  <String Id="message.install.dir.exist">A pasta [INSTALLDIR] já existe. Quer instalar nessa pasta mesmo assim?</String>
+  <String Id="MainFeatureTitle">eCoral</String>
+  <String Id="DowngradeErrorMessage">Já está instalada uma versão mais recente do [ProductName]. Não é possível instalar uma versão anterior. A instalação vai terminar.</String>
+  <String Id="DisallowUpgradeErrorMessage">Já está instalada uma versão anterior do [ProductName]. Atualizações desativadas. A instalação vai terminar.</String>
+  <String Id="ShortcutPromptDlg_Title">Instalação do [ProductName]</String>
+  <String Id="ShortcutPromptDlgTitle">{\WixUI_Font_Title}Atalhos</String>
+  <String Id="ShortcutPromptDlgBannerBitmap">WixUI_Bmp_Banner</String>
+  <String Id="ShortcutPromptDlgDescription">Escolha os atalhos a criar.</String>
+  <String Id="ShortcutPromptDlgDesktopShortcutControlLabel">Criar atalho no ambiente de trabalho</String>
+  <String Id="ShortcutPromptDlgStartMenuShortcutControlLabel">Criar atalho no menu Iniciar</String>
+  <String Id="InstallDirNotEmptyDlg_Title">Instalação do [ProductName]</String>
+  <String Id="ContextMenuCommandLabel">Abrir com [ProductName]</String>
+</WixLocalization>

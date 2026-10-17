@@ -6,12 +6,16 @@ import javax.swing.JFrame;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
+import javax.imageio.ImageIO;
 import java.awt.Component;
 import java.awt.GraphicsEnvironment;
 import java.awt.HeadlessException;
+import java.awt.Image;
 import java.awt.Window;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
@@ -21,6 +25,7 @@ import java.util.concurrent.ExecutionException;
 public final class FolderChooser {
 
     private static final Flight FLIGHT = new Flight();
+    private static final Image ICON = loadIcon();
     private static volatile JDialog openDialog;
 
     private FolderChooser() {
@@ -84,6 +89,9 @@ public final class FolderChooser {
             JFrame owner = new JFrame();
             owner.setAlwaysOnTop(true);
             owner.setUndecorated(true);
+            if (ICON != null) {
+                owner.setIconImage(ICON);
+            }
             owner.setType(Window.Type.UTILITY);
             owner.setSize(0, 0);
             owner.setLocationRelativeTo(null);
@@ -98,6 +106,9 @@ public final class FolderChooser {
                     @Override
                     protected JDialog createDialog(Component parent) throws HeadlessException {
                         JDialog dialog = super.createDialog(parent);
+                        if (ICON != null) {
+                            dialog.setIconImage(ICON);
+                        }
                         dialog.setAlwaysOnTop(true);
                         dialog.addWindowListener(new WindowAdapter() {
                             @Override
@@ -144,6 +155,17 @@ public final class FolderChooser {
                 focus(dialog);
             }
         });
+    }
+
+    private static Image loadIcon() {
+        try (InputStream in = FolderChooser.class.getResourceAsStream("/ecoral-icon.png")) {
+            if (in == null) {
+                return null;
+            }
+            return ImageIO.read(in);
+        } catch (IOException e) {
+            return null;
+        }
     }
 
     private static void focus(Window window) {

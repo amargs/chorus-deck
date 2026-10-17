@@ -17,6 +17,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -299,6 +300,21 @@ class SongDeckServerTest {
         }
     }
 
+    @Test
+    void serveRemembersStateWithoutAConfigFile() throws Exception {
+        Path dir = Files.createTempDirectory("chorus-deck-serve");
+        assertFalse(Files.exists(dir.resolve("config.json")));
+        AtomicReference<URI> opened = new AtomicReference<>();
+        AtomicReference<Path> profile = new AtomicReference<>();
+        SongDeckServer.serve(dir, 0, (uri, folder) -> {
+            opened.set(uri);
+            profile.set(folder);
+        });
+        assertTrue(opened.get().toString().startsWith("http://127.0.0.1:"));
+        assertTrue(opened.get().toString().endsWith("/"));
+        assertEquals(dir.resolve("browser-profile").toAbsolutePath().normalize(), profile.get().toAbsolutePath().normalize());
+    }
+
     private static Javalin app(Path dir, Path index) throws Exception {
         return app(dir, index, true);
     }
@@ -307,7 +323,7 @@ class SongDeckServerTest {
         if (remember && Files.isRegularFile(index)) {
             new LibraryStore(dir).save(index);
         }
-        return SongDeckServer.create(dir.resolve("config.json")).start("127.0.0.1", 0);
+        return SongDeckServer.create(dir).start("127.0.0.1", 0);
     }
 
     private static HttpResponse<String> get(Javalin app, String path) throws Exception {

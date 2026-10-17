@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<WixLocalization Culture="en-us" xmlns="http://schemas.microsoft.com/wix/2006/localization" Codepage="1252">
+  <String Overridable="yes" Id="message.install.dir.exist">The folder [INSTALLDIR] already exists. Install to that folder anyway?</String>
+  <String Overridable="yes" Id="MainFeatureTitle">eCoral</String>
+  <String Overridable="yes" Id="DowngradeErrorMessage">A newer version of [ProductName] is already installed. Setup will exit.</String>
+  <String Overridable="yes" Id="DisallowUpgradeErrorMessage">An older version of [ProductName] is already installed. Setup will exit.</String>
+  <String Overridable="yes" Id="ShortcutPromptDlg_Title">[ProductName] Setup</String>
+  <String Overridable="yes" Id="ShortcutPromptDlgTitle">{\WixUI_Font_Title}Shortcuts</String>
+  <String Overridable="yes" Id="ShortcutPromptDlgBannerBitmap">WixUI_Bmp_Banner</String>
+  <String Overridable="yes" Id="ShortcutPromptDlgDescription">Select the shortcuts to create.</String>
+  <String Overridable="yes" Id="ShortcutPromptDlgDesktopShortcutControlLabel">Create a desktop shortcut</String>
+  <String Overridable="yes" Id="ShortcutPromptDlgStartMenuShortcutControlLabel">Create a Start menu shortcut</String>
+  <String Overridable="yes" Id="InstallDirNotEmptyDlg_Title">[ProductName] Setup</String>
+  <String Overridable="yes" Id="ContextMenuCommandLabel">Open with [ProductName]</String>
+</WixLocalization>

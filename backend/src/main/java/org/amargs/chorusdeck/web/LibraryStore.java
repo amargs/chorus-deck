@@ -9,7 +9,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-/** The song index the page remembers, stored beside the app. */
+/** The song index the page remembers, stored in the directory it is given. */
 public final class LibraryStore {
 
     static final String FILE_NAME = "library.json";
