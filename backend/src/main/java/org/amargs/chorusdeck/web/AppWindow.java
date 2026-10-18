@@ -3,9 +3,7 @@ package org.amargs.chorusdeck.web;
 import ca.weblite.webview.WebViewPopupEvent;
 import ca.weblite.webview.WebViewPopupHandler;
 import ca.weblite.webview.swing.WebViewComponent;
-import com.sun.jna.platform.win32.Advapi32Util;
 import com.sun.jna.platform.win32.Kernel32;
-import com.sun.jna.platform.win32.WinReg;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -24,23 +22,26 @@ import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
+import java.nio.channels.OverlappingFileLockException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
+import java.nio.file.StandardOpenOption;
 import java.util.Locale;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicReference;
 
 /** Swing window with the page in WebView2. Returns when that window closes. */
 public final class AppWindow {
 
     private static final Logger LOG = LogManager.getLogger(AppWindow.class);
-    /** Evergreen WebView2 Runtime client, from Microsoft's distribution docs. */
-    private static final String RUNTIME_CLIENT = "{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}";
-    private static final String RUNTIME_KEY =
-            "SOFTWARE\\Microsoft\\EdgeUpdate\\Clients\\" + RUNTIME_CLIENT;
-    private static final String RUNTIME_KEY_WOW =
-            "SOFTWARE\\WOW6432Node\\Microsoft\\EdgeUpdate\\Clients\\" + RUNTIME_CLIENT;
+    /** The native view appears on the first paint. This is how long that page may take to answer. */
+    private static final long PAGE_WAIT_SECONDS = 3;
 
     private AppWindow() {
     }
@@ -53,21 +54,32 @@ public final class AppWindow {
         if (GraphicsEnvironment.isHeadless()) {
             throw new IllegalStateException("eCoral's window needs a display.");
         }
-        if (!runtimeInstalled()) {
-            AppDialog.error("Instale o Microsoft Edge WebView2 Runtime para abrir o eCoral.");
-            return;
-        }
         Path folder = profile.toAbsolutePath().normalize();
         Files.createDirectories(folder);
-        // The native library reads this before it creates the WebView2 profile.
-        // The install directory is often not writable.
-        if (!Kernel32.INSTANCE.SetEnvironmentVariable("WEBVIEW2_USER_DATA_FOLDER", folder.toString())) {
-            LOG.warn("WebView2 will use its own profile folder");
+        try (Hold hold = Hold.tryAcquire(lockFile(folder))) {
+            if (hold == null) {
+                AppDialog.error("O eCoral já está aberto.");
+                return;
+            }
+            // The native library reads this before it creates the WebView2 profile.
+            // The install directory is often not writable.
+            if (!Kernel32.INSTANCE.SetEnvironmentVariable("WEBVIEW2_USER_DATA_FOLDER", folder.toString())) {
+                LOG.warn("WebView2 will use its own profile folder");
+            }
+            CountDownLatch closed = new CountDownLatch(1);
+            AtomicReference<WebViewComponent> page = new AtomicReference<>();
+            SwingUtilities.invokeAndWait(() -> show(uri, closed, page));
+            if (!pageAppeared(page.get())) {
+                if (closed.getCount() > 0) {
+                    SwingUtilities.invokeAndWait(() -> dispose(page.get()));
+                    closed.await();
+                    AppDialog.error("A janela do eCoral não abriu. Instale o Microsoft Edge WebView2 Runtime.");
+                }
+                return;
+            }
+            closed.await();
+            LOG.info("Window closed");
         }
-        CountDownLatch closed = new CountDownLatch(1);
-        SwingUtilities.invokeAndWait(() -> show(uri, closed));
-        closed.await();
-        LOG.info("Window closed");
     }
 
     /** The page itself, or a blank document the engine uses while starting. */
@@ -83,17 +95,22 @@ public final class AppWindow {
         return sameServer(url, app);
     }
 
-    /** True when an Evergreen runtime executable or its registry client is present. */
-    static boolean runtimeInstalled(List<Path> executables, boolean registryHit) {
-        for (Path executable : executables) {
-            if (executable != null && Files.isRegularFile(executable)) {
-                return true;
-            }
+    /** The shell's page has answered with its title. {@code evalAsync} returns that title as JSON. */
+    static boolean pageReady(String title) {
+        if (title == null || title.length() < 2 || !title.startsWith("\"") || !title.endsWith("\"")) {
+            return false;
         }
-        return registryHit;
+        return "eCoral".equals(title.substring(1, title.length() - 1));
     }
 
-    private static void show(URI uri, CountDownLatch closed) {
+    /** Lock beside the profile, in the eCoral state folder. */
+    static Path lockFile(Path profile) {
+        Path parent = profile.getParent();
+        Path state = parent == null ? profile : parent;
+        return state.resolve("window.lock");
+    }
+
+    private static void show(URI uri, CountDownLatch closed, AtomicReference<WebViewComponent> opened) {
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
         } catch (Exception ignored) {
@@ -112,6 +129,7 @@ public final class AppWindow {
                 return false;
             }
         });
+        opened.set(page);
         JFrame frame = new JFrame("eCoral");
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         Image icon = loadIcon();
@@ -132,6 +150,53 @@ public final class AppWindow {
         });
         LOG.info("Opening " + uri);
         frame.setVisible(true);
+    }
+
+    private static boolean pageAppeared(WebViewComponent page) throws Exception {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(PAGE_WAIT_SECONDS);
+        while (System.nanoTime() < deadline) {
+            AtomicReference<CompletableFuture<String>> pending = new AtomicReference<>();
+            SwingUtilities.invokeAndWait(() -> pending.set(page.evalAsync(
+                    "return new Promise(resolve => {"
+                            + " const check = () => document.title ? resolve(document.title) : setTimeout(check, 50);"
+                            + " check();"
+                            + "});")));
+            long left = deadline - System.nanoTime();
+            if (left <= 0) {
+                return false;
+            }
+            try {
+                return pageReady(pending.get().get(left, TimeUnit.NANOSECONDS));
+            } catch (TimeoutException timedOut) {
+                return false;
+            } catch (ExecutionException failed) {
+                if (!notReady(failed)) {
+                    LOG.warn("The page did not open: " + failed.getCause());
+                    return false;
+                }
+                Thread.sleep(100);
+            }
+        }
+        return false;
+    }
+
+    private static boolean notReady(Throwable error) {
+        Throwable current = error;
+        while (current != null) {
+            String message = current.getMessage();
+            if (message != null && message.contains("not displayed")) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
+    }
+
+    private static void dispose(WebViewComponent page) {
+        java.awt.Window frame = SwingUtilities.getWindowAncestor(page);
+        if (frame != null) {
+            frame.dispose();
+        }
     }
 
     /** Keep this server. Open another web page in the system browser. */
@@ -182,55 +247,6 @@ public final class AppWindow {
         thread.start();
     }
 
-    private static boolean runtimeInstalled() {
-        return runtimeInstalled(runtimeExecutables(), runtimeRegistered());
-    }
-
-    private static List<Path> runtimeExecutables() {
-        List<Path> found = new ArrayList<>();
-        addRuntime(found, System.getenv("ProgramFiles(x86)"));
-        addRuntime(found, System.getenv("ProgramFiles"));
-        addRuntime(found, System.getenv("LOCALAPPDATA"));
-        return found;
-    }
-
-    private static void addRuntime(List<Path> found, String root) {
-        if (root == null || root.isBlank()) {
-            return;
-        }
-        Path application = Path.of(root, "Microsoft", "EdgeWebView", "Application");
-        if (!Files.isDirectory(application)) {
-            return;
-        }
-        try (var children = Files.newDirectoryStream(application)) {
-            for (Path child : children) {
-                if (Files.isDirectory(child)) {
-                    found.add(child.resolve("msedgewebview2.exe"));
-                }
-            }
-        } catch (IOException e) {
-            LOG.warn("Could not look for the WebView2 runtime: " + e.getMessage());
-        }
-    }
-
-    private static boolean runtimeRegistered() {
-        return hasVersion(WinReg.HKEY_LOCAL_MACHINE, RUNTIME_KEY)
-                || hasVersion(WinReg.HKEY_LOCAL_MACHINE, RUNTIME_KEY_WOW)
-                || hasVersion(WinReg.HKEY_CURRENT_USER, RUNTIME_KEY);
-    }
-
-    private static boolean hasVersion(WinReg.HKEY root, String key) {
-        try {
-            if (!Advapi32Util.registryKeyExists(root, key) || !Advapi32Util.registryValueExists(root, key, "pv")) {
-                return false;
-            }
-            String version = Advapi32Util.registryGetStringValue(root, key, "pv");
-            return version != null && !version.isBlank();
-        } catch (RuntimeException e) {
-            return false;
-        }
-    }
-
     private static boolean windows() {
         return System.getProperty("os.name", "").toLowerCase(Locale.ROOT).startsWith("windows");
     }
@@ -243,6 +259,43 @@ public final class AppWindow {
             return ImageIO.read(in);
         } catch (IOException e) {
             return null;
+        }
+    }
+
+    /** One open window. A second launch in this process or another finds the file already locked. */
+    static final class Hold implements AutoCloseable {
+        private final FileChannel channel;
+        private final FileLock lock;
+
+        private Hold(FileChannel channel, FileLock lock) {
+            this.channel = channel;
+            this.lock = lock;
+        }
+
+        static Hold tryAcquire(Path file) throws IOException {
+            Path parent = file.getParent();
+            if (parent != null) {
+                Files.createDirectories(parent);
+            }
+            FileChannel channel = FileChannel.open(file, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+            FileLock lock;
+            try {
+                lock = channel.tryLock();
+            } catch (OverlappingFileLockException already) {
+                channel.close();
+                return null;
+            }
+            if (lock == null) {
+                channel.close();
+                return null;
+            }
+            return new Hold(channel, lock);
+        }
+
+        @Override
+        public void close() throws IOException {
+            lock.release();
+            channel.close();
         }
     }
 }

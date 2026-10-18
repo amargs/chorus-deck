@@ -5,9 +5,10 @@ import org.junit.jupiter.api.Test;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AppWindowTest {
@@ -32,12 +33,30 @@ class AppWindowTest {
     }
 
     @Test
-    void theRuntimeCountsWhenItsExecutableOrRegistryClientIsPresent() throws Exception {
-        Path dir = Files.createTempDirectory("chorus-deck-webview");
-        Path executable = dir.resolve("msedgewebview2.exe");
-        assertFalse(AppWindow.runtimeInstalled(List.of(dir.resolve("missing.exe")), false));
-        assertTrue(AppWindow.runtimeInstalled(List.of(dir.resolve("missing.exe")), true));
-        Files.writeString(executable, "");
-        assertTrue(AppWindow.runtimeInstalled(List.of(executable), false));
+    void theShellWaitsForThePageTitle() {
+        assertTrue(AppWindow.pageReady("\"eCoral\""));
+        assertFalse(AppWindow.pageReady(""));
+        assertFalse(AppWindow.pageReady("\"\""));
+        assertFalse(AppWindow.pageReady("eCoral"));
+    }
+
+    @Test
+    void theLockSitsBesideTheBrowserProfile() {
+        Path profile = Path.of("C:/Users/me/AppData/Local/eCoral/browser-profile");
+        assertEquals(profile.getParent().resolve("window.lock"), AppWindow.lockFile(profile));
+    }
+
+    @Test
+    void aSecondLaunchFindsTheWindowAlreadyOpen() throws Exception {
+        Path dir = Files.createTempDirectory("chorus-deck-window");
+        Path lock = dir.resolve("window.lock");
+        AppWindow.Hold first = AppWindow.Hold.tryAcquire(lock);
+        AppWindow.Hold second = AppWindow.Hold.tryAcquire(lock);
+        assertTrue(first != null);
+        assertNull(second);
+        first.close();
+        AppWindow.Hold again = AppWindow.Hold.tryAcquire(lock);
+        assertTrue(again != null);
+        again.close();
     }
 }
