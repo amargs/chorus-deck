@@ -6,72 +6,38 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AppWindowTest {
 
+    private static final URI APP = URI.create("http://127.0.0.1:7480/");
+
     @Test
-    void chromeOpensWhenItIsInstalled() throws Exception {
-        Path dir = Files.createTempDirectory("chorus-deck-browser");
-        Path chrome = dir.resolve("chrome.exe");
-        Path edge = dir.resolve("msedge.exe");
-        Files.writeString(chrome, "");
-        Files.writeString(edge, "");
-        Path profile = dir.resolve("browser-profile");
-
-        Optional<AppWindow.Launch> launch = AppWindow.select(
-                URI.create("http://127.0.0.1:7480/"), profile, List.of(chrome), List.of(edge));
-
-        assertTrue(launch.isPresent());
-        assertEquals(chrome, launch.get().executable());
-        assertEquals(List.of(
-                "--app=http://127.0.0.1:7480/",
-                "--user-data-dir=" + profile.toAbsolutePath().normalize(),
-                "--disable-background-mode",
-                "--disable-component-extensions-with-background-pages",
-                "--no-first-run",
-                "--no-default-browser-check"), launch.get().arguments());
+    void thePageStaysOnThisServer() {
+        assertTrue(AppWindow.staysInApp("http://127.0.0.1:7480/", APP));
+        assertTrue(AppWindow.staysInApp("http://127.0.0.1:7480/assets/index.js", APP));
+        assertTrue(AppWindow.staysInApp("about:blank", APP));
+        assertFalse(AppWindow.staysInApp("https://fonts.google.com/specimen/Livvic", APP));
+        assertFalse(AppWindow.staysInApp("http://127.0.0.1:9/", APP));
     }
 
     @Test
-    void backgroundModeIsTurnedOffInTheBrowserProfile() throws Exception {
-        Path profile = Files.createTempDirectory("chorus-deck-profile");
-        Path prefs = profile.resolve("Default").resolve("Preferences");
-        Files.createDirectories(prefs.getParent());
-        Files.writeString(prefs, "{\"homepage\":\"http://example\"}");
-
-        AppWindow.disableBackgroundMode(profile);
-
-        String stored = Files.readString(prefs);
-        assertTrue(stored.contains("\"enabled\" : false"));
-        assertTrue(stored.contains("example"));
+    void aPopupOnlyStaysWhenItLoadsThisServer() {
+        assertTrue(AppWindow.popupStays("http://127.0.0.1:7480/", APP));
+        assertFalse(AppWindow.popupStays("", APP));
+        assertFalse(AppWindow.popupStays("about:blank", APP));
+        assertFalse(AppWindow.popupStays("https://fonts.google.com/specimen/Livvic", APP));
     }
 
     @Test
-    void edgeOpensWhenChromeIsMissing() throws Exception {
-        Path dir = Files.createTempDirectory("chorus-deck-browser");
-        Path chrome = dir.resolve("missing-chrome.exe");
-        Path edge = dir.resolve("msedge.exe");
-        Files.writeString(edge, "");
-
-        Optional<AppWindow.Launch> launch = AppWindow.select(
-                URI.create("http://127.0.0.1:9/"), dir.resolve("profile"), List.of(chrome), List.of(edge));
-
-        assertTrue(launch.isPresent());
-        assertEquals(edge, launch.get().executable());
-    }
-
-    @Test
-    void neitherBrowserProducesACommand() {
-        Path dir = Path.of("C:/missing");
-        Optional<AppWindow.Launch> launch = AppWindow.select(
-                URI.create("http://127.0.0.1:9/"),
-                dir,
-                List.of(dir.resolve("chrome.exe")),
-                List.of(dir.resolve("msedge.exe")));
-        assertTrue(launch.isEmpty());
+    void theRuntimeCountsWhenItsExecutableOrRegistryClientIsPresent() throws Exception {
+        Path dir = Files.createTempDirectory("chorus-deck-webview");
+        Path executable = dir.resolve("msedgewebview2.exe");
+        assertFalse(AppWindow.runtimeInstalled(List.of(dir.resolve("missing.exe")), false));
+        assertTrue(AppWindow.runtimeInstalled(List.of(dir.resolve("missing.exe")), true));
+        Files.writeString(executable, "");
+        assertTrue(AppWindow.runtimeInstalled(List.of(executable), false));
     }
 }

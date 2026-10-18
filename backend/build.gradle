@@ -23,6 +23,7 @@ dependencies {
 
     implementation 'io.javalin:javalin:6.7.0'
     implementation 'net.java.dev.jna:jna-platform:5.15.0'
+    implementation 'ca.weblite:webview:1.10.2'
 
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.1'
 }
