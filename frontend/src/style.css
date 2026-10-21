@@ -453,6 +453,8 @@ header .alter svg {
   gap: 0.1rem;
   margin: 0.25rem 0;
   padding: 0.4rem 0.55rem;
+  /* Label plus a song line tall enough for the book badge, so picking a song does not stretch the row. */
+  min-height: calc(0.8rem + 0.1rem + 0.78rem * 1.4 + 0.85rem * 1.4 + 0.24rem + 4px);
   text-align: left;
   border-color: transparent;
   background: transparent;
@@ -876,7 +878,7 @@ input:not([type="checkbox"]):not([type="radio"])::placeholder {
 
 .export-fields {
   display: grid;
-  grid-template-columns: minmax(12rem, 0.7fr) minmax(16rem, 1.4fr) auto;
+  grid-template-columns: minmax(0, 2.2fr) minmax(10rem, 0.9fr) auto;
   gap: 0.75rem;
   align-items: end;
 }

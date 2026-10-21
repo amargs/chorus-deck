@@ -58,4 +58,28 @@ class LibraryStoreTest {
         assertTrue(error.getMessage().contains("not a song index"));
         assertNull(store.status().index());
     }
+
+    @Test
+    void theOutputFolderIsRememberedAndSurvivesANewIndex() throws Exception {
+        Path dir = Files.createTempDirectory("chorus-deck-library");
+        Path documents = Files.createDirectories(dir.resolve("Documentos"));
+        Path elsewhere = Files.createDirectories(dir.resolve("Missa"));
+        Path index = dir.resolve("index.json");
+        SongIndex.write(index, List.of(new SongCfg(1, "A festa da música", List.of("verso"))));
+        LibraryStore store = new LibraryStore(dir);
+
+        assertNull(store.status().outputDirectory());
+        assertEquals(documents.toAbsolutePath().normalize(), store.saveOutput(documents));
+        assertEquals(documents.toAbsolutePath().normalize(), new LibraryStore(dir).status().outputDirectory());
+
+        store.save(index);
+        assertEquals(index.toAbsolutePath().normalize(), store.status().index());
+        assertEquals(documents.toAbsolutePath().normalize(), store.status().outputDirectory());
+
+        store.saveOutput(elsewhere);
+        assertEquals(elsewhere.toAbsolutePath().normalize(), store.status().outputDirectory());
+        Files.delete(elsewhere);
+        assertNull(store.status().outputDirectory());
+        assertEquals(index.toAbsolutePath().normalize(), store.status().index());
+    }
 }

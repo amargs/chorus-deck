@@ -57,7 +57,8 @@ public final class SongDeckServer {
             if (index == null || !index.isTextual() || index.asText().isBlank()) {
                 throw new IllegalArgumentException("The library request needs an index path.");
             }
-            ctx.json(libraryJson(new LibraryStore.Status(library.save(Path.of(index.asText())), false)));
+            library.save(Path.of(index.asText()));
+            ctx.json(libraryJson(library.status()));
         });
         app.get("/api/songs", ctx -> ctx.json(SongDeckRequests.songs(SongIndex.read(library.requireIndex()))));
         app.get("/api/liturgy", ctx -> {
@@ -86,7 +87,8 @@ public final class SongDeckServer {
                 if (chosen == null) {
                     ctx.json(Map.of("cancelled", true));
                 } else {
-                    ctx.json(libraryJson(new LibraryStore.Status(library.save(chosen), false)));
+                    library.save(chosen);
+                    ctx.json(libraryJson(library.status()));
                 }
             } catch (IllegalArgumentException e) {
                 throw e;
@@ -114,11 +116,11 @@ public final class SongDeckServer {
         app.post("/api/choose-folder", ctx -> {
             try {
                 LibraryStore.Status status = library.status();
-                Path chosen = FolderChooser.choose(browseStart(status));
+                Path chosen = FolderChooser.choose(outputStart(status));
                 if (chosen == null) {
                     ctx.json(Map.of("cancelled", true));
                 } else {
-                    ctx.json(Map.of("directory", chosen.toString()));
+                    ctx.json(Map.of("directory", library.saveOutput(chosen).toString()));
                 }
             } catch (Exception e) {
                 String message = e.getMessage();
@@ -251,6 +253,17 @@ public final class SongDeckServer {
         return Path.of(System.getProperty("user.home"));
     }
 
+    private static Path outputStart(LibraryStore.Status status) {
+        if (status.outputDirectory() != null) {
+            return status.outputDirectory();
+        }
+        Path documents = LibraryStore.documents();
+        if (documents != null) {
+            return documents;
+        }
+        return browseStart(status);
+    }
+
     private static JsonNode readObject(String body, String message) {
         JsonNode node;
         try {
@@ -274,6 +287,10 @@ public final class SongDeckServer {
         }
         if (status.missing()) {
             body.put("missing", true);
+        }
+        Path output = status.outputDirectory() != null ? status.outputDirectory() : LibraryStore.documents();
+        if (output != null) {
+            body.put("outputDirectory", output.toString());
         }
         return body;
     }

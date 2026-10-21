@@ -107,11 +107,9 @@ async function loadLibrary() {
     }
     const payload = await response.json()
     indexMissing.value = payload.missing === true
+    applyOutputFolder(payload)
     if (payload.index) {
       indexPath.value = payload.index
-      if (!folderEdited.value && payload.directory) {
-        folder.value = payload.directory
-      }
       await loadSongs()
     }
   } catch (e) {
@@ -210,14 +208,18 @@ async function chooseIndex() {
     }
     indexPath.value = payload.index
     indexMissing.value = false
-    if (!folderEdited.value && payload.directory) {
-      folder.value = payload.directory
-    }
+    applyOutputFolder(payload)
     chosen.value = []
     loadError.value = ''
     await loadSongs()
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Não foi possível escolher o índice.'
+  }
+}
+
+function applyOutputFolder(payload) {
+  if (!folderEdited.value && payload.outputDirectory) {
+    folder.value = payload.outputDirectory
   }
 }
 

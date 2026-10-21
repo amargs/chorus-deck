@@ -53,6 +53,7 @@ class SongDeckServerTest {
             JsonNode library = JSON.readTree(saved.body());
             assertEquals(chosen.toAbsolutePath().normalize().toString(), library.get("index").asText());
             assertEquals(chosen.getParent().toAbsolutePath().normalize().toString(), library.get("directory").asText());
+            assertEquals(LibraryStore.documents().toString(), library.get("outputDirectory").asText());
 
             JsonNode songs = JSON.readTree(send(app, HttpRequest.newBuilder(uri(app, "/api/songs")).GET().build()).body());
             assertEquals(1, songs.size());
@@ -372,6 +373,26 @@ class SongDeckServerTest {
         assertTrue(opened.get().toString().startsWith("http://127.0.0.1:"));
         assertTrue(opened.get().toString().endsWith("/"));
         assertEquals(dir.resolve("browser-profile").toAbsolutePath().normalize(), profile.get().toAbsolutePath().normalize());
+    }
+
+    @Test
+    void aChosenExportFolderIsSuggestedAgain() throws Exception {
+        Path dir = Files.createTempDirectory("chorus-deck");
+        Path index = dir.resolve("index.json");
+        SongIndex.write(index, List.of(new SongCfg(1, "A festa da música", List.of("verso"), "118")));
+        Path chosen = Files.createDirectories(dir.resolve("destino"));
+        Javalin app = app(dir, index);
+        try {
+            new LibraryStore(dir).save(index);
+            new LibraryStore(dir).saveOutput(chosen);
+            HttpResponse<String> again = send(app, HttpRequest.newBuilder(uri(app, "/api/library")).GET().build());
+            assertEquals(200, again.statusCode());
+            assertEquals(
+                    chosen.toAbsolutePath().normalize().toString(),
+                    JSON.readTree(again.body()).get("outputDirectory").asText());
+        } finally {
+            app.stop();
+        }
     }
 
     private static Javalin app(Path dir, Path index) throws Exception {
