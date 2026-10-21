@@ -40,6 +40,9 @@ public final class SundayLibrary {
         if (sunday == null) {
             sunday = stub(calendar);
             sundays().set(key, sunday);
+        } else {
+            restoreTitle(calendar.sundayId(), sunday);
+            restoreSeason(calendar.sundayId(), sunday);
         }
         ensureLouvor(key, sunday);
         save();
@@ -61,6 +64,10 @@ public final class SundayLibrary {
             return null;
         }
         ensureLouvor(key.asText(), sunday);
+        String sundayId = key.asText().substring(0, key.asText().lastIndexOf('/'));
+        if (restoreTitle(sundayId, sunday) || restoreSeason(sundayId, sunday)) {
+            save();
+        }
         String cycle = key.asText().substring(key.asText().lastIndexOf('/') + 1);
         return day(date, cycle, sunday);
     }
@@ -102,6 +109,54 @@ public final class SundayLibrary {
                 text(sunday, "salmo"),
                 readingOf(sunday.get("evangelho")),
                 text(sunday, "louvor"));
+    }
+
+    /** Writes sentences that are still blank. A sentence already stored is left as it is. */
+    public LiturgyDay rememberSentences(
+            LocalDate date, String primeira, String segunda, String salmo, String evangelho, String louvor)
+            throws IOException {
+        if (!Files.isRegularFile(file)) {
+            return null;
+        }
+        load();
+        JsonNode key = dates().get(date.toString());
+        if (key == null || !key.isTextual()) {
+            return null;
+        }
+        ObjectNode sunday = (ObjectNode) sundays().get(key.asText());
+        if (sunday == null) {
+            return null;
+        }
+        boolean changed = false;
+        changed |= fillReading(sunday, "primeira", primeira);
+        changed |= fillReading(sunday, "segunda", segunda);
+        changed |= fillText(sunday, "salmo", salmo);
+        changed |= fillReading(sunday, "evangelho", evangelho);
+        changed |= fillText(sunday, "louvor", louvor);
+        if (changed) {
+            save();
+        }
+        String cycle = key.asText().substring(key.asText().lastIndexOf('/') + 1);
+        return day(date, cycle, sunday);
+    }
+
+    private static boolean fillReading(ObjectNode sunday, String name, String sentence) {
+        if (sentence == null || sentence.isBlank() || !(sunday.get(name) instanceof ObjectNode reading)) {
+            return false;
+        }
+        if (text(reading, "citacao") != null) {
+            return false;
+        }
+        reading.put("citacao", sentence.trim());
+        return true;
+    }
+
+    private static boolean fillText(ObjectNode sunday, String name, String sentence) {
+        if (sentence == null || sentence.isBlank() || text(sunday, name) != null) {
+            return false;
+        }
+        sunday.put(name, sentence.trim());
+        return true;
     }
 
     private void ensureLouvor(String key, ObjectNode sunday) {
@@ -178,8 +233,57 @@ public final class SundayLibrary {
             case "palm-sunday" -> "Domingo de Ramos";
             case "pentecost" -> "Domingo de Pentecostes";
             case "easter-sunday" -> "Domingo de Páscoa";
+            case "easter-7" -> "Solenidade da Ascensão do Senhor";
+            case "trinity" -> "Solenidade da Santíssima Trindade";
+            case "ordinary-34" -> "Solenidade de Nosso Senhor Jesus Cristo, Rei do Universo";
+            case "holy-family" -> "Festa da Sagrada Família de Jesus, Maria e José";
+            case "epiphany" -> "Solenidade da Epifania do Senhor";
+            case "baptism-of-the-lord" -> "Solenidade do Batismo do Senhor";
             default -> numbered(sundayId);
         };
+    }
+
+    /** A title that was stored as the calendar id is replaced with the Portuguese name. */
+    private static boolean restoreTitle(String sundayId, ObjectNode sunday) {
+        String title = domingo(sundayId);
+        String stored = text(sunday, "domingo");
+        if (title.equals(stored) || title.equals(sundayId)) {
+            return false;
+        }
+        String automatic = numbered(sundayId);
+        if (sundayId.equals(stored)
+                || (automatic.equals(stored) && !automatic.equals(title))
+                || ("holy-family".equals(sundayId) && "Domingo da Sagrada Família".equals(stored))) {
+            sunday.put("domingo", title);
+            return true;
+        }
+        return false;
+    }
+
+    /** Gold accent used for a solemnity whose season cover stays as it is. */
+    public static boolean solemnityGold(String domingo) {
+        return switch (domingo == null ? "" : domingo) {
+            case "Solenidade da Ascensão do Senhor",
+                    "Solenidade da Santíssima Trindade",
+                    "Solenidade do Santíssimo Corpo e Sangue de Cristo",
+                    "Solenidade de Nosso Senhor Jesus Cristo, Rei do Universo" -> true;
+            default -> false;
+        };
+    }
+
+    static final String CORPUS_CHRISTI = "Solenidade do Santíssimo Corpo e Sangue de Cristo";
+
+    /** Holy Family, Epiphany, and the Baptism of the Lord stay on the Christmas cover. */
+    private static boolean restoreSeason(String sundayId, ObjectNode sunday) {
+        String season = switch (sundayId) {
+            case "holy-family", "epiphany", "baptism-of-the-lord" -> "natal";
+            default -> null;
+        };
+        if (season == null || season.equals(text(sunday, "season"))) {
+            return false;
+        }
+        sunday.put("season", season);
+        return true;
     }
 
     private static String numbered(String sundayId) {
@@ -239,6 +343,7 @@ public final class SundayLibrary {
             case "lent-4" -> new SeasonChoice("quaresma", "Capa - Domingo IV Quaresma");
             case "palm-sunday" -> new SeasonChoice("ramos", null);
             case "pentecost" -> new SeasonChoice("pentecostes", null);
+            case "holy-family", "epiphany", "baptism-of-the-lord" -> new SeasonChoice("natal", null);
             default -> fromSeason(calendar.season());
         };
     }

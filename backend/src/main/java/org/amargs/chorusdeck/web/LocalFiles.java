@@ -1,5 +1,8 @@
 package org.amargs.chorusdeck.web;
 
+import com.sun.jna.platform.win32.Shell32;
+import com.sun.jna.platform.win32.WinUser;
+
 import java.awt.Desktop;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -82,7 +85,7 @@ public final class LocalFiles {
         try {
             switch (plan.kind()) {
                 case FILE -> Desktop.getDesktop().open(plan.path().toFile());
-                case SELECT -> new ProcessBuilder("explorer.exe", "/select," + plan.path()).start();
+                case SELECT -> reveal(plan.path());
                 case FOLDER -> new ProcessBuilder("explorer.exe", plan.path().toString()).start();
             }
         } catch (IOException e) {
@@ -90,6 +93,19 @@ public final class LocalFiles {
         } catch (RuntimeException e) {
             String message = e.getMessage();
             throw new IOException(message == null || message.isBlank() ? "Could not open the file." : message, e);
+        }
+    }
+
+    /** Explorer only treats this as “select the file” when the path is quoted and the switch is not. */
+    static String selectParameters(Path file) {
+        return "/select,\"" + file.toString() + "\"";
+    }
+
+    private static void reveal(Path file) throws IOException {
+        long opened = Shell32.INSTANCE.ShellExecute(
+                null, "open", "explorer.exe", selectParameters(file), null, WinUser.SW_SHOWNORMAL).longValue();
+        if (opened <= 32) {
+            throw new IOException("Could not open the folder.");
         }
     }
 

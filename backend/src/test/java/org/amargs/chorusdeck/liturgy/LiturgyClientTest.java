@@ -3,6 +3,7 @@ package org.amargs.chorusdeck.liturgy;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.amargs.chorusdeck.deck.Cover;
+import org.amargs.chorusdeck.web.MassDeckRequests;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -89,6 +90,20 @@ class LiturgyClientTest {
         assertNull(sunday.get("segunda"));
         assertEquals("", sunday.get("salmo").asText());
         assertNull(sunday.get("refrao"));
+
+        LiturgyDay filled = new SundayLibrary(file).rememberSentences(
+                LocalDate.of(2026, 12, 13), "O espírito do Senhor", null, "A minha alma", "Veio um homem", "Outra");
+        assertEquals("O espírito do Senhor", filled.primeira().citacao());
+        assertEquals("A minha alma", filled.refrao());
+        assertEquals("Veio um homem", filled.evangelho().citacao());
+        ObjectNode saved = (ObjectNode) new ObjectMapper().readTree(file.toFile()).get("sundays").get("advent-3/B");
+        assertEquals("O espírito do Senhor", saved.get("primeira").get("citacao").asText());
+        assertEquals("A minha alma", saved.get("salmo").asText());
+
+        LiturgyDay kept = new SundayLibrary(file).rememberSentences(
+                LocalDate.of(2026, 12, 13), "Uma frase diferente", null, "Outro salmo", null, null);
+        assertEquals("O espírito do Senhor", kept.primeira().citacao());
+        assertEquals("A minha alma", kept.refrao());
     }
 
     @Test
@@ -128,7 +143,7 @@ class LiturgyClientTest {
         });
 
         LiturgyDay assumption = client.load(LocalDate.of(2026, 8, 15), file);
-        assertEquals("Assunção da Virgem Santa Maria", assumption.domingo());
+        assertEquals("Solenidade da Assunção da Virgem Santa Maria", assumption.domingo());
         assertEquals("Capa - Solenidade", assumption.coverLayout());
         assertEquals("comum", assumption.seasonKey());
         assertEquals("A", assumption.ano());
@@ -136,12 +151,12 @@ class LiturgyClientTest {
         assertNull(assumption.primeira());
 
         LiturgyDay immaculate = client.load(LocalDate.of(2026, 12, 8), file);
-        assertEquals("Imaculada Conceição da Virgem Santa Maria", immaculate.domingo());
+        assertEquals("Solenidade da Imaculada Conceição da Virgem Santa Maria", immaculate.domingo());
         assertEquals("Capa - Solenidade", immaculate.coverLayout());
         assertEquals("advento", immaculate.seasonKey());
 
         LiturgyDay apostles = client.load(LocalDate.of(2026, 6, 29), file);
-        assertEquals("São Pedro e São Paulo, Apóstolos", apostles.domingo());
+        assertEquals("Solenidade de São Pedro e São Paulo", apostles.domingo());
         assertEquals("Capa - Solenidade Pedro Paulo", apostles.coverLayout());
         assertFalse(Files.exists(file));
     }
@@ -172,6 +187,70 @@ class LiturgyClientTest {
     }
 
     @Test
+    void holyFamilyKeepsItsPortugueseName() throws IOException {
+        Path file = Files.createTempDirectory("sundays").resolve("sundays.json");
+        Files.writeString(file, """
+                {
+                  "dates": { "2026-12-27": "holy-family/B" },
+                  "sundays": {
+                    "holy-family/B": {
+                      "domingo": "holy-family",
+                      "season": "natal",
+                      "primeira": { "referencia": "Sir 3, 2-6.12-14", "citacao": "" },
+                      "evangelho": { "referencia": "Lc 2, 22-40", "citacao": "" },
+                      "salmo": ""
+                    }
+                  }
+                }
+                """);
+        LiturgyClient client = new LiturgyClient(ignored -> """
+                {
+                  "day": {
+                    "sunday_id": "holy-family",
+                    "sunday_cycle": "B",
+                    "season": "christmas",
+                    "name": "Holy Family"
+                  },
+                  "readings": { "first_reading": "Sir 3:2-6, 12-14", "gospel": "Lk 2:22-40" }
+                }
+                """);
+
+        LiturgyDay day = client.load(LocalDate.of(2026, 12, 27), file);
+        assertEquals("Festa da Sagrada Família de Jesus, Maria e José", day.domingo());
+        assertEquals("natal", day.seasonKey());
+        assertEquals("Festa da Sagrada Família de Jesus, Maria e José",
+                new ObjectMapper().readTree(file.toFile()).get("sundays").get("holy-family/B").get("domingo").asText());
+    }
+
+    @Test
+    void epiphanyAndBaptismUseTheirPortugueseNames() throws IOException {
+        Path file = Files.createTempDirectory("sundays").resolve("sundays.json");
+        LiturgyClient client = new LiturgyClient(date -> switch (date.toString()) {
+            case "2027-01-03" -> """
+                    {
+                      "day": { "sunday_id": "epiphany", "sunday_cycle": "B", "season": "ordinary", "name": "Epiphany" },
+                      "readings": { "first_reading": "Is 60:1-6", "gospel": "Mt 2:1-12" }
+                    }
+                    """;
+            case "2027-01-10" -> """
+                    {
+                      "day": { "sunday_id": "baptism-of-the-lord", "sunday_cycle": "B", "season": "ordinary", "name": "The Baptism of the Lord" },
+                      "readings": { "first_reading": "Is 42:1-4, 6-7", "gospel": "Mt 3:13-17" }
+                    }
+                    """;
+            default -> throw new IOException("unexpected " + date);
+        });
+
+        LiturgyDay epiphany = client.load(LocalDate.of(2027, 1, 3), file);
+        assertEquals("Solenidade da Epifania do Senhor", epiphany.domingo());
+        assertEquals("natal", epiphany.seasonKey());
+
+        LiturgyDay baptism = client.load(LocalDate.of(2027, 1, 10), file);
+        assertEquals("Solenidade do Batismo do Senhor", baptism.domingo());
+        assertEquals("natal", baptism.seasonKey());
+    }
+
+    @Test
     void aSundaySolemnityStaysTheSunday() throws IOException {
         Path file = Files.createTempDirectory("sundays").resolve("sundays.json");
         LiturgyClient client = new LiturgyClient(ignored -> """
@@ -193,13 +272,53 @@ class LiturgyClientTest {
         assertEquals("comum", day.seasonKey());
         assertEquals("Mt 23, 1-12", day.evangelho().referencia());
         assertEquals(
-                "2026-11-01 is also Todos os Santos. The deck keeps Domingo XXXI (A). "
+                "2026-11-01 is also Solenidade de Todos os Santos. The deck keeps Domingo XXXI (A). "
                         + "The scriptures are that Sunday's, and this solemnity outranks it.",
                 LiturgyClient.sundaySolemnity(day.date(), day, RomanCalendar.parse("""
                         { "day": { "sunday_cycle": "A", "season": "ordinary", "name": "All Saints" } }
                         """), FixedSolemnity.of("All Saints")));
         assertEquals("ordinary-31/A",
                 new ObjectMapper().readTree(file.toFile()).get("dates").get("2026-11-01").asText());
+    }
+
+    @Test
+    void movableSolemnitiesUseTheGoldAccent() throws IOException {
+        assertEquals(LocalDate.of(2027, 5, 27), LiturgyClient.corpusChristi(2027));
+        assertEquals(LocalDate.of(2026, 6, 4), LiturgyClient.corpusChristi(2026));
+        Path file = Files.createTempDirectory("sundays").resolve("sundays.json");
+        LiturgyClient client = new LiturgyClient(date -> switch (date.toString()) {
+            case "2027-05-09" -> sunday("easter-7", "easter");
+            case "2027-05-23" -> sunday("trinity", "ordinary");
+            case "2027-05-27" -> throw new IOException("The calendar returned nothing.");
+            case "2027-11-21" -> sunday("ordinary-34", "ordinary");
+            default -> throw new IOException("unexpected " + date);
+        });
+
+        assertGold(client.load(LocalDate.of(2027, 5, 9), file),
+                "Solenidade da Ascensão do Senhor", "pascoa");
+        assertGold(client.load(LocalDate.of(2027, 5, 23), file),
+                "Solenidade da Santíssima Trindade", "comum");
+        assertGold(client.load(LocalDate.of(2027, 5, 27), file),
+                "Solenidade do Santíssimo Corpo e Sangue de Cristo", "comum");
+        assertGold(client.load(LocalDate.of(2027, 11, 21), file),
+                "Solenidade de Nosso Senhor Jesus Cristo, Rei do Universo", "comum");
+    }
+
+    private static void assertGold(LiturgyDay day, String title, String season) {
+        assertEquals(title, day.domingo());
+        assertEquals(season, day.seasonKey());
+        assertEquals("accent4", MassDeckRequests.preview(day).get("accent"));
+        assertEquals("Capa - " + ("pascoa".equals(season) ? "Páscoa" : "Tempo Comum"),
+                MassDeckRequests.preview(day).get("cover"));
+    }
+
+    private static String sunday(String sundayId, String season) {
+        return """
+                {
+                  "day": { "sunday_id": "%s", "sunday_cycle": "B", "season": "%s" },
+                  "readings": { "first_reading": "Acts 1:1-11", "gospel": "Mt 28:16-20" }
+                }
+                """.formatted(sundayId, season);
     }
 
     private static String day(String rank, String name, String season, String sundayId) {

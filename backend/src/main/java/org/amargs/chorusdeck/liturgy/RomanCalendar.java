@@ -56,7 +56,7 @@ public record RomanCalendar(
             Map.entry("tob", "Tb"), Map.entry("jdt", "Jdt"), Map.entry("est", "Est"),
             Map.entry("1 macc", "1Mc"), Map.entry("2 macc", "2Mc"),
             Map.entry("job", "Job"), Map.entry("ps", "Sl"), Map.entry("prov", "Pr"), Map.entry("eccl", "Ecl"),
-            Map.entry("song", "Ct"), Map.entry("wis", "Sb"), Map.entry("sir", "Sr"), Map.entry("is", "Is"),
+            Map.entry("song", "Ct"), Map.entry("wis", "Sb"), Map.entry("sir", "Sir"), Map.entry("is", "Is"),
             Map.entry("jer", "Jr"), Map.entry("lam", "Lm"), Map.entry("bar", "Br"), Map.entry("ezek", "Ez"),
             Map.entry("dan", "Dn"), Map.entry("hos", "Os"), Map.entry("joel", "Jl"), Map.entry("am", "Am"),
             Map.entry("obad", "Ab"), Map.entry("jonah", "Jn"), Map.entry("mic", "Mq"), Map.entry("nah", "Na"),

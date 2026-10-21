@@ -159,6 +159,9 @@ public final class DeckService {
                 throw new IllegalArgumentException("Load the liturgy for " + mass.date() + " before generating.");
             }
             Season season = Season.resolve(mass.cover().season(), mass.cover().cover());
+            if (mass.accent() != null && !mass.accent().equals(season.slideAccent())) {
+                season = season.withHeaderScheme(mass.accent());
+            }
             XSLFSlideLayout titleLayout = TemplateLayouts.findLayout(templatePpt, season.titleLayout());
             XSLFSlideLayout lyricLayout = TemplateLayouts.findLayout(templatePpt, TemplateLayouts.LYRICS);
             if (season.headerScheme() != null) {

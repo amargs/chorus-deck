@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.javalin.Javalin;
 import org.amargs.chorusdeck.deck.Cover;
+import org.amargs.chorusdeck.liturgy.LiturgyDay;
 import org.amargs.chorusdeck.text.BoldMarkup;
 import org.amargs.chorusdeck.index.SongCfg;
 import org.amargs.chorusdeck.index.SongIndex;
@@ -15,10 +16,12 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -269,6 +272,10 @@ class SongDeckServerTest {
         LocalFiles.OpenPlan select = LocalFiles.plan(last, "folder", last);
         assertEquals(LocalFiles.OpenKind.SELECT, select.kind());
         assertEquals(last, select.path());
+        assertEquals("/select,\"" + last + "\"", LocalFiles.selectParameters(last));
+        assertEquals(
+                "/select,\"D:\\Dropbox\\Missa\\Domingo XXX.pptx\"",
+                LocalFiles.selectParameters(Path.of("D:\\Dropbox\\Missa\\Domingo XXX.pptx")));
         assertEquals(LocalFiles.OpenKind.FILE, LocalFiles.plan(last, "file", last).kind());
 
         Files.delete(file);
@@ -295,6 +302,58 @@ class SongDeckServerTest {
                     .build());
             assertEquals(400, rejected.statusCode());
             assertFalse(rejected.body().isBlank());
+        } finally {
+            app.stop();
+        }
+    }
+
+    @Test
+    void eucharistPreviewAndGenerateUseTheLoadedSunday() throws Exception {
+        Path dir = Files.createTempDirectory("chorus-deck");
+        Path index = dir.resolve("index.json");
+        SongIndex.write(index, List.of(new SongCfg(1, "A festa da música", List.of("verso"), "118")));
+        LiturgyDay day = new LiturgyDay(
+                LocalDate.of(2026, 10, 18),
+                "Domingo XXIX",
+                "comum",
+                null,
+                "A",
+                new LiturgyDay.Reading("Is 45, 1", "Tomei Ciro"),
+                null,
+                "Aclamai",
+                new LiturgyDay.Reading("Mt 22, 15-21", "Dai a César"),
+                null);
+        new LibraryStore(dir).save(index);
+        Javalin app = SongDeckServer.create(dir, (date, file) -> day).start("127.0.0.1", 0);
+        try {
+            HttpResponse<String> preview = send(app, HttpRequest.newBuilder(uri(app, "/api/liturgy?date=2026-10-18")).GET().build());
+            assertEquals(200, preview.statusCode());
+            assertEquals("Domingo XXIX", JSON.readTree(preview.body()).get("domingo").asText());
+
+            HttpResponse<String> badDate = send(app, HttpRequest.newBuilder(uri(app, "/api/liturgy?date=amanha")).GET().build());
+            assertEquals(400, badDate.statusCode());
+
+            HttpResponse<String> generated = post(app, """
+                    {"mode":"mass","date":"2026-10-18","output":"missa.pptx","songs":{"entrada":"118"},"opcoes":{"credo":"longo","interval":"vazio"}}
+                    """);
+            assertEquals(200, generated.statusCode(), generated.body());
+            assertTrue(Files.isRegularFile(dir.resolve("missa.pptx")));
+
+            byte[] kept = Files.readAllBytes(dir.resolve("missa.pptx"));
+            HttpResponse<String> occupied = post(app, """
+                    {"mode":"mass","date":"2026-10-18","output":"missa.pptx","songs":{"entrada":"118"},"opcoes":{"credo":"longo","interval":"vazio"}}
+                    """);
+            assertEquals(409, occupied.statusCode());
+            JsonNode conflict = JSON.readTree(occupied.body());
+            assertTrue(conflict.get("exists").asBoolean());
+            assertEquals("missa.pptx", conflict.get("name").asText());
+            assertArrayEquals(kept, Files.readAllBytes(dir.resolve("missa.pptx")));
+
+            HttpResponse<String> replaced = post(app, """
+                    {"mode":"mass","date":"2026-10-18","output":"missa.pptx","replace":true,"songs":{"entrada":"118"},"opcoes":{"credo":"longo","interval":"vazio"}}
+                    """);
+            assertEquals(200, replaced.statusCode(), replaced.body());
+            assertTrue(Files.isRegularFile(dir.resolve("missa.pptx")));
         } finally {
             app.stop();
         }

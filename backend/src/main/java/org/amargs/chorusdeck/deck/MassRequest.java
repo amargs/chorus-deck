@@ -37,7 +37,8 @@ public record MassRequest(
         String evangelho,
         String louvor,
         LocalDate date,
-        LiturgyDay liturgy) {
+        LiturgyDay liturgy,
+        String accent) {
 
     private static final Logger LOG = LogManager.getLogger(MassRequest.class);
 
@@ -70,7 +71,7 @@ public record MassRequest(
         return from(DeckSpec.read(file), file);
     }
 
-    static MassRequest from(JsonNode node, Path file) {
+    public static MassRequest from(JsonNode node, Path file) {
         node.fieldNames().forEachRemaining(field -> {
             if (FIELDS.contains(field)) {
                 return;
@@ -119,7 +120,22 @@ public record MassRequest(
                 text(leituras, "evangelho"),
                 text(leituras, "louvor"),
                 date,
+                null,
                 null);
+    }
+
+    public MassRequest withAccent(String scheme) {
+        if (scheme == null || scheme.isBlank() || scheme.equals(accent)) {
+            return this;
+        }
+        if (!scheme.equals("accent1") && !scheme.equals("accent2") && !scheme.equals("accent3")
+                && !scheme.equals("accent4") && !scheme.equals("accent5")) {
+            throw new IllegalArgumentException("accent must be accent1, accent2, accent3, accent4, or accent5.");
+        }
+        return new MassRequest(
+                cover, interval, longCreed, oracao, entrada, kyrie, gloria, aleluia, dons, santo,
+                paiNosso, cordeiro, comunhao, acaoDeGracas, finalSong, primeira, segunda, salmo, evangelho, louvor,
+                date, liturgy, scheme);
     }
 
     public MassRequest withLiturgy(LiturgyDay day) {
@@ -148,11 +164,76 @@ public record MassRequest(
         return copy(filled);
     }
 
+    public MassRequest withCoverLayout(String layout) {
+        if (cover == null || layout == null || layout.isBlank() || layout.equals(cover.cover())) {
+            return this;
+        }
+        Cover next = new Cover(
+                cover.season(), layout, cover.domingo(), cover.frase(), cover.versiculo(), cover.ano(), cover.header());
+        return new MassRequest(
+                next, interval, longCreed, oracao, entrada, kyrie, gloria, aleluia, dons, santo,
+                paiNosso, cordeiro, comunhao, acaoDeGracas, finalSong, primeira, segunda, salmo, evangelho, louvor,
+                date, liturgy, accent);
+    }
+
+    public MassRequest withReadingReferences(String primeiraRef, String segundaRef) {
+        if (liturgy == null) {
+            return this;
+        }
+        LiturgyDay nextDay = liturgy.withReferences(primeiraRef, segundaRef);
+        if (nextDay == liturgy) {
+            return this;
+        }
+        return new MassRequest(
+                cover, interval, longCreed, oracao, entrada, kyrie, gloria, aleluia, dons, santo,
+                paiNosso, cordeiro, comunhao, acaoDeGracas, finalSong, primeira, segunda, salmo, evangelho, louvor,
+                date, nextDay, accent);
+    }
+
+    public MassRequest withCoverFields(String domingo, String versiculo) {
+        if (cover == null) {
+            return this;
+        }
+        String nextDomingo = domingo == null || domingo.isBlank() ? cover.domingo() : domingo.trim();
+        String nextVerse = versiculo == null ? cover.versiculo() : versiculo.trim();
+        Cover next = new Cover(
+                cover.season(), cover.cover(), nextDomingo, cover.frase(), nextVerse, cover.ano(), cover.header());
+        LiturgyDay nextDay = gospelReference(liturgy, nextVerse);
+        if (next.equals(cover) && nextDay == liturgy) {
+            return this;
+        }
+        return new MassRequest(
+                next, interval, longCreed, oracao, entrada, kyrie, gloria, aleluia, dons, santo,
+                paiNosso, cordeiro, comunhao, acaoDeGracas, finalSong, primeira, segunda, salmo, evangelho, louvor,
+                date, nextDay, accent);
+    }
+
+    private static LiturgyDay gospelReference(LiturgyDay day, String referencia) {
+        if (day == null || day.evangelho() == null) {
+            return day;
+        }
+        String current = day.evangelho().referencia() == null ? "" : day.evangelho().referencia();
+        if (current.equals(referencia)) {
+            return day;
+        }
+        return new LiturgyDay(
+                day.date(),
+                day.domingo(),
+                day.seasonKey(),
+                day.coverLayout(),
+                day.ano(),
+                day.primeira(),
+                day.segunda(),
+                day.refrao(),
+                new LiturgyDay.Reading(referencia, day.evangelho().citacao()),
+                day.louvor());
+    }
+
     private MassRequest copy(LiturgyDay filled) {
         return new MassRequest(
                 Cover.from(filled), interval, longCreed, oracao, entrada, kyrie, gloria, aleluia, dons, santo,
                 paiNosso, cordeiro, comunhao, acaoDeGracas, finalSong, primeira, segunda, salmo, evangelho, louvor,
-                filled.date(), filled);
+                filled.date(), filled, accent);
     }
 
     private static Cover cover(JsonNode node) {

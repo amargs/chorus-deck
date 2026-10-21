@@ -347,8 +347,8 @@ class TemplateLayoutsTest {
                   credo: longo
                 """);
         assertEquals(file.getParent().resolve("Domingo XXIX Tempo Comum - Ano A.pptx"), DeckSpec.load(file).output());
-        assertEquals("2026-08-15 Assunção da Virgem Santa Maria - Ano A.pptx",
-                DeckSpec.fileName(LocalDate.of(2026, 8, 15), "Assunção da Virgem Santa Maria", "comum", "A"));
+        assertEquals("2026-08-15 Solenidade da Assunção da Virgem Santa Maria - Ano A.pptx",
+                DeckSpec.fileName(LocalDate.of(2026, 8, 15), "Solenidade da Assunção da Virgem Santa Maria", "comum", "A"));
         assertEquals("2026-10-19 2ªf da semana XXIX - Ano A.pptx",
                 DeckSpec.fileName(LocalDate.of(2026, 10, 19), "2ªf da semana XXIX", "comum", "A"));
 
@@ -480,6 +480,35 @@ class TemplateLayoutsTest {
             assertEquals("«»", textShape(ppt.getSlides().get(0), "Frase").getText());
             assertFalse(layouts.contains(TemplateLayouts.GLORIA_1));
         }
+    }
+
+    @Test
+    void aChosenAccentRecolorsTheTitleHeader() throws Exception {
+        Path yaml = massFile("""
+                date: 2026-10-18
+                opcoes:
+                  credo: longo
+                """);
+        LiturgyDay day = new LiturgyDay(
+                LocalDate.of(2026, 10, 18),
+                "Domingo XXIX",
+                "comum",
+                null,
+                "A",
+                new LiturgyDay.Reading("Is 45, 1", "Tomei Ciro"),
+                null,
+                "Aclamai",
+                new LiturgyDay.Reading("Mt 22, 15-21", "Dai a César"),
+                null);
+        Path out = Files.createTempFile("chorus-deck", ".pptx");
+        new DeckService().generateMass(
+                new AppConfig(Path.of("unused.pptx"), indexFile(), template(), out),
+                MassRequest.load(yaml).withLiturgy(day).withAccent("accent5"));
+        try (XMLSlideShow ppt = open(out)) {
+            assertEquals("accent5", headerScheme(ppt));
+        }
+        assertEquals("accent4", Season.resolve("natal", null).slideAccent());
+        assertEquals("accent1", Season.resolve("comum", null).slideAccent());
     }
 
     @Test

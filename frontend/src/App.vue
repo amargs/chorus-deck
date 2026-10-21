@@ -1,11 +1,13 @@
 <script setup>
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import ChosenSongs from './components/ChosenSongs.vue'
 import CoverFields from './components/CoverFields.vue'
+import Eucharist from './components/Eucharist.vue'
 import SongList from './components/SongList.vue'
-import { deckFileName, occasionFileName } from './songs.js'
+import { THEME, deckFileName, occasionFileName } from './songs.js'
 
-const screen = ref('songs')
+const screen = ref('home')
+const eucharistMounted = ref(false)
 const library = ref([])
 const chosen = ref([])
 const query = ref('')
@@ -22,6 +24,8 @@ const cover = reactive({
 })
 const output = ref('cânticos.pptx')
 const outputEdited = ref(false)
+const outputInput = ref(null)
+const replaceName = ref('')
 const folder = ref('')
 const folderEdited = ref(false)
 const savedPath = ref('')
@@ -55,7 +59,11 @@ const savedName = computed(() => {
   return name || output.value.trim()
 })
 
-const indexName = computed(() => indexPath.value.split(/[/\\]/).pop())
+watch(screen, (value) => {
+  if (value === 'eucharist') {
+    eucharistMounted.value = true
+  }
+})
 
 watch([coverOn, () => cover.kind, () => cover.season, () => cover.ano, () => cover.domingo], () => {
   if (outputEdited.value) {
@@ -69,17 +77,6 @@ watch([coverOn, () => cover.kind, () => cover.season, () => cover.ano, () => cov
     ? occasionFileName(cover.domingo)
     : deckFileName(cover.domingo, cover.season, cover.ano)
 })
-
-const themeColor = {
-  comum: '#377D49',
-  advento: '#A461AF',
-  quaresma: '#A461AF',
-  rosa: '#F99595',
-  natal: '#8C6A00',
-  pascoa: '#8C6A00',
-  ramos: '#B92323',
-  pentecostes: '#B92323',
-}
 
 function dismissSaved() {
   savedPath.value = ''
@@ -156,7 +153,7 @@ async function loadTheme() {
       return
     }
     const today = await response.json()
-    const color = themeColor[today.season]
+    const color = THEME[today.season]
     if (color) {
       document.documentElement.style.setProperty('--accent', color)
     }
@@ -258,9 +255,17 @@ async function openSaved(what) {
   }
 }
 
-async function generate() {
+async function pickAnotherName() {
+  replaceName.value = ''
+  await nextTick()
+  outputInput.value?.focus()
+  outputInput.value?.select()
+}
+
+async function generate(replace = false) {
   error.value = ''
   savedPath.value = ''
+  replaceName.value = ''
   busy.value = true
   const body = {
     ids: chosen.value.map((song) => song.id),
@@ -268,6 +273,9 @@ async function generate() {
   }
   if (folder.value) {
     body.directory = folder.value
+  }
+  if (replace === true) {
+    body.replace = true
   }
   if (coverOn.value) {
     if (cover.kind === 'outro') {
@@ -297,6 +305,10 @@ async function generate() {
       body: JSON.stringify(body),
     })
     const payload = await response.json()
+    if (payload.exists) {
+      replaceName.value = payload.name || output.value.trim()
+      return
+    }
     if (!response.ok) {
       throw new Error(payload.error || 'Não foi possível gerar.')
     }
@@ -320,6 +332,12 @@ async function errorText(response) {
 
 <template>
   <div class="app">
+  <nav v-if="indexPath" class="topbar">
+    <button type="button" :class="{ current: screen === 'home' }" @click="screen = 'home'">Início</button>
+    <button type="button" :class="{ current: screen === 'eucharist' }" @click="screen = 'eucharist'">Eucaristia</button>
+    <button type="button" :class="{ current: screen === 'songs' }" @click="screen = 'songs'">Cânticos</button>
+    <button type="button" :class="{ current: screen === 'config' }" @click="screen = 'config'">Configuração</button>
+  </nav>
   <div v-if="missingFonts.length" class="font-banner">
     <p>
       Identificados tipos de letra em falta. A apresentação pode não corresponder ao modelo até os instalar:
@@ -348,21 +366,53 @@ async function errorText(response) {
     </div>
     <p v-if="error" class="status error">{{ error }}</p>
   </main>
-  <main v-else-if="indexPath" class="page">
+  <main v-else-if="indexPath && screen === 'home'" class="welcome home-screen">
+    <h1>O que vamos preparar?</h1>
+    <div class="choice-row">
+      <button class="choice" type="button" @click="screen = 'eucharist'">
+        <img src="/logo_comunhao.png" alt="" />
+        <strong>Eucaristia</strong>
+        <span>Missa de domingo, com um cântico para cada momento.</span>
+      </button>
+      <button class="choice" type="button" @click="screen = 'songs'">
+        <img src="/logo_luz.png" alt="" />
+        <strong>Lista de cânticos</strong>
+        <span>Uma apresentação só com cânticos, pela ordem escolhida.</span>
+      </button>
+    </div>
+  </main>
+  <main v-else-if="indexPath && screen === 'config'" class="page">
     <header>
-      <h1>Cânticos</h1>
-      <div class="subtitle-row">
-        <p>Criar apresentação com um conjunto de cânticos.</p>
-        <p class="index-line">
-          <span>Índice: {{ indexName }}</span>
-          <button class="alter" type="button" @click="chooseIndex">
+      <h1>Configuração</h1>
+      <p class="lede">O índice de cânticos usado nesta aplicação.</p>
+    </header>
+    <section class="panel">
+      <div class="field">
+        <span>Índice</span>
+        <div class="path-row">
+          <input :value="indexPath" type="text" readonly />
+          <button class="browse" type="button" title="Escolher índice" aria-label="Escolher índice" @click="chooseIndex">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
               <path d="M3 7.5A1.5 1.5 0 0 1 4.5 6H9l2 2h8.5A1.5 1.5 0 0 1 21 9.5v8A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5v-10z" />
             </svg>
-            alterar
           </button>
-        </p>
+        </div>
       </div>
+      <p v-if="error" class="status error">{{ error }}</p>
+    </section>
+  </main>
+  <Eucharist
+    v-if="indexPath && eucharistMounted"
+    v-show="screen === 'eucharist'"
+    :songs="library"
+    :folder="folder"
+    @choose-folder="chooseFolder"
+    @generated="savedPath = $event"
+  />
+  <main v-if="indexPath && screen === 'songs'" class="page">
+    <header>
+      <h1>Cânticos</h1>
+      <p class="lede">Criar apresentação com um conjunto de cânticos.</p>
     </header>
     <p v-if="indexPath && loadError" class="status error">{{ loadError }}</p>
     <div v-else-if="indexPath" class="columns">
@@ -382,7 +432,7 @@ async function errorText(response) {
       <div class="export-fields">
         <label class="field">
           <span>Ficheiro</span>
-          <input :value="output" type="text" @input="editOutput($event.target.value)" />
+          <input ref="outputInput" :value="output" type="text" @input="editOutput($event.target.value)" />
         </label>
         <div class="field">
           <span>Pasta</span>
@@ -408,6 +458,16 @@ async function errorText(response) {
       </div>
       <p v-if="error && !savedPath" class="status error">{{ error }}</p>
     </section>
+    <div v-if="replaceName" class="modal-backdrop" @click.self="pickAnotherName">
+      <div class="modal confirm" role="dialog" aria-modal="true" aria-labelledby="replace-file">
+        <p id="replace-file">Já existe um ficheiro com o nome {{ replaceName }}. Quer substituí-lo?</p>
+        <div class="open-actions">
+          <button type="button" @click="pickAnotherName">Escolher outro nome</button>
+          <button class="primary" type="button" @click="generate(true)">Substituir</button>
+        </div>
+      </div>
+    </div>
+  </main>
     <div v-if="savedPath" class="modal-backdrop" @click.self="dismissSaved">
       <div class="modal" role="dialog" aria-modal="true" aria-labelledby="export-done">
         <button class="icon close" type="button" aria-label="Fechar" @click="dismissSaved">
@@ -429,6 +489,5 @@ async function errorText(response) {
         <p v-if="error" class="status error">{{ error }}</p>
       </div>
     </div>
-  </main>
   </div>
 </template>

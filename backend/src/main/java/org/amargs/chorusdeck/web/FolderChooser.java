@@ -33,15 +33,20 @@ public final class FolderChooser {
 
     /** @return the chosen directory, or null when the dialog is cancelled */
     public static Path choose(Path start) throws Exception {
-        return choose(start, true, "Escolher pasta");
+        return choose(start, true, "Escolher pasta", null);
     }
 
     /** @return the chosen file, or null when the dialog is cancelled */
     public static Path chooseFile(Path start) throws Exception {
-        return choose(start, false, "Escolher índice");
+        return choose(start, false, "Escolher índice", new FileNameExtensionFilter("JSON", "json"));
     }
 
-    private static Path choose(Path start, boolean directoriesOnly, String title) throws Exception {
+    /** @return the chosen image, or null when the dialog is cancelled */
+    public static Path chooseImage(Path start) throws Exception {
+        return choose(start, false, "Escolher imagem", new FileNameExtensionFilter("Imagem", "png", "jpg", "jpeg", "gif"));
+    }
+
+    private static Path choose(Path start, boolean directoriesOnly, String title, FileNameExtensionFilter filter) throws Exception {
         if (GraphicsEnvironment.isHeadless()) {
             throw new IllegalStateException("A folder chooser needs a display.");
         }
@@ -51,7 +56,7 @@ public final class FolderChooser {
             return await(handle.result());
         }
         try {
-            Path chosen = show(start, directoriesOnly, title);
+            Path chosen = show(start, directoriesOnly, title, filter);
             handle.result().complete(chosen);
             return chosen;
         } catch (Throwable error) {
@@ -83,7 +88,7 @@ public final class FolderChooser {
         }
     }
 
-    private static Path show(Path start, boolean directoriesOnly, String title) throws Exception {
+    private static Path show(Path start, boolean directoriesOnly, String title, FileNameExtensionFilter filter) throws Exception {
         Path[] chosen = new Path[1];
         SwingUtilities.invokeAndWait(() -> {
             JFrame owner = new JFrame();
@@ -129,7 +134,9 @@ public final class FolderChooser {
                     }
                 } else {
                     chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
-                    chooser.setFileFilter(new FileNameExtensionFilter("JSON", "json"));
+                    if (filter != null) {
+                        chooser.setFileFilter(filter);
+                    }
                     Path folder = start != null && Files.isDirectory(start) ? start : start == null ? null : start.getParent();
                     if (folder != null && Files.isDirectory(folder)) {
                         chooser.setCurrentDirectory(folder.toFile());

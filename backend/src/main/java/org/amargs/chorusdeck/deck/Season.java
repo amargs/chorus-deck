@@ -32,6 +32,18 @@ public final class Season {
         return headerScheme;
     }
 
+    /** The accent the slides use. Festive layouts keep gold without recoloring the header. */
+    public String slideAccent() {
+        return headerScheme == null ? "accent4" : headerScheme;
+    }
+
+    public Season withHeaderScheme(String scheme) {
+        if (scheme == null || scheme.equals(headerScheme)) {
+            return this;
+        }
+        return new Season(coverLayout, titleLayout, scheme, tempoName);
+    }
+
     public String tempo(String ano) {
         return tempoName + " · Ano " + ano;
     }

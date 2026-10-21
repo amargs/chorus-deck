@@ -34,6 +34,9 @@ public final class LiturgyClient {
 
     public LiturgyDay load(LocalDate date, Path libraryFile) {
         SundayLibrary library = new SundayLibrary(libraryFile);
+        if (isCorpusChristi(date)) {
+            return corpusChristi(date);
+        }
         RomanCalendar calendar;
         try {
             calendar = RomanCalendar.parse(source.fetch(date));
@@ -64,6 +67,109 @@ public final class LiturgyClient {
 
     public static String url(LocalDate date) {
         return "https://api.parishcompanion.app/calendar/AU?date=" + date;
+    }
+
+    /** A Sunday that is also one of the five fixed solemnities. Absent on every other day. */
+    public record SundaySolemnity(String title, String cover, boolean outranksSunday) {
+    }
+
+    /** A weekday that is one of the five fixed solemnities. Absent on Sundays and every other day. */
+    public record WeekdaySolemnity(String title, String cover) {
+    }
+
+    public static SundaySolemnity sundayOverlap(LocalDate date, String seasonKey) {
+        if (date == null || date.getDayOfWeek() != DayOfWeek.SUNDAY) {
+            return null;
+        }
+        FixedSolemnity solemnity = FixedSolemnity.on(date);
+        if (solemnity == null) {
+            return null;
+        }
+        return new SundaySolemnity(solemnity.title(), solemnity.cover(), !"advento".equals(seasonKey));
+    }
+
+    public static WeekdaySolemnity weekdaySolemnity(LocalDate date) {
+        if (date == null || date.getDayOfWeek() == DayOfWeek.SUNDAY) {
+            return null;
+        }
+        FixedSolemnity solemnity = FixedSolemnity.on(date);
+        if (solemnity == null) {
+            return null;
+        }
+        return new WeekdaySolemnity(solemnity.title(), solemnity.cover());
+    }
+
+    /** Corpus Christi is the Thursday after Trinity Sunday, sixty days after Easter. */
+    public static LocalDate corpusChristi(int year) {
+        return easter(year).plusDays(60);
+    }
+
+    static boolean isCorpusChristi(LocalDate date) {
+        return date != null && date.equals(corpusChristi(date.getYear()));
+    }
+
+    private LiturgyDay corpusChristi(LocalDate date) {
+        RomanCalendar calendar = null;
+        try {
+            calendar = RomanCalendar.parse(source.fetch(date));
+        } catch (IOException | InterruptedException e) {
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
+        }
+        String season = "comum";
+        String cycle = liturgicalCycle(date);
+        if (calendar != null) {
+            if (calendar.cycle() != null && !calendar.cycle().isBlank()) {
+                cycle = calendar.cycle();
+            }
+            try {
+                season = SundayLibrary.seasonKey(calendar);
+            } catch (RuntimeException ignored) {
+                season = "comum";
+            }
+        }
+        LOG.warn(date + " is Corpus Christi. The scriptures were not filled in.");
+        return new LiturgyDay(
+                date,
+                SundayLibrary.CORPUS_CHRISTI,
+                season,
+                null,
+                cycle,
+                null,
+                null,
+                null,
+                null,
+                null);
+    }
+
+    /** The Sunday-cycle letter for a date. 2026 is A, 2027 is B, 2025 is C. */
+    static String liturgicalCycle(LocalDate date) {
+        LocalDate advent = LocalDate.of(date.getYear(), 11, 27).with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
+        int year = date.isBefore(advent) ? date.getYear() : date.getYear() + 1;
+        return switch (Math.floorMod(year, 3)) {
+            case 0 -> "A";
+            case 1 -> "B";
+            default -> "C";
+        };
+    }
+
+    private static LocalDate easter(int year) {
+        int a = year % 19;
+        int b = year / 100;
+        int c = year % 100;
+        int d = b / 4;
+        int e = b % 4;
+        int f = (b + 8) / 25;
+        int g = (b - f + 1) / 3;
+        int h = (19 * a + b - d - g + 15) % 30;
+        int i = c / 4;
+        int k = c % 4;
+        int l = (32 + 2 * e + 2 * i - h - k) % 7;
+        int m = (a + 11 * h + 22 * l) / 451;
+        int month = (h + l - 7 * m + 114) / 31;
+        int day = ((h + l - 7 * m + 114) % 31) + 1;
+        return LocalDate.of(year, month, day);
     }
 
     static String sundaySolemnity(LocalDate date, LiturgyDay day, RomanCalendar calendar, FixedSolemnity solemnity) {

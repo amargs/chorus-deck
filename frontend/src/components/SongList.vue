@@ -6,6 +6,8 @@ const props = defineProps({
   songs: { type: Array, required: true },
   query: { type: String, required: true },
   chosenIds: { type: Array, required: true },
+  heading: { type: String, default: 'Lista de cânticos' },
+  requireBookId: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['update:query', 'add', 'remove-song'])
@@ -14,8 +16,12 @@ function picked(song) {
   return props.chosenIds.includes(song.id)
 }
 
+function unavailable(song) {
+  return !song.hasVerses || (props.requireBookId && !song.bookId)
+}
+
 function toggle(song) {
-  if (!song.hasVerses) {
+  if (unavailable(song)) {
     return
   }
   if (picked(song)) {
@@ -31,7 +37,7 @@ const visible = computed(() =>
 
 <template>
   <section class="panel">
-    <h2>Lista de cânticos</h2>
+    <h2>{{ heading }}</h2>
     <input
       class="search"
       type="search"
@@ -42,21 +48,20 @@ const visible = computed(() =>
     <ul class="songs">
       <li v-for="song in visible" :key="song.id">
         <span class="song-label">
-          <span v-if="song.bookId" class="book">{{ song.bookId }}</span>
+          <span v-if="song.bookId" class="book-badge">{{ song.bookId }}</span>
           {{ song.title }}
         </span>
         <span v-if="!song.hasVerses" class="missing">sem letra</span>
+        <span v-else-if="requireBookId && !song.bookId" class="missing">sem número</span>
         <button
           type="button"
           class="icon"
+          :class="{ chosen: picked(song) }"
           :aria-label="picked(song) ? 'Retirar' : 'Adicionar'"
-          :disabled="!song.hasVerses"
+          :disabled="unavailable(song)"
           @click="toggle(song)"
         >
-          <svg v-if="picked(song)" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M19 12H5M11 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-          <svg v-else viewBox="0 0 24 24" aria-hidden="true">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
         </button>
