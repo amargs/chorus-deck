@@ -88,6 +88,69 @@ select {
   background: #fff;
 }
 
+select {
+  padding-right: 1.8rem;
+  appearance: none;
+  appearance: base-select;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath fill='none' stroke='%235c564c' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' d='M1 1.5 6 6.5 11 1.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.7rem center;
+  background-size: 0.7rem;
+}
+
+select::picker(select) {
+  appearance: base-select;
+  border: 1px solid #c8c1b4;
+  border-radius: 6px;
+  background: #fff;
+  padding: 0.2rem;
+  max-height: min(16rem, 50vh);
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #cfc8bc transparent;
+  position-try-fallbacks: none;
+  top: calc(anchor(bottom) + 0.25rem);
+  bottom: auto;
+  left: anchor(left);
+  right: anchor(right);
+}
+
+select::picker(select)::-webkit-scrollbar {
+  width: 10px;
+}
+
+select::picker(select)::-webkit-scrollbar-button {
+  display: none;
+  height: 0;
+  width: 0;
+}
+
+select::picker(select)::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 6px 0;
+}
+
+select::picker(select)::-webkit-scrollbar-thumb {
+  background: #d4cdc2;
+  border: 2px solid #fff;
+  border-radius: 999px;
+}
+
+select::picker-icon {
+  display: none;
+}
+
+select option {
+  padding: 0.4rem 0.55rem;
+  border-radius: 4px;
+}
+select option:focus,
+select option:checked {
+  background: var(--accent-soft);
+  color: #1c1915;
+}
+
 .font-banner {
   background: #f4e4c4;
   color: #5c3b12;
@@ -396,10 +459,11 @@ header .alter svg {
 
 .check {
   display: flex;
-  align-items: flex-start;
-  gap: 0.45rem;
+  align-items: center;
+  gap: 0.65rem;
   min-width: 0;
   font-weight: 600;
+  cursor: pointer;
 }
 
 .check span {
@@ -409,15 +473,26 @@ header .alter svg {
 
 .warnings {
   margin: 0.9rem 0 0;
-  padding-left: 1.1rem;
+  padding: 0.75rem 0.9rem;
   min-width: 0;
   max-width: 100%;
-  color: #8d2a2a;
+  border: 1px solid #e4d3a8;
+  border-radius: 0.6rem;
+  background: #fff8e8;
+  color: #6b4e16;
   overflow-wrap: break-word;
 }
 
+.warnings p {
+  margin: 0;
+}
+
+.warnings p + p {
+  margin-top: 0.45rem;
+}
+
 .warnings a {
-  margin-left: 0.35rem;
+  margin-left: 0;
   color: inherit;
   font-size: 0.85em;
   font-weight: 400;
@@ -432,9 +507,37 @@ header .alter svg {
 .moments {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 0 0.35rem 0 0;
   max-height: 28rem;
   overflow: auto;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: #cfc8bc transparent;
+}
+
+.moments::-webkit-scrollbar,
+.songs::-webkit-scrollbar {
+  width: 12px;
+}
+
+.moments::-webkit-scrollbar-button,
+.songs::-webkit-scrollbar-button {
+  display: none;
+  height: 0;
+  width: 0;
+}
+
+.moments::-webkit-scrollbar-track,
+.songs::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 0.4rem 0;
+}
+
+.moments::-webkit-scrollbar-thumb,
+.songs::-webkit-scrollbar-thumb {
+  background: #d4cdc2;
+  border: 3px solid #fff;
+  border-radius: 999px;
 }
 
 .moments li {
@@ -599,21 +702,6 @@ input:not([type="checkbox"]):not([type="radio"])::placeholder {
   scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: #cfc8bc transparent;
-}
-
-.songs::-webkit-scrollbar {
-  width: 12px;
-}
-
-.songs::-webkit-scrollbar-track {
-  background: transparent;
-  margin: 0.4rem 0;
-}
-
-.songs::-webkit-scrollbar-thumb {
-  background: #d4cdc2;
-  border: 3px solid #fff;
-  border-radius: 999px;
 }
 
 .songs li {
@@ -988,10 +1076,41 @@ input:not([type="checkbox"]):not([type="radio"])::placeholder {
 }
 
 .modal.readings-editor {
+  display: flex;
+  flex-direction: column;
   width: min(36rem, 100%);
   max-height: min(40rem, calc(100vh - 3rem));
-  overflow: auto;
+  overflow: hidden;
   text-align: left;
+}
+
+.readings-scroll {
+  min-height: 0;
+  overflow: auto;
+  padding-right: 0.35rem;
+  scrollbar-width: thin;
+  scrollbar-color: #cfc8bc transparent;
+}
+
+.readings-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.readings-scroll::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.readings-scroll::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 0.35rem 0;
+}
+
+.readings-scroll::-webkit-scrollbar-thumb {
+  background: #d4cdc2;
+  border: 2px solid #fff;
+  border-radius: 999px;
 }
 
 .modal.readings-editor h2 {

@@ -75,13 +75,20 @@ public final class MassDeckRequests {
         if (verse == null || verse.isBlank()) {
             verse = null;
         }
-        MassRequest mass = ready.request().withLiturgy(day).withCoverFields(ready.domingo(), verse)
-                .withReadingReferences(ready.primeiraRef(), ready.segundaRef());
+        LiturgyClient.SundaySolemnity overlap = null;
+        LiturgyDay source = day;
         if (ready.solemnity()) {
-            LiturgyClient.SundaySolemnity overlap = LiturgyClient.sundayOverlap(day.date(), day.seasonKey());
+            overlap = LiturgyClient.sundayOverlap(day.date(), day.seasonKey());
             if (overlap == null) {
                 throw new IllegalArgumentException("This date is not a Sunday solemnity.");
             }
+            if (overlap.outranksSunday()) {
+                source = blankScriptures(day);
+            }
+        }
+        MassRequest mass = ready.request().withLiturgy(source).withCoverFields(ready.domingo(), verse)
+                .withReadingReferences(ready.primeiraRef(), ready.segundaRef());
+        if (overlap != null) {
             if (ready.domingo() == null || ready.domingo().isBlank()) {
                 mass = mass.withCoverFields(overlap.title(), verse);
             }
@@ -92,6 +99,21 @@ public final class MassDeckRequests {
             mass = mass.withCoverLayout(coverLayout(ready.cover()));
         }
         return mass.withAccent(ready.accent());
+    }
+
+    private static LiturgyDay blankScriptures(LiturgyDay day) {
+        LiturgyDay.Reading blank = new LiturgyDay.Reading("", "");
+        return new LiturgyDay(
+                day.date(),
+                day.domingo(),
+                day.seasonKey(),
+                day.coverLayout(),
+                day.ano(),
+                blank,
+                blank,
+                "",
+                blank,
+                day.louvor());
     }
 
     private static String coverLayout(String name) {
@@ -203,7 +225,7 @@ public final class MassDeckRequests {
         view.put("title", overlap.title());
         view.put("cover", overlap.cover());
         view.put("outranks", overlap.outranksSunday());
-        view.put("accent", "Capa - Solenidade Pedro Paulo".equals(overlap.cover()) ? "accent5" : "accent4");
+        view.put("accent", solemnityAccent(overlap.cover()));
         view.put("warning", overlapWarning(day, overlap));
         if (day.ano() != null && !day.ano().isBlank()) {
             view.put("fileName", DeckSpec.fileName(day.date(), overlap.title(), day.seasonKey(), day.ano()));
@@ -214,13 +236,21 @@ public final class MassDeckRequests {
     private static String overlapWarning(LiturgyDay day, LiturgyClient.SundaySolemnity overlap) {
         String when = day.date().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
         if (overlap.outranksSunday()) {
-            return when + " é também " + overlap.title() + ". A solenidade prevalece sobre " + day.domingo()
-                    + ", mas as leituras são as do " + day.domingo()
-                    + " e não as de " + overlap.title() + ".";
+            return "O Domingo " + when + " é também " + overlap.title()
+                    + ". A celebração da solenidade prevalece sobre a liturgia de Domingo.";
         }
-        return when + " é também " + overlap.title()
-                + ". Este domingo do Advento prevalece e as leituras são as do " + day.domingo()
-                + ", não as de " + overlap.title() + ".";
+        return "O Domingo " + when + " é também " + overlap.title() + ". No entanto, a liturgia de "
+                + day.domingo() + " do tempo de " + seasonName(day.seasonKey())
+                + " prevalece sobre esta festa/solenidade.";
+    }
+
+    private static String seasonName(String seasonKey) {
+        return switch (seasonKey == null ? "" : seasonKey) {
+            case "advento" -> "Advento";
+            case "quaresma", "ramos" -> "Quaresma";
+            case "pascoa" -> "Páscoa";
+            default -> seasonKey == null ? "" : seasonKey;
+        };
     }
 
     private static Map<String, Object> weekdaySolemnity(LiturgyDay day) {
@@ -232,7 +262,7 @@ public final class MassDeckRequests {
         view.put("title", solemnity.title());
         view.put("cover", solemnity.cover());
         view.put("warning", day.date().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
-                + " é " + solemnity.title() + ". A liturgia deste dia não foi preenchida.");
+                + " é " + solemnity.title() + ".");
         view.put("link", true);
         return view;
     }
@@ -242,24 +272,36 @@ public final class MassDeckRequests {
             return null;
         }
         return switch (theme) {
-            case "accent1", "accent2", "accent3", "accent4", "accent5" -> theme;
+            case "accent1", "accent2", "accent3", "accent4", "accent5", "accent6" -> theme;
             case "advento", "quaresma" -> "accent2";
             case "rosa" -> "accent3";
             case "natal", "pascoa" -> "accent4";
             case "ramos", "pentecostes" -> "accent5";
             case "comum" -> "accent1";
-            default -> throw new IllegalArgumentException("accent must be accent1, accent2, accent3, accent4, or accent5.");
+            default -> throw new IllegalArgumentException(
+                    "accent must be accent1, accent2, accent3, accent4, accent5, or accent6.");
+        };
+    }
+
+    private static String solemnityAccent(String cover) {
+        return switch (cover) {
+            case "Capa - Solenidade Pedro Paulo" -> "accent5";
+            case "Capa - Solenidade Paz", "Capa - Maria" -> "accent6";
+            default -> "accent4";
         };
     }
 
     private static String theme(LiturgyDay day) {
-        if ("Capa - Solenidade Pedro Paulo".equals(day.coverLayout())) {
+        String cover = day.coverLayout();
+        if ("Capa - Solenidade Pedro Paulo".equals(cover)) {
             return "accent5";
+        }
+        if ("Capa - Solenidade Paz".equals(cover) || "Capa - Maria".equals(cover)) {
+            return "accent6";
         }
         if (SundayLibrary.solemnityGold(day.domingo())) {
             return "accent4";
         }
-        String cover = day.coverLayout();
         if ("Capa - Domingo III Advento".equals(cover) || "Capa - Domingo IV Quaresma".equals(cover)) {
             return "rosa";
         }
@@ -270,13 +312,13 @@ public final class MassDeckRequests {
         List<String> warnings = new ArrayList<>();
         if (day.primeira() == null && day.evangelho() == null) {
             if (LiturgyClient.weekdaySolemnity(day.date()) == null) {
-                warnings.add("A liturgia deste dia não foi preenchida.");
+                warnings.add("A liturgia deste dia não está disponível para ser preenchida automaticamente");
             }
             return warnings;
         }
         List<String> missing = SundayLibrary.missingSentences(day);
         if (!missing.isEmpty()) {
-            warnings.add("Faltam frases para " + String.join(", ", labels(missing)) + ".");
+            warnings.add("Não foi possível preencher automaticamente " + String.join(", ", labels(missing)) + ".");
         }
         if (season.usesLentenAcclamation() && (day.louvor() == null || day.louvor().isBlank())) {
             warnings.add("Falta o verso do louvor.");

@@ -44,7 +44,7 @@ public final class LiturgyClient {
             if (e instanceof InterruptedException) {
                 Thread.currentThread().interrupt();
             }
-            return offline(date, library);
+            return withScriptures(offline(date, library), null);
         }
         if (date.getDayOfWeek() == DayOfWeek.SUNDAY) {
             if (calendar.sundayId() == null) {
@@ -60,20 +60,20 @@ public final class LiturgyClient {
             if (solemnity != null) {
                 LOG.warn(sundaySolemnity(date, day, calendar, solemnity));
             }
-            return day;
+            return withScriptures(day, calendar);
         }
-        return unfilled(date, calendar);
+        return withScriptures(unfilled(date, calendar), calendar);
     }
 
     public static String url(LocalDate date) {
         return "https://api.parishcompanion.app/calendar/AU?date=" + date;
     }
 
-    /** A Sunday that is also one of the five fixed solemnities. Absent on every other day. */
+    /** A Sunday that is also one of the fixed solemnities. Absent on every other day. */
     public record SundaySolemnity(String title, String cover, boolean outranksSunday) {
     }
 
-    /** A weekday that is one of the five fixed solemnities. Absent on Sundays and every other day. */
+    /** A weekday that is one of the fixed solemnities. Absent on Sundays and every other day. */
     public record WeekdaySolemnity(String title, String cover) {
     }
 
@@ -85,7 +85,7 @@ public final class LiturgyClient {
         if (solemnity == null) {
             return null;
         }
-        return new SundaySolemnity(solemnity.title(), solemnity.cover(), !"advento".equals(seasonKey));
+        return new SundaySolemnity(solemnity.title(), solemnity.cover(), !sundayKeepsTheDay(seasonKey));
     }
 
     public static WeekdaySolemnity weekdaySolemnity(LocalDate date) {
@@ -130,7 +130,7 @@ public final class LiturgyClient {
             }
         }
         LOG.warn(date + " is Corpus Christi. The scriptures were not filled in.");
-        return new LiturgyDay(
+        return withScriptures(new LiturgyDay(
                 date,
                 SundayLibrary.CORPUS_CHRISTI,
                 season,
@@ -140,7 +140,7 @@ public final class LiturgyClient {
                 null,
                 null,
                 null,
-                null);
+                null), calendar);
     }
 
     /** The Sunday-cycle letter for a date. 2026 is A, 2027 is B, 2025 is C. */
@@ -174,15 +174,23 @@ public final class LiturgyClient {
 
     static String sundaySolemnity(LocalDate date, LiturgyDay day, RomanCalendar calendar, FixedSolemnity solemnity) {
         String kept = date + " is also " + solemnity.title() + ". The deck keeps " + day.domingo() + " (" + day.ano() + "). ";
-        if ("advent".equals(calendar.season())) {
-            return kept + "This Sunday of Advent outranks the solemnity, so those readings stay.";
+        if (sundayKeepsTheDay(calendar.season())) {
+            return kept + "This Sunday outranks the solemnity, so those readings stay.";
         }
         return kept + "The scriptures are that Sunday's, and this solemnity outranks it.";
     }
 
+    /** Sundays of Advent, Lent, and Easter outrank a feast or solemnity that falls on them. */
+    private static boolean sundayKeepsTheDay(String season) {
+        return switch (season == null ? "" : season) {
+            case "advento", "advent", "quaresma", "lent", "ramos", "holy_week", "pascoa", "easter" -> true;
+            default -> false;
+        };
+    }
+
     private LiturgyDay unfilled(LocalDate date, RomanCalendar calendar) {
         if (calendar.primeira() == null && calendar.evangelho() == null) {
-            LOG.warn(date + " has no scriptures. The liturgy was not filled in.");
+            LOG.warn(date + " has no scriptures from the calendar. The readings stay blank.");
         }
         FixedSolemnity solemnity = FixedSolemnity.of(calendar.name());
         String title = solemnity == null ? caption(date) : solemnity.title();
@@ -193,11 +201,51 @@ public final class LiturgyClient {
                 SundayLibrary.seasonKey(calendar),
                 cover,
                 calendar.cycle(),
+                new LiturgyDay.Reading(blank(calendar.primeira()), ""),
                 null,
-                null,
-                null,
-                null,
+                "",
+                new LiturgyDay.Reading(blank(calendar.evangelho()), ""),
                 null);
+    }
+
+    private static String blank(String value) {
+        return value == null ? "" : value;
+    }
+
+    /** A solemnity keeps primeira, segunda, the psalm, and the Gospel, on a weekday as on a Sunday. */
+    private static LiturgyDay withScriptures(LiturgyDay day, RomanCalendar calendar) {
+        if (!isSolemnity(day)) {
+            return day;
+        }
+        return new LiturgyDay(
+                day.date(),
+                day.domingo(),
+                day.seasonKey(),
+                day.coverLayout(),
+                day.ano(),
+                orBlank(day.primeira(), calendar == null ? null : calendar.primeira()),
+                orBlank(day.segunda(), calendar == null ? null : calendar.segunda()),
+                day.refrao() == null ? "" : day.refrao(),
+                orBlank(day.evangelho(), calendar == null ? null : calendar.evangelho()),
+                day.louvor());
+    }
+
+    private static boolean isSolemnity(LiturgyDay day) {
+        if (day == null) {
+            return false;
+        }
+        if (FixedSolemnity.on(day.date()) != null || isCorpusChristi(day.date())) {
+            return true;
+        }
+        String title = day.domingo();
+        return title != null && title.startsWith("Solenidade ");
+    }
+
+    private static LiturgyDay.Reading orBlank(LiturgyDay.Reading reading, String referencia) {
+        if (reading != null) {
+            return reading;
+        }
+        return new LiturgyDay.Reading(referencia == null ? "" : referencia, "");
     }
 
     private String caption(LocalDate date) {

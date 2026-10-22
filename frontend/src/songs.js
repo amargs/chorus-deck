@@ -10,6 +10,9 @@ export const COVERS = [
   { id: 'Capa - Pentecostes', label: 'Pentecostes', accent: 'accent5', season: 'pentecostes' },
   { id: 'Capa - Solenidade', label: 'Solenidade', accent: 'accent4' },
   { id: 'Capa - Solenidade Pedro Paulo', label: 'Solenidade Pedro e Paulo', accent: 'accent5' },
+  { id: 'Capa - Solenidade Paz', label: 'Paz', accent: 'accent6' },
+  { id: 'Capa - Maria', label: 'Maria', accent: 'accent6' },
+  { id: 'Capa - Taizé', label: 'Taizé' },
 ]
 
 export const SEASONS = [
@@ -52,9 +55,10 @@ export const MOMENTS = [
 export const ACCENTS = [
   { id: 'accent1', name: 'Verde', season: 'Tempo Comum', color: '#377D49' },
   { id: 'accent2', name: 'Roxo', season: 'Advento e Quaresma', color: '#A461AF' },
-  { id: 'accent3', name: 'Rosa', season: 'Domingo III do Advento e Domingo IV da Quaresma', color: '#F99595' },
+  { id: 'accent3', name: 'Rosa', season: 'Domingos Gaudate e Laetere', color: '#F99595' },
   { id: 'accent4', name: 'Dourado', season: 'Natal, Páscoa e solenidades', color: '#8C6A00' },
   { id: 'accent5', name: 'Vermelho', season: 'Ramos e Pentecostes', color: '#B92323' },
+  { id: 'accent6', name: 'Azul', season: '', color: '#039BDF' },
 ]
 
 export const THEME = {

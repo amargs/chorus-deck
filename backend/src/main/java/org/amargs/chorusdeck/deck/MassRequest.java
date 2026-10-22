@@ -129,8 +129,9 @@ public record MassRequest(
             return this;
         }
         if (!scheme.equals("accent1") && !scheme.equals("accent2") && !scheme.equals("accent3")
-                && !scheme.equals("accent4") && !scheme.equals("accent5")) {
-            throw new IllegalArgumentException("accent must be accent1, accent2, accent3, accent4, or accent5.");
+                && !scheme.equals("accent4") && !scheme.equals("accent5") && !scheme.equals("accent6")) {
+            throw new IllegalArgumentException(
+                    "accent must be accent1, accent2, accent3, accent4, accent5, or accent6.");
         }
         return new MassRequest(
                 cover, interval, longCreed, oracao, entrada, kyrie, gloria, aleluia, dons, santo,

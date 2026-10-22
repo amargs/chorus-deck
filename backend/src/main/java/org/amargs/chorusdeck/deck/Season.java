@@ -82,7 +82,10 @@ public final class Season {
                 "Capa - Páscoa",
                 "Capa - Pentecostes",
                 "Capa - Solenidade",
-                "Capa - Solenidade Pedro Paulo");
+                "Capa - Solenidade Pedro Paulo",
+                "Capa - Solenidade Paz",
+                "Capa - Maria",
+                "Capa - Taizé");
     }
 
     public static Season resolve(String seasonKey, String coverOverride) {
@@ -95,6 +98,9 @@ public final class Season {
         }
         if ("Capa - Solenidade Pedro Paulo".equals(coverOverride)) {
             return new Season(coverOverride, ORDINARY_TITLE, "accent5", season.tempoName);
+        }
+        if ("Capa - Solenidade Paz".equals(coverOverride) || "Capa - Maria".equals(coverOverride)) {
+            return new Season(coverOverride, ORDINARY_TITLE, "accent6", season.tempoName);
         }
         Season fromCover = byCover(coverOverride);
         if (fromCover != null) {

@@ -80,7 +80,7 @@ class MassDeckRequestsTest {
         assertEquals("Solenidade de Todos os Santos", solemnity.get("title"));
         assertEquals("Capa - Solenidade", solemnity.get("cover"));
         assertEquals(
-                "01/11/2027 é Solenidade de Todos os Santos. A liturgia deste dia não foi preenchida.",
+                "01/11/2027 é Solenidade de Todos os Santos.",
                 solemnity.get("warning"));
         assertEquals(true, solemnity.get("link"));
         assertFalse(solemnity.containsKey("outranks"));
@@ -93,7 +93,7 @@ class MassDeckRequestsTest {
                 LocalDate.of(2026, 10, 19), "2ªf da semana XXIX", "comum", null, "A",
                 null, null, null, null, null);
         List<?> warnings = (List<?>) MassDeckRequests.preview(day).get("warnings");
-        assertEquals(List.of("A liturgia deste dia não foi preenchida."), warnings);
+        assertEquals(List.of("A liturgia deste dia não está disponível para ser preenchida automaticamente"), warnings);
     }
 
     @Test
@@ -155,7 +155,7 @@ class MassDeckRequestsTest {
         assertEquals("Capa - Solenidade", solemnity.get("cover"));
         assertEquals(true, solemnity.get("outranks"));
         assertEquals(
-                "01/11/2026 é também Solenidade de Todos os Santos. A solenidade prevalece sobre Domingo XXXI, mas as leituras são as do Domingo XXXI e não as de Solenidade de Todos os Santos.",
+                "O Domingo 01/11/2026 é também Solenidade de Todos os Santos. A celebração da solenidade prevalece sobre a liturgia de Domingo.",
                 solemnity.get("warning"));
         assertEquals("2026-11-01 Solenidade de Todos os Santos - Ano A.pptx", solemnity.get("fileName"));
 
@@ -164,7 +164,7 @@ class MassDeckRequestsTest {
         Map<String, Object> saturday = (Map<String, Object>) MassDeckRequests.preview(assumption).get("solemnity");
         assertEquals("Solenidade da Assunção da Virgem Santa Maria", saturday.get("title"));
         assertEquals(
-                "15/08/2026 é Solenidade da Assunção da Virgem Santa Maria. A liturgia deste dia não foi preenchida.",
+                "15/08/2026 é Solenidade da Assunção da Virgem Santa Maria.",
                 saturday.get("warning"));
         assertFalse(saturday.containsKey("outranks"));
         @SuppressWarnings("unchecked")
@@ -181,7 +181,7 @@ class MassDeckRequestsTest {
 
         Map<String, Object> peterDay = MassDeckRequests.preview(new LiturgyDay(
                 LocalDate.of(2026, 6, 29),
-                "Solenidade de São Pedro e São Paulo",
+                "Solenidade dos Apóstolos São Pedro e São Paulo",
                 "comum",
                 "Capa - Solenidade Pedro Paulo",
                 "A",
@@ -197,7 +197,9 @@ class MassDeckRequestsTest {
         @SuppressWarnings("unchecked")
         Map<String, Object> advent = (Map<String, Object>) MassDeckRequests.preview(immaculate).get("solemnity");
         assertEquals(false, advent.get("outranks"));
-        assertTrue(advent.get("warning").toString().contains("Este domingo do Advento prevalece"));
+        assertEquals(
+                "O Domingo 08/12/2024 é também Solenidade da Imaculada Conceição da Virgem Santa Maria. No entanto, a liturgia de Domingo II do tempo de Advento prevalece sobre esta festa/solenidade.",
+                advent.get("warning"));
         assertEquals("accent4", advent.get("accent"));
 
         Path dir = Files.createTempDirectory("mass-solemnity");
@@ -228,11 +230,13 @@ class MassDeckRequestsTest {
         MassRequest switched = MassDeckRequests.apply(on, saints);
         assertEquals("Todos os Santos", switched.cover().domingo());
         assertEquals("Capa - Solenidade", switched.cover().cover());
-        assertEquals("Mt 23, 1-12", switched.cover().versiculo());
-        assertEquals("Mt 23, 1-12", switched.liturgy().evangelho().referencia());
+        assertEquals("", switched.cover().versiculo());
+        assertEquals("", switched.liturgy().evangelho().referencia());
+        assertEquals("", switched.liturgy().evangelho().citacao());
         assertEquals("Ap 7, 2-4", switched.liturgy().primeira().referencia());
         assertEquals("Vi uma multidão", switched.liturgy().primeira().citacao());
-        assertEquals("1Jo 3, 1", switched.liturgy().segunda().referencia());
+        assertEquals("", switched.liturgy().segunda().referencia());
+        assertEquals("", switched.liturgy().segunda().citacao());
         assertEquals("accent2", switched.accent());
 
         MassRequest chosenCover = MassDeckRequests.apply(MassDeckRequests.parse(JSON.readTree("""

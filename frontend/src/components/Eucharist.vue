@@ -139,7 +139,23 @@ watch(useSolemnity, (on) => {
   if (!accentTouched.value) {
     showAccent(on ? day.solemnity.accent : day.accent)
   }
+  if (on && day.solemnity.outranks) {
+    clearReadings()
+  } else {
+    fillReadings(day)
+  }
 })
+
+function clearReadings() {
+  form.frase = ''
+  form.versiculo = ''
+  form.primeira = ''
+  form.primeiraRef = ''
+  form.segunda = ''
+  form.segundaRef = ''
+  form.salmo = ''
+  form.louvor = ''
+}
 
 function fillReadings(payload) {
   form.frase = payload.frase || ''
@@ -278,6 +294,9 @@ async function loadLiturgy() {
     fillReadings(payload)
     if (!outputEdited.value && payload.fileName) {
       output.value = payload.fileName
+    }
+    if (payload.solemnity?.outranks) {
+      useSolemnity.value = true
     }
   } catch (e) {
     if (token !== liturgyRequest) {
@@ -483,7 +502,7 @@ async function generate(force = false, replace = false) {
         <p class="lede">Preparar os cânticos e liturgia de uma eucaristia.</p>
       </div>
       <div class="accent-picker">
-        <p>Cor de destaque: {{ accentChoice.name.toLowerCase() }} ({{ accentChoice.id === 'accent4' ? accentChoice.season : accentChoice.season.toLowerCase() }})</p>
+        <p>Cor de destaque: {{ accentChoice.name.toLowerCase() }}<template v-if="accentChoice.season"> ({{ accentChoice.id === 'accent4' ? accentChoice.season : accentChoice.season.toLowerCase() }})</template></p>
         <div class="swatches">
           <button
             v-for="swatch in ACCENTS"
@@ -491,8 +510,8 @@ async function generate(force = false, replace = false) {
             type="button"
             :class="{ selected: swatch.id === accent }"
             :style="{ background: swatch.color }"
-            :title="`${swatch.name} — ${swatch.season}`"
-            :aria-label="`${swatch.name}, ${swatch.season}`"
+            :title="swatch.season ? `${swatch.name}: ${swatch.season}` : swatch.name"
+            :aria-label="swatch.season ? `${swatch.name}, ${swatch.season}` : swatch.name"
             :aria-pressed="swatch.id === accent"
             @click="pickAccent(swatch.id)"
           />
@@ -522,17 +541,9 @@ async function generate(force = false, replace = false) {
       <p v-if="loading" class="status">A ler a liturgia…</p>
       <p v-else-if="liturgyError" class="status error">{{ liturgyError }}</p>
       <div v-else-if="liturgy?.solemnity" class="solemnity">
-        <p>
-          {{ liturgy.solemnity.warning }}
-          <a
-            v-if="liturgy.solemnity.link && liturgyUrl"
-            :href="liturgyUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-          >Abrir em liturgia.pt</a>
-        </p>
+        <p>{{ liturgy.solemnity.warning }}</p>
         <label v-if="liturgy.solemnity.outranks != null" class="check">
-          <input v-model="useSolemnity" type="checkbox" />
+          <input v-model="useSolemnity" class="switch" type="checkbox" />
           <span>Usar {{ liturgy.solemnity.title }}</span>
         </label>
       </div>
@@ -619,17 +630,17 @@ async function generate(force = false, replace = false) {
           </button>
         </div>
       </div>
-      <ul v-if="liturgy.warnings?.length" class="warnings">
-        <li v-for="(warning, index) in liturgy.warnings" :key="warning">
+      <div v-if="liturgy.warnings?.length" class="warnings">
+        <p v-for="(warning, index) in liturgy.warnings" :key="warning">
           {{ warning }}
           <a
             v-if="liturgyUrl && index === liturgy.warnings.length - 1"
             :href="liturgyUrl"
             target="_blank"
             rel="noopener noreferrer"
-          >Abrir em liturgia.pt</a>
-        </li>
-      </ul>
+          >Abrir liturgia.pt para consultar</a>
+        </p>
+      </div>
       <div class="readings">
         <div class="reading">
           <span>Capa</span>
@@ -741,6 +752,7 @@ async function generate(force = false, replace = false) {
           </svg>
         </button>
         <h2 id="readings-title">Capa e leituras</h2>
+        <div class="readings-scroll">
         <p v-if="scripturesStored" class="note">Estas alterações são válidas apenas para este domingo ou celebração e não substituem as ocorrências futuras.</p>
         <p v-else class="note">Ao gerar a apresentação, estas leituras ficam guardadas para a próxima vez que este domingo ou esta celebração se repetir.</p>
         <div class="readings">
@@ -776,6 +788,7 @@ async function generate(force = false, replace = false) {
         </div>
         <div class="open-actions">
           <button type="button" @click="readingsOpen = false">Fechar</button>
+        </div>
         </div>
       </div>
     </div>

@@ -192,10 +192,17 @@ public final class DeckService {
                     deck.interval();
                 }
             }
-            if (mass.liturgy() != null && mass.liturgy().primeira() != null) {
-                deck.reading(TemplateLayouts.LEITURA_1, mass.liturgy().primeira());
-                deck.refrain(mass.liturgy().refrao());
-                if (mass.liturgy().segunda() != null) {
+            if (mass.liturgy() != null) {
+                boolean primeira = filled(mass.liturgy().primeira());
+                boolean segunda = filled(mass.liturgy().segunda());
+                boolean salmo = mass.liturgy().refrao() != null && !mass.liturgy().refrao().isBlank();
+                if (primeira) {
+                    deck.reading(TemplateLayouts.LEITURA_1, mass.liturgy().primeira());
+                }
+                if (primeira || salmo) {
+                    deck.refrain(mass.liturgy().refrao());
+                }
+                if (segunda) {
                     deck.reading(TemplateLayouts.LEITURA_2, mass.liturgy().segunda());
                 }
             }
@@ -248,6 +255,14 @@ public final class DeckService {
         } finally {
             fits.save();
         }
+    }
+
+    private static boolean filled(LiturgyDay.Reading reading) {
+        if (reading == null) {
+            return false;
+        }
+        return (reading.referencia() != null && !reading.referencia().isBlank())
+                || (reading.citacao() != null && !reading.citacao().isBlank());
     }
 
     private static final class MassAssembler {

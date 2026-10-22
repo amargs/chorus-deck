@@ -52,6 +52,9 @@ class TemplateLayoutsTest {
             "Capa - Pentecostes",
             "Capa - Solenidade",
             "Capa - Solenidade Pedro Paulo",
+            "Capa - Solenidade Paz",
+            "Capa - Maria",
+            "Capa - Taizé",
             TemplateLayouts.ORDINARY_TITLE,
             TemplateLayouts.FESTIVE_TITLE,
             "Letra");
@@ -633,6 +636,18 @@ class TemplateLayoutsTest {
         assertEquals("accent5", apostles.headerScheme());
         assertEquals("Tempo Comum · Ano A", apostles.tempo("A"));
         assertEquals("background_comum.jpg", apostles.scriptureBackground());
+
+        Season peace = Season.resolve("natal", "Capa - Solenidade Paz");
+        assertEquals(TemplateLayouts.ORDINARY_TITLE, peace.titleLayout());
+        assertEquals("accent6", peace.headerScheme());
+        assertEquals("Tempo de Natal · Ano A", peace.tempo("A"));
+        assertEquals("background_natal.jpg", peace.scriptureBackground());
+
+        Season mary = Season.resolve("comum", "Capa - Maria");
+        assertEquals("accent6", mary.headerScheme());
+        Season taize = Season.resolve("comum", "Capa - Taizé");
+        assertEquals("Capa - Taizé", taize.coverLayout());
+        assertEquals("accent1", taize.headerScheme());
     }
 
     @Test

@@ -11,9 +11,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 class LiturgyClientTest {
@@ -139,6 +141,9 @@ class LiturgyClientTest {
             if (date.equals(LocalDate.of(2026, 6, 29))) {
                 return day("solemnity", "Saints Peter and Paul", "ordinary", null);
             }
+            if (date.equals(LocalDate.of(2026, 1, 1))) {
+                return day("solemnity", "Solemnity of Mary, the Holy Mother of God", "christmas", null);
+            }
             throw new IOException("unexpected " + date);
         });
 
@@ -147,16 +152,29 @@ class LiturgyClientTest {
         assertEquals("Capa - Solenidade", assumption.coverLayout());
         assertEquals("comum", assumption.seasonKey());
         assertEquals("A", assumption.ano());
-        assertNull(assumption.evangelho());
-        assertNull(assumption.primeira());
+        assertEquals("", assumption.primeira().citacao());
+        assertEquals("", assumption.segunda().citacao());
+        assertEquals("", assumption.evangelho().citacao());
+        assertEquals("", assumption.refrao());
 
         LiturgyDay immaculate = client.load(LocalDate.of(2026, 12, 8), file);
         assertEquals("Solenidade da Imaculada Conceição da Virgem Santa Maria", immaculate.domingo());
         assertEquals("Capa - Solenidade", immaculate.coverLayout());
         assertEquals("advento", immaculate.seasonKey());
 
+        LiturgyDay mary = client.load(LocalDate.of(2026, 1, 1), file);
+        assertEquals("Solenidade de Santa Maria, Mãe de Deus", mary.domingo());
+        assertEquals("Capa - Solenidade Paz", mary.coverLayout());
+        assertEquals("", mary.primeira().citacao());
+        assertEquals("", mary.segunda().citacao());
+        assertEquals("", mary.evangelho().citacao());
+        Map<String, Object> maryPreview = MassDeckRequests.preview(mary);
+        assertEquals("accent6", maryPreview.get("accent"));
+        assertNotNull(maryPreview.get("primeira"));
+        assertNotNull(maryPreview.get("segunda"));
+
         LiturgyDay apostles = client.load(LocalDate.of(2026, 6, 29), file);
-        assertEquals("Solenidade de São Pedro e São Paulo", apostles.domingo());
+        assertEquals("Solenidade dos Apóstolos São Pedro e São Paulo", apostles.domingo());
         assertEquals("Capa - Solenidade Pedro Paulo", apostles.coverLayout());
         assertFalse(Files.exists(file));
     }
@@ -178,7 +196,10 @@ class LiturgyClientTest {
         assertEquals("Sábado da semana XXVIII", saturday.domingo());
         assertEquals("comum", saturday.seasonKey());
         assertNull(saturday.coverLayout());
-        assertNull(saturday.evangelho());
+        assertNull(saturday.segunda());
+        assertEquals("", saturday.primeira().citacao());
+        assertEquals("", saturday.evangelho().citacao());
+        assertEquals("", saturday.refrao());
 
         assertEquals("2ªf da semana XXIX", client.load(LocalDate.of(2026, 10, 19), file).domingo());
         assertEquals("2ªf", client.load(LocalDate.of(2026, 3, 30), file).domingo());
