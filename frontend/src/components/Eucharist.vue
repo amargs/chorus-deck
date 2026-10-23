@@ -765,29 +765,26 @@ async function generate(force = false, replace = false) {
           <div v-if="liturgy?.primeira" class="reading">
             <span>Primeira leitura</span>
             <input v-model="form.primeiraRef" type="text" placeholder="Referência" aria-label="Referência da primeira leitura" />
-            <input v-model="form.primeira" type="text" aria-label="Primeira leitura" />
+            <input v-model="form.primeira" type="text" placeholder="Citação" aria-label="Primeira leitura" />
           </div>
           <label class="reading">
             <span>Salmo</span>
-            <input v-model="form.salmo" type="text" aria-label="Salmo" />
+            <input v-model="form.salmo" type="text" placeholder="Refrão" aria-label="Salmo" />
           </label>
           <div v-if="liturgy?.segunda" class="reading">
             <span>Segunda leitura</span>
             <input v-model="form.segundaRef" type="text" placeholder="Referência" aria-label="Referência da segunda leitura" />
-            <input v-model="form.segunda" type="text" aria-label="Segunda leitura" />
+            <input v-model="form.segunda" type="text" placeholder="Citação" aria-label="Segunda leitura" />
           </div>
           <label v-if="lenten" class="reading">
             <span>Louvor</span>
-            <input v-model="form.louvor" type="text" aria-label="Louvor" />
+            <input v-model="form.louvor" type="text" placeholder="Citação" aria-label="Louvor" />
           </label>
           <div class="reading">
             <span>Evangelho</span>
             <input v-model="form.versiculo" type="text" placeholder="Referência" aria-label="Referência do Evangelho" />
-            <input v-model="form.frase" type="text" aria-label="Evangelho" />
+            <input v-model="form.frase" type="text" placeholder="Citação" aria-label="Evangelho" />
           </div>
-        </div>
-        <div class="open-actions">
-          <button type="button" @click="readingsOpen = false">Fechar</button>
         </div>
         </div>
       </div>
