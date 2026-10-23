@@ -112,8 +112,15 @@ tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
 
+sourceSets.main.resources.exclude 'ui/**'
+
+def uiDist = layout.projectDirectory.dir('../frontend/dist')
+
 tasks.named('processResources') {
     from(layout.projectDirectory.file('data/template_4x3.pptx'))
+    from(uiDist) {
+        into 'ui'
+    }
 }
 
 run {

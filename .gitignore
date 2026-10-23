@@ -43,3 +43,9 @@ node_modules/
 backend/data/fit.json
 backend/library.json
 backend/data/liturgia/
+
+# Vite output from `npm run build` in frontend/. Gradle copies this to the classpath.
+frontend/dist/
+
+# Leftover UI output from before the build wrote to frontend/dist.
+backend/src/main/resources/ui/
