@@ -7,6 +7,11 @@ import SongList from './components/SongList.vue'
 import { THEME, deckFileName, occasionFileName } from './songs.js'
 
 const screen = ref('home')
+const lastDeck = ref('')
+const songsMounted = ref(false)
+const deckMenuHover = ref(false)
+const deckMenuPinned = ref(false)
+const presentations = ref(null)
 const eucharistMounted = ref(false)
 const eucharistDraft = ref(null)
 const hasEucharistDraft = ref(false)
@@ -72,6 +77,9 @@ const savedName = computed(() => {
 })
 
 const draftPrompt = ref(false)
+const deckMenuOpen = computed(() => deckMenuHover.value || deckMenuPinned.value)
+const presentationsCurrent = computed(() =>
+  screen.value === 'eucharist' || screen.value === 'songs' || screen.value === 'decks')
 
 const draftTitle = computed(() => {
   const name = eucharistDraft.value?.form?.domingo
@@ -101,7 +109,14 @@ function dismissSaved() {
   savedPath.value = ''
 }
 
+function showEucharist() {
+  eucharistMounted.value = true
+  lastDeck.value = 'eucharist'
+  screen.value = 'eucharist'
+}
+
 function openEucharist() {
+  deckMenuPinned.value = false
   if (!draftChecked.value) {
     openEucharistWhenReady.value = true
     return
@@ -110,22 +125,59 @@ function openEucharist() {
     draftPrompt.value = true
     return
   }
-  eucharistMounted.value = true
-  screen.value = 'eucharist'
+  showEucharist()
+}
+
+function openSongs() {
+  deckMenuPinned.value = false
+  songsMounted.value = true
+  lastDeck.value = 'songs'
+  screen.value = 'songs'
+}
+
+function openPresentations() {
+  deckMenuPinned.value = false
+  if (lastDeck.value === 'eucharist') {
+    openEucharist()
+    return
+  }
+  if (lastDeck.value === 'songs') {
+    openSongs()
+    return
+  }
+  screen.value = 'decks'
+}
+
+function goHome() {
+  deckMenuPinned.value = false
+  screen.value = 'home'
+}
+
+function openConfig() {
+  deckMenuPinned.value = false
+  screen.value = 'config'
+}
+
+function toggleDeckMenu() {
+  deckMenuPinned.value = !deckMenuPinned.value
+}
+
+function onDocumentPointer(event) {
+  if (!presentations.value?.contains(event.target)) {
+    deckMenuPinned.value = false
+  }
 }
 
 function continueDraft() {
   draftPrompt.value = false
-  eucharistMounted.value = true
-  screen.value = 'eucharist'
+  showEucharist()
 }
 
 async function discardDraft() {
   draftPrompt.value = false
   eucharistDraft.value = null
   hasEucharistDraft.value = false
-  eucharistMounted.value = true
-  screen.value = 'eucharist'
+  showEucharist()
   try {
     await fetch('/api/eucharist-draft', { method: 'DELETE' })
   } catch {
@@ -161,7 +213,11 @@ function onEucharistDraft(saved) {
 }
 
 function onKeydown(event) {
-  if (event.key === 'Escape' && savedPath.value) {
+  if (event.key !== 'Escape') {
+    return
+  }
+  deckMenuPinned.value = false
+  if (savedPath.value) {
     dismissSaved()
   }
 }
@@ -172,10 +228,12 @@ onMounted(() => {
   loadTheme()
   loadEucharistDraft()
   window.addEventListener('keydown', onKeydown)
+  document.addEventListener('pointerdown', onDocumentPointer)
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', onKeydown)
+  document.removeEventListener('pointerdown', onDocumentPointer)
 })
 
 async function loadLibrary() {
@@ -576,10 +634,56 @@ async function errorText(response) {
 <template>
   <div class="app">
   <nav v-if="indexPath" class="topbar">
-    <button type="button" :class="{ current: screen === 'home' }" @click="screen = 'home'">Início</button>
-    <button type="button" :class="{ current: screen === 'eucharist' }" @click="openEucharist">Eucaristia</button>
-    <button type="button" :class="{ current: screen === 'songs' }" @click="screen = 'songs'">Cânticos</button>
-    <button type="button" :class="{ current: screen === 'config' }" @click="screen = 'config'">Configuração</button>
+    <button type="button" class="nav-link" :class="{ current: screen === 'home' }" :aria-current="screen === 'home' ? 'page' : undefined" @click="goHome">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4 11.2 12 4l8 7.2" />
+        <path stroke-linecap="round" stroke-linejoin="round" d="M7 10.2V20h10v-9.8" />
+      </svg>
+      <span class="nav-label" data-text="Início"><span>Início</span></span>
+    </button>
+    <div
+      ref="presentations"
+      class="nav-split"
+      :class="{ current: presentationsCurrent }"
+      @mouseenter="deckMenuHover = true"
+      @mouseleave="deckMenuHover = false"
+    >
+      <button
+        type="button"
+        class="nav-link"
+        :aria-current="presentationsCurrent ? 'page' : undefined"
+        @click="openPresentations"
+      >
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <rect x="3.5" y="4" width="17" height="11.5" rx="1.5" />
+          <path stroke-linecap="round" d="M8 20h8M12 15.5V20" />
+        </svg>
+        <span class="nav-label" data-text="Apresentações"><span>Apresentações</span></span>
+      </button>
+      <button
+        type="button"
+        class="nav-caret"
+        aria-label="Eucaristia e Cânticos"
+        aria-haspopup="menu"
+        aria-controls="deck-menu"
+        :aria-expanded="deckMenuOpen"
+        @click="toggleDeckMenu"
+      >
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+      <div v-if="deckMenuOpen" id="deck-menu" class="nav-menu" role="menu">
+        <button type="button" role="menuitem" :aria-current="screen === 'eucharist' ? 'page' : undefined" @click="openEucharist">Eucaristia</button>
+        <button type="button" role="menuitem" :aria-current="screen === 'songs' ? 'page' : undefined" @click="openSongs">Cânticos</button>
+      </div>
+    </div>
+    <button type="button" class="nav-cog" :class="{ current: screen === 'config' }" aria-label="Configuração" :aria-current="screen === 'config' ? 'page' : undefined" @click="openConfig">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+        <circle cx="12" cy="12" r="3" />
+      </svg>
+    </button>
   </nav>
   <div v-if="missingFonts.length" class="font-banner">
     <p>
@@ -605,8 +709,8 @@ async function errorText(response) {
     </div>
     <p v-if="error" class="status error">{{ error }}</p>
   </main>
-  <main v-else-if="indexPath && screen === 'home'" class="welcome home-screen">
-    <h1>O que vamos preparar?</h1>
+  <main v-else-if="indexPath && (screen === 'home' || screen === 'decks')" class="welcome home-screen">
+    <h1 v-if="screen === 'home'">O que vamos preparar?</h1>
     <div class="choice-row">
       <button class="choice" type="button" @click="openEucharist">
         <img src="/logo_comunhao.png" alt="" />
@@ -616,7 +720,7 @@ async function errorText(response) {
         </span>
         <span>Missa de domingo, com um cântico para cada momento.</span>
       </button>
-      <button class="choice" type="button" @click="screen = 'songs'">
+      <button class="choice" type="button" @click="openSongs">
         <img src="/logo_luz.png" alt="" />
         <strong>Lista de cânticos</strong>
         <span>Uma apresentação só com cânticos, pela ordem escolhida.</span>
@@ -695,7 +799,7 @@ async function errorText(response) {
       </div>
     </div>
   </div>
-  <main v-if="indexPath && screen === 'songs'" class="page">
+  <main v-if="indexPath && songsMounted" v-show="screen === 'songs'" class="page">
     <header>
       <h1>Cânticos</h1>
       <p class="lede">Criar apresentação com um conjunto de cânticos.</p>

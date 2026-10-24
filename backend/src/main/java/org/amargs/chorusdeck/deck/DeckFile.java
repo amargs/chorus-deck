@@ -34,6 +34,7 @@ public final class DeckFile {
     }
 
     public static void write(XMLSlideShow show, Path outputFile) throws IOException {
+        SlideThumbnail.apply(show);
         try (OutputStream out = Files.newOutputStream(outputFile)) {
             show.write(out);
         } catch (FileSystemException e) {

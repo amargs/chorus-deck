@@ -332,26 +332,126 @@ header .alter svg {
   letter-spacing: 0.01em;
 }
 
+.topbar > button,
+.nav-split > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+}
+
+.topbar .nav-icon {
+  width: 1.15rem;
+  height: 1.15rem;
+  flex: none;
+}
+
+.nav-label {
+  display: inline-grid;
+}
+
+.nav-label > span {
+  grid-area: 1 / 1;
+}
+
+.nav-label::before {
+  content: attr(data-text);
+  grid-area: 1 / 1;
+  font-weight: 650;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.nav-split {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+}
+
+.nav-split > .nav-link {
+  padding: 0 0.35rem 0 1rem;
+}
+
+.nav-caret {
+  padding: 0 0.75rem 0 0.15rem;
+}
+
+.topbar > button.nav-cog {
+  margin-left: auto;
+  padding: 0 0.35rem;
+}
+
 .topbar button:hover {
   color: #1c1915;
   background: transparent;
 }
 
-.topbar button.current {
+.topbar > button.current,
+.nav-split.current > button {
   color: var(--accent-ink);
   background: transparent;
   font-weight: 650;
 }
 
-.topbar button.current::after {
+.topbar > button.current::after,
+.nav-split.current::after {
   content: "";
   position: absolute;
   right: 1rem;
   bottom: 0;
   left: 1rem;
   height: 2px;
-  border-radius: 2px 2px 0 0;
   background: var(--accent);
+  pointer-events: none;
+}
+
+.topbar > button.nav-link.current::after {
+  left: calc(1rem - 4px);
+  right: calc(1rem - 6px);
+}
+
+.nav-split.current::after {
+  left: calc(1rem + 1px);
+  right: calc(1rem + 5px);
+}
+
+.topbar > button.nav-cog.current::after {
+  right: 0.3rem;
+  left: 0.3rem;
+}
+
+.nav-menu {
+  position: absolute;
+  top: calc(100% + 3px);
+  left: 1rem;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 11.5rem;
+  padding: 0.3rem;
+  background: #fff;
+  border: 1px solid rgb(28 25 21 / 10%);
+  border-radius: 8px;
+  box-shadow: 0 10px 28px rgb(28 25 21 / 14%);
+}
+
+.nav-menu button {
+  align-self: stretch;
+  height: auto;
+  padding: 0.45rem 0.7rem;
+  border-radius: 6px;
+  text-align: left;
+  font-weight: 500;
+}
+
+.nav-menu button:hover {
+  background: #f3f0e8;
+}
+
+.nav-menu button[aria-current="page"] {
+  color: var(--accent-ink);
+  font-weight: 650;
+  background: var(--accent-soft);
 }
 
 .home-screen {

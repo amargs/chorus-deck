@@ -57,6 +57,7 @@ let saveReady = props.draft == null
 let restorePending = props.draft != null
 let pendingSlots = false
 let saveTimer = 0
+let persistTail = Promise.resolve()
 
 const rows = computed(() => {
   const list = []
@@ -215,6 +216,52 @@ const scripturesStored = computed(() => {
   return !!(day.lenten && storedSentence(day.louvor))
 })
 
+function blankReadings() {
+  return {
+    frase: '',
+    versiculo: '',
+    primeira: '',
+    primeiraRef: '',
+    segunda: '',
+    segundaRef: '',
+    salmo: '',
+    louvor: '',
+  }
+}
+
+function liturgyReadings(day) {
+  return {
+    frase: day.frase || '',
+    versiculo: day.versiculo || '',
+    primeira: day.primeira?.citacao || '',
+    primeiraRef: day.primeira?.referencia || '',
+    segunda: day.segunda?.citacao || '',
+    segundaRef: day.segunda?.referencia || '',
+    salmo: day.salmo || '',
+    louvor: day.louvor || '',
+  }
+}
+
+/** Readings the date and solemnity choice fill in before anyone edits them. */
+function expectedReadings() {
+  const day = liturgy.value
+  if (!day) {
+    return null
+  }
+  if (useSolemnity.value && day.solemnity?.outranks) {
+    return blankReadings()
+  }
+  return liturgyReadings(day)
+}
+
+function scripturesAltered() {
+  const expected = expectedReadings()
+  if (!expected) {
+    return false
+  }
+  return Object.entries(expected).some(([key, value]) => !sameText(form[key], value))
+}
+
 const readingsDirty = computed(() => {
   const day = liturgy.value
   if (!day) {
@@ -223,16 +270,7 @@ const readingsDirty = computed(() => {
   if (cover.value !== automaticCover()) {
     return true
   }
-  if (day.primeira && (!sameText(form.primeira, day.primeira.citacao) || !sameText(form.primeiraRef, day.primeira.referencia))) {
-    return true
-  }
-  if (day.segunda && (!sameText(form.segunda, day.segunda.citacao) || !sameText(form.segundaRef, day.segunda.referencia))) {
-    return true
-  }
-  if (!sameText(form.salmo, day.salmo) || !sameText(form.frase, day.frase) || !sameText(form.versiculo, day.versiculo)) {
-    return true
-  }
-  return lenten.value && !sameText(form.louvor, day.louvor)
+  return scripturesAltered()
 })
 
 function onCoverPick() {
@@ -247,10 +285,13 @@ function onCoverPick() {
 
 function revertReadings() {
   const day = liturgy.value
-  if (!day) {
+  const expected = expectedReadings()
+  if (!day || !expected) {
     return
   }
-  fillReadings(day)
+  for (const [key, value] of Object.entries(expected)) {
+    form[key] = value
+  }
   cover.value = automaticCover()
   if (!accentTouched.value) {
     showAccent(useSolemnity.value && day.solemnity ? day.solemnity.accent : day.accent)
@@ -414,32 +455,18 @@ function hasUserWork() {
   if (Object.values(slots).some((song) => song?.id)) {
     return true
   }
-  if (spoken.gloria || spoken.paiNosso) {
-    return true
-  }
-  if (oracao.value.trim() || interval.value !== 'vazio' || outputEdited.value || accentTouched.value) {
-    return true
-  }
-  if (credo.value !== 'longo') {
-    return true
-  }
-  const day = liturgy.value
-  if (!day) {
-    return FORM_FIELDS.some((key) => form[key].trim())
-  }
-  if (readingsDirty.value) {
-    return true
-  }
-  const expectedTitle = useSolemnity.value && day.solemnity ? day.solemnity.title : day.domingo
-  if (!sameText(form.domingo, expectedTitle || '')) {
-    return true
-  }
-  return useSolemnity.value !== (day.solemnity?.outranks === true)
+  return scripturesAltered()
+}
+
+function queuePersist() {
+  const run = persistTail.then(() => persistDraft())
+  persistTail = run.then(() => {}, () => {})
+  return run
 }
 
 function schedulePersist() {
   window.clearTimeout(saveTimer)
-  saveTimer = window.setTimeout(persistDraft, 250)
+  saveTimer = window.setTimeout(queuePersist, 250)
 }
 
 async function persistDraft() {
@@ -590,6 +617,8 @@ async function generate(force = false, replace = false) {
   missingPrompt.value = []
   replaceName.value = ''
   error.value = ''
+  window.clearTimeout(saveTimer)
+  await queuePersist()
   busy.value = true
   const songs = {}
   for (const moment of moments.value) {

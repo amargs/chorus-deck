@@ -90,19 +90,56 @@ export function songText(song) {
   return `${song.bookId || ''} ${song.title || ''}`.trim()
 }
 
+const MASS_PREFIXES = ['RP', 'G', 'A', 'CR', 'S', 'P', 'C']
+
 export function byBookId(a, b) {
-  const left = (a.bookId || '').trim()
-  const right = (b.bookId || '').trim()
+  const left = massBookKey(a.bookId)
+  const right = massBookKey(b.bookId)
   if (!left || !right) {
-    if (left === right) {
-      return (a.title || '').localeCompare(b.title || '', 'pt', { sensitivity: 'base' })
+    if (!left && !right) {
+      return byTitle(a, b)
     }
     return left ? -1 : 1
   }
-  const compared = left.localeCompare(right, 'pt', { numeric: true, sensitivity: 'base' })
-  if (compared !== 0) {
-    return compared
+  if (left.group !== right.group) {
+    return left.group - right.group
   }
+  if (left.prefixRank !== right.prefixRank) {
+    return left.prefixRank - right.prefixRank
+  }
+  if (left.prefix !== right.prefix) {
+    return left.prefix.localeCompare(right.prefix, 'pt', { sensitivity: 'base' })
+  }
+  if (left.n !== right.n) {
+    return left.n - right.n
+  }
+  return byTitle(a, b)
+}
+
+function massBookKey(bookId) {
+  const raw = (bookId || '').trim()
+  if (!raw) {
+    return null
+  }
+  const number = /^(\d+)$/.exec(raw)
+  if (number) {
+    return { group: 0, prefixRank: 0, prefix: '', n: Number(number[1]) }
+  }
+  const prefixed = /^([A-Za-z]+)(\d*)$/.exec(raw)
+  if (!prefixed) {
+    return { group: 1, prefixRank: MASS_PREFIXES.length, prefix: raw.toUpperCase(), n: -1 }
+  }
+  const prefix = prefixed[1].toUpperCase()
+  const known = MASS_PREFIXES.indexOf(prefix)
+  return {
+    group: 1,
+    prefixRank: known === -1 ? MASS_PREFIXES.length : known,
+    prefix,
+    n: prefixed[2] ? Number(prefixed[2]) : -1,
+  }
+}
+
+function byTitle(a, b) {
   return (a.title || '').localeCompare(b.title || '', 'pt', { sensitivity: 'base' })
 }
 

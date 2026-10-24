@@ -1,5 +1,6 @@
 package org.amargs.chorusdeck.web;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.Test;
@@ -35,6 +36,44 @@ class EucharistDraftStoreTest {
         assertNull(store.read());
         assertFalse(Files.exists(dir.resolve("eucharist-draft.json")));
         store.clear();
+    }
+
+    @Test
+    void anExportedDraftIsClearedForTheNextSessionUnlessItChanged() throws Exception {
+        Path dir = Files.createTempDirectory("eucharist-draft");
+        EucharistDraftStore store = new EucharistDraftStore(dir);
+        ObjectNode body = JSON.createObjectNode();
+        body.put("date", "2026-11-01");
+        body.putObject("form").put("frase", "A festa");
+        store.save(body);
+
+        store.markExportedIfUnchanged(null);
+        assertFalse(store.read().path("exported").asBoolean());
+        store.markExportedIfUnchanged(store.read());
+        assertTrue(store.read().path("exported").asBoolean());
+
+        ObjectNode editedDuringExport = body.deepCopy();
+        editedDuringExport.putObject("form").put("frase", "Entretanto");
+        store.save(editedDuringExport);
+        store.markExportedIfUnchanged(body);
+        assertFalse(store.read().path("exported").asBoolean());
+        assertEquals("Entretanto", store.readNewSession().path("form").path("frase").asText());
+
+        store.save(body);
+        JsonNode snapshot = store.read();
+        store.markExportedIfUnchanged(snapshot);
+        store.save(body.deepCopy());
+        assertTrue(store.read().path("exported").asBoolean());
+        assertNull(store.readNewSession());
+        assertFalse(Files.exists(dir.resolve("eucharist-draft.json")));
+
+        store.save(body);
+        store.markExportedIfUnchanged(store.read());
+        ((ObjectNode) body.get("form")).put("frase", "Depois");
+        store.save(body);
+        assertFalse(store.read().path("exported").asBoolean());
+        assertEquals("Depois", store.readNewSession().path("form").path("frase").asText());
+        assertTrue(Files.isRegularFile(dir.resolve("eucharist-draft.json")));
     }
 
     @Test
