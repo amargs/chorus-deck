@@ -8,6 +8,11 @@ import { THEME, deckFileName, occasionFileName } from './songs.js'
 
 const screen = ref('home')
 const eucharistMounted = ref(false)
+const eucharistDraft = ref(null)
+const hasEucharistDraft = ref(false)
+const draftChecked = ref(false)
+const openEucharistWhenReady = ref(false)
+const continueDraftButton = ref(null)
 const library = ref([])
 const chosen = ref([])
 const query = ref('')
@@ -59,9 +64,16 @@ const savedName = computed(() => {
   return name || output.value.trim()
 })
 
-watch(screen, (value) => {
-  if (value === 'eucharist') {
-    eucharistMounted.value = true
+const draftPrompt = ref(false)
+
+const draftTitle = computed(() => {
+  const name = eucharistDraft.value?.form?.domingo
+  return typeof name === 'string' && name.trim() ? name.trim() : 'Eucaristia'
+})
+
+watch(draftPrompt, (open) => {
+  if (open) {
+    nextTick(() => continueDraftButton.value?.focus())
   }
 })
 
@@ -82,6 +94,65 @@ function dismissSaved() {
   savedPath.value = ''
 }
 
+function openEucharist() {
+  if (!draftChecked.value) {
+    openEucharistWhenReady.value = true
+    return
+  }
+  if (eucharistDraft.value && !eucharistMounted.value) {
+    draftPrompt.value = true
+    return
+  }
+  eucharistMounted.value = true
+  screen.value = 'eucharist'
+}
+
+function continueDraft() {
+  draftPrompt.value = false
+  eucharistMounted.value = true
+  screen.value = 'eucharist'
+}
+
+async function discardDraft() {
+  draftPrompt.value = false
+  eucharistDraft.value = null
+  hasEucharistDraft.value = false
+  eucharistMounted.value = true
+  screen.value = 'eucharist'
+  try {
+    await fetch('/api/eucharist-draft', { method: 'DELETE' })
+  } catch {
+    // The fresh screen clears the file again if it is still there.
+  }
+}
+
+async function loadEucharistDraft() {
+  try {
+    const response = await fetch('/api/eucharist-draft')
+    if (!response.ok) {
+      return
+    }
+    const payload = await response.json()
+    if (!payload.date) {
+      return
+    }
+    eucharistDraft.value = payload
+    hasEucharistDraft.value = true
+  } catch {
+    // Home opens without the draft note when the file cannot be read.
+  } finally {
+    draftChecked.value = true
+    if (openEucharistWhenReady.value) {
+      openEucharistWhenReady.value = false
+      openEucharist()
+    }
+  }
+}
+
+function onEucharistDraft(saved) {
+  hasEucharistDraft.value = saved === true
+}
+
 function onKeydown(event) {
   if (event.key === 'Escape' && savedPath.value) {
     dismissSaved()
@@ -92,6 +163,7 @@ onMounted(() => {
   loadLibrary()
   loadFonts()
   loadTheme()
+  loadEucharistDraft()
   window.addEventListener('keydown', onKeydown)
 })
 
@@ -336,7 +408,7 @@ async function errorText(response) {
   <div class="app">
   <nav v-if="indexPath" class="topbar">
     <button type="button" :class="{ current: screen === 'home' }" @click="screen = 'home'">Início</button>
-    <button type="button" :class="{ current: screen === 'eucharist' }" @click="screen = 'eucharist'">Eucaristia</button>
+    <button type="button" :class="{ current: screen === 'eucharist' }" @click="openEucharist">Eucaristia</button>
     <button type="button" :class="{ current: screen === 'songs' }" @click="screen = 'songs'">Cânticos</button>
     <button type="button" :class="{ current: screen === 'config' }" @click="screen = 'config'">Configuração</button>
   </nav>
@@ -371,9 +443,12 @@ async function errorText(response) {
   <main v-else-if="indexPath && screen === 'home'" class="welcome home-screen">
     <h1>O que vamos preparar?</h1>
     <div class="choice-row">
-      <button class="choice" type="button" @click="screen = 'eucharist'">
+      <button class="choice" type="button" @click="openEucharist">
         <img src="/logo_comunhao.png" alt="" />
-        <strong>Eucaristia</strong>
+        <span class="choice-name">
+          <strong>Eucaristia</strong>
+          <span v-if="hasEucharistDraft" class="draft-chip">Rascunho guardado</span>
+        </span>
         <span>Missa de domingo, com um cântico para cada momento.</span>
       </button>
       <button class="choice" type="button" @click="screen = 'songs'">
@@ -408,9 +483,20 @@ async function errorText(response) {
     v-show="screen === 'eucharist'"
     :songs="library"
     :folder="folder"
+    :draft="eucharistDraft"
     @choose-folder="chooseFolder"
     @generated="savedPath = $event"
+    @draft="onEucharistDraft"
   />
+  <div v-if="draftPrompt" class="modal-backdrop">
+    <div class="modal confirm" role="dialog" aria-modal="true" aria-labelledby="draft-prompt">
+      <p id="draft-prompt">Há um rascunho de {{ draftTitle }} por continuar. Quer retomá-lo?</p>
+      <div class="open-actions">
+        <button type="button" @click="discardDraft">Começar de novo</button>
+        <button ref="continueDraftButton" class="primary" type="button" @click="continueDraft">Continuar</button>
+      </div>
+    </div>
+  </div>
   <main v-if="indexPath && screen === 'songs'" class="page">
     <header>
       <h1>Cânticos</h1>

@@ -42,6 +42,7 @@ public final class SongDeckServer {
 
     static Javalin create(Path stateDirectory, LiturgyLookup liturgy) {
         LibraryStore library = new LibraryStore(stateDirectory);
+        EucharistDraftStore drafts = new EucharistDraftStore(stateDirectory);
         AtomicReference<Path> lastOutput = new AtomicReference<>();
         Javalin app = Javalin.create(javalin -> {
             javalin.showJavalinBanner = false;
@@ -65,6 +66,19 @@ public final class SongDeckServer {
             Path index = library.requireIndex();
             LiturgyDay day = liturgy.load(MassDeckRequests.date(ctx.queryParam("date")), index.resolveSibling("sundays.json"));
             ctx.json(MassDeckRequests.preview(day));
+        });
+        app.get("/api/eucharist-draft", ctx -> {
+            JsonNode draft = drafts.read();
+            ctx.json(draft == null ? Map.of() : draft);
+        });
+        app.put("/api/eucharist-draft", ctx -> {
+            JsonNode body = readObject(ctx.body(), "The draft must be an object.");
+            drafts.save(body);
+            ctx.json(body);
+        });
+        app.delete("/api/eucharist-draft", ctx -> {
+            drafts.clear();
+            ctx.json(Map.of("ok", true));
         });
         app.get("/api/fonts", ctx -> ctx.json(Map.of("missing", BoldMarkup.missingFontLinks())));
         TodayTheme today = new TodayTheme(TodayTheme::httpGet);

@@ -361,6 +361,43 @@ class SongDeckServerTest {
     }
 
     @Test
+    void eucharistDraftIsServedFromTheAppDirectory() throws Exception {
+        Path dir = Files.createTempDirectory("chorus-deck");
+        Javalin app = SongDeckServer.create(dir).start("127.0.0.1", 0);
+        try {
+            HttpResponse<String> missing = send(app, HttpRequest.newBuilder(uri(app, "/api/eucharist-draft")).GET().build());
+            assertEquals(200, missing.statusCode());
+            assertFalse(JSON.readTree(missing.body()).has("date"));
+
+            HttpResponse<String> saved = send(app, HttpRequest.newBuilder(uri(app, "/api/eucharist-draft"))
+                    .header("Content-Type", "application/json")
+                    .PUT(HttpRequest.BodyPublishers.ofString(
+                            "{\"date\":\"2026-11-01\",\"form\":{\"frase\":\"A festa\"},\"slots\":{\"entrada\":7}}"))
+                    .build());
+            assertEquals(200, saved.statusCode());
+            assertEquals("A festa", JSON.readTree(saved.body()).path("form").path("frase").asText());
+
+            HttpResponse<String> again = send(app, HttpRequest.newBuilder(uri(app, "/api/eucharist-draft")).GET().build());
+            assertEquals(7, JSON.readTree(again.body()).path("slots").path("entrada").asInt());
+
+            HttpResponse<String> rejected = send(app, HttpRequest.newBuilder(uri(app, "/api/eucharist-draft"))
+                    .header("Content-Type", "application/json")
+                    .PUT(HttpRequest.BodyPublishers.ofString("{\"date\":\"domingo\"}"))
+                    .build());
+            assertEquals(400, rejected.statusCode());
+            assertEquals("2026-11-01", JSON.readTree(Files.readString(dir.resolve("eucharist-draft.json"))).get("date").asText());
+
+            HttpResponse<String> cleared = send(app, HttpRequest.newBuilder(uri(app, "/api/eucharist-draft"))
+                    .DELETE()
+                    .build());
+            assertEquals(200, cleared.statusCode());
+            assertFalse(Files.exists(dir.resolve("eucharist-draft.json")));
+        } finally {
+            app.stop();
+        }
+    }
+
+    @Test
     void serveRemembersStateWithoutAConfigFile() throws Exception {
         Path dir = Files.createTempDirectory("chorus-deck-serve");
         assertFalse(Files.exists(dir.resolve("config.json")));

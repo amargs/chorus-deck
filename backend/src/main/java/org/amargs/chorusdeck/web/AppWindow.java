@@ -142,6 +142,7 @@ public final class AppWindow {
                 Math.min(800, Math.max(480, screen.height - 80)));
         frame.setMinimumSize(new Dimension(720, 480));
         frame.setLocationRelativeTo(null);
+        frame.setExtendedState(JFrame.MAXIMIZED_BOTH);
         frame.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosed(WindowEvent event) {

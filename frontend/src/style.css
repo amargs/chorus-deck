@@ -415,6 +415,38 @@ header .alter svg {
   font-size: 1.35rem;
 }
 
+.choice-name {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.choice span.choice-name {
+  width: 100%;
+  color: #1c1915;
+}
+
+.draft-chip {
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  background: #f3e2b8;
+  color: #8a5a12;
+  font-size: 0.68rem;
+  font-weight: 400;
+  line-height: 1.35;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.choice span.draft-chip {
+  width: auto;
+  color: #8a5a12;
+  font-weight: 400;
+  text-align: center;
+}
+
 .choice span {
   color: #5c564c;
 }
@@ -427,6 +459,29 @@ header .alter svg {
 .mass-columns,
 .options {
   margin-top: 1.25rem;
+}
+
+.mass-columns > .panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.mass-columns > .panel:first-child {
+  height: 0;
+  min-height: 100%;
+  overflow: hidden;
+}
+
+.mass-columns .songs {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+}
+
+.mass-columns .moments {
+  flex: none;
+  max-height: none;
+  overflow: visible;
 }
 
 .hint {

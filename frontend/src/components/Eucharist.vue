@@ -1,16 +1,21 @@
 <script setup>
-import { computed, nextTick, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import SongList from './SongList.vue'
 import { ACCENTS, COVERS, MOMENTS, SEASONS, comingSunday } from '../songs.js'
 
 const props = defineProps({
   songs: { type: Array, required: true },
   folder: { type: String, required: true },
+  draft: { type: Object, default: null },
 })
 
-const emit = defineEmits(['choose-folder', 'generated'])
+const emit = defineEmits(['choose-folder', 'generated', 'draft'])
 
-const date = ref(comingSunday())
+const SONG_MOMENTS = new Set(MOMENTS.map((moment) => moment.id))
+const INTERVALS = new Set(['vazio', 'imagem', 'texto', 'texto+imagem'])
+const FORM_FIELDS = ['domingo', 'frase', 'versiculo', 'primeira', 'primeiraRef', 'segunda', 'segundaRef', 'salmo', 'louvor']
+
+const date = ref(props.draft?.date || comingSunday())
 const liturgy = ref(null)
 const liturgyError = ref('')
 const loading = ref(false)
@@ -48,6 +53,10 @@ const busy = ref(false)
 let liturgyRequest = 0
 const missingPrompt = ref([])
 const replaceName = ref('')
+let saveReady = props.draft == null
+let restorePending = props.draft != null
+let pendingSlots = false
+let saveTimer = 0
 
 const rows = computed(() => {
   const list = []
@@ -144,7 +153,7 @@ watch(useSolemnity, (on) => {
   } else {
     fillReadings(day)
   }
-})
+}, { flush: 'sync' })
 
 function clearReadings() {
   form.frase = ''
@@ -298,18 +307,205 @@ async function loadLiturgy() {
     if (payload.solemnity?.outranks) {
       useSolemnity.value = true
     }
+    if (restorePending && requested === props.draft?.date) {
+      applyDraft(props.draft)
+    }
+    restorePending = false
   } catch (e) {
     if (token !== liturgyRequest) {
       return
     }
     liturgy.value = null
     liturgyError.value = e instanceof Error ? e.message : 'Não foi possível ler a liturgia.'
+    if (restorePending && requested === props.draft?.date) {
+      applyDraft(props.draft)
+    }
+    restorePending = false
   } finally {
     if (token === liturgyRequest) {
       loading.value = false
+      saveReady = true
+      schedulePersist()
     }
   }
 }
+
+function applyDraft(draft) {
+  outputEdited.value = draft.outputEdited === true
+  accentTouched.value = draft.accentTouched === true
+  useSolemnity.value = draft.useSolemnity === true
+  if (COVERS.some((item) => item.id === draft.cover)) {
+    cover.value = draft.cover
+  }
+  if (ACCENTS.some((item) => item.id === draft.accent)) {
+    showAccent(draft.accent)
+  }
+  const savedForm = draft.form || {}
+  for (const key of FORM_FIELDS) {
+    if (typeof savedForm[key] === 'string') {
+      form[key] = savedForm[key]
+    }
+  }
+  if (props.songs.length || !draft.slots || !Object.keys(draft.slots).length) {
+    applySlots(draft.slots)
+    pendingSlots = false
+  } else {
+    pendingSlots = true
+  }
+  spoken.gloria = draft.spoken?.gloria === true
+  spoken.paiNosso = draft.spoken?.paiNosso === true
+  credo.value = draft.credo === 'breve' ? 'breve' : 'longo'
+  oracao.value = typeof draft.oracao === 'string' ? draft.oracao : ''
+  interval.value = INTERVALS.has(draft.interval) ? draft.interval : 'vazio'
+  intervalText.value = typeof draft.intervalText === 'string' ? draft.intervalText : ''
+  intervalImage.value = typeof draft.intervalImage === 'string' ? draft.intervalImage : ''
+  if (outputEdited.value && typeof draft.output === 'string') {
+    output.value = draft.output
+  }
+}
+
+function applySlots(saved) {
+  for (const key of Object.keys(slots)) {
+    delete slots[key]
+  }
+  const byId = new Map(props.songs.map((song) => [song.id, song]))
+  for (const [moment, id] of Object.entries(saved || {})) {
+    if (!SONG_MOMENTS.has(moment) || !Number.isInteger(id)) {
+      continue
+    }
+    const song = byId.get(id)
+    if (song) {
+      slots[moment] = song
+    }
+  }
+}
+
+function draftBody() {
+  const slotIds = {}
+  for (const [moment, song] of Object.entries(slots)) {
+    if (SONG_MOMENTS.has(moment) && Number.isInteger(song?.id)) {
+      slotIds[moment] = song.id
+    }
+  }
+  const savedForm = {}
+  for (const key of FORM_FIELDS) {
+    savedForm[key] = form[key]
+  }
+  return {
+    date: date.value,
+    form: savedForm,
+    useSolemnity: useSolemnity.value,
+    cover: cover.value,
+    accent: accent.value,
+    accentTouched: accentTouched.value,
+    slots: slotIds,
+    spoken: { gloria: spoken.gloria, paiNosso: spoken.paiNosso },
+    credo: credo.value,
+    oracao: oracao.value,
+    interval: interval.value,
+    intervalText: intervalText.value,
+    intervalImage: intervalImage.value,
+    output: output.value,
+    outputEdited: outputEdited.value,
+  }
+}
+
+function hasUserWork() {
+  if (Object.values(slots).some((song) => song?.id)) {
+    return true
+  }
+  if (spoken.gloria || spoken.paiNosso) {
+    return true
+  }
+  if (oracao.value.trim() || interval.value !== 'vazio' || outputEdited.value || accentTouched.value) {
+    return true
+  }
+  if (credo.value !== 'longo') {
+    return true
+  }
+  const day = liturgy.value
+  if (!day) {
+    return FORM_FIELDS.some((key) => form[key].trim())
+  }
+  if (readingsDirty.value) {
+    return true
+  }
+  const expectedTitle = useSolemnity.value && day.solemnity ? day.solemnity.title : day.domingo
+  if (!sameText(form.domingo, expectedTitle || '')) {
+    return true
+  }
+  return useSolemnity.value !== (day.solemnity?.outranks === true)
+}
+
+function schedulePersist() {
+  window.clearTimeout(saveTimer)
+  saveTimer = window.setTimeout(persistDraft, 250)
+}
+
+async function persistDraft() {
+  if (!saveReady || loading.value) {
+    return
+  }
+  const keep = hasUserWork()
+  emit('draft', keep)
+  try {
+    if (!keep) {
+      await fetch('/api/eucharist-draft', { method: 'DELETE' })
+      return
+    }
+    await fetch('/api/eucharist-draft', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(draftBody()),
+    })
+  } catch {
+    // The next edit tries again.
+  }
+}
+
+function flushDraft() {
+  window.clearTimeout(saveTimer)
+  if (!saveReady || loading.value) {
+    return
+  }
+  const keep = hasUserWork()
+  emit('draft', keep)
+  const url = '/api/eucharist-draft'
+  if (!keep) {
+    fetch(url, { method: 'DELETE', keepalive: true })
+    return
+  }
+  fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(draftBody()),
+    keepalive: true,
+  })
+}
+
+watch(() => props.songs, (songs) => {
+  if (!pendingSlots || !props.draft || !songs.length) {
+    return
+  }
+  applySlots(props.draft.slots)
+  pendingSlots = false
+  if (saveReady) {
+    schedulePersist()
+  }
+})
+
+watch(() => JSON.stringify(draftBody()), () => {
+  if (!saveReady) {
+    return
+  }
+  schedulePersist()
+})
+
+onMounted(() => window.addEventListener('pagehide', flushDraft))
+onUnmounted(() => {
+  window.removeEventListener('pagehide', flushDraft)
+  flushDraft()
+})
 
 function pick(song) {
   if (!song.bookId || !song.hasVerses || rows.value.find((moment) => moment.id === active.value)?.fixed) {
