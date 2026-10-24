@@ -11,8 +11,11 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Portuguese sentences for each Sunday, kept beside the index and filled in over time. */
+/** Portuguese sentences for each celebration, kept beside the index and filled in over time. */
 public final class SundayLibrary {
+
+    /** Sibling of the song index. Sundays and solemnities share this file. */
+    public static final String FILE_NAME = "liturgy.json";
 
     private static final String[] ROMAN = {
             "", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X",

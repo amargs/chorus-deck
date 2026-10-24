@@ -280,7 +280,7 @@ public record MassRequest(
         if (manual != null && !manual.isBlank()) {
             LOG.info(label + " from the mass file");
         } else if (stored != null && !stored.isBlank()) {
-            LOG.info(label + " from sundays.json");
+            LOG.info(label + " from " + SundayLibrary.FILE_NAME);
         }
     }
 

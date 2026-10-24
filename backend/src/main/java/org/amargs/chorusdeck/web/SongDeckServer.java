@@ -54,21 +54,43 @@ public final class SongDeckServer {
         app.get("/api/library", ctx -> ctx.json(libraryJson(library.status())));
         app.post("/api/library", ctx -> {
             JsonNode body = readObject(ctx.body(), "The library request must be an object.");
-            JsonNode index = body.get("index");
-            if (index == null || !index.isTextual() || index.asText().isBlank()) {
-                throw new IllegalArgumentException("The library request needs an index path.");
+            String mode = text(body, "mode");
+            if (LibraryStore.MODE_LOCAL.equals(mode)) {
+                ctx.json(libraryJson(library.useLocal()));
+            } else if (LibraryStore.MODE_FOLDER.equals(mode)) {
+                JsonNode directory = body.get("directory");
+                if (directory == null || !directory.isTextual() || directory.asText().isBlank()) {
+                    throw new IllegalArgumentException("The library request needs a folder.");
+                }
+                ctx.json(libraryJson(library.useFolder(Path.of(directory.asText()))));
+            } else {
+                throw new IllegalArgumentException("The library request needs a mode.");
             }
-            library.save(Path.of(index.asText()));
-            ctx.json(libraryJson(library.status()));
+        });
+        app.post("/api/import-library", ctx -> {
+            JsonNode body = readObject(ctx.body(), "The import request must be an object.");
+            JsonNode directory = body.get("directory");
+            if (directory == null || !directory.isTextual() || directory.asText().isBlank()) {
+                throw new IllegalArgumentException("The import request needs a folder.");
+            }
+            ctx.json(libraryJson(library.importFrom(Path.of(directory.asText()))));
+        });
+        app.post("/api/export-library", ctx -> {
+            JsonNode body = readObject(ctx.body(), "The export request must be an object.");
+            JsonNode directory = body.get("directory");
+            if (directory == null || !directory.isTextual() || directory.asText().isBlank()) {
+                throw new IllegalArgumentException("The export request needs a folder.");
+            }
+            ctx.json(Map.of("directory", library.exportTo(Path.of(directory.asText())).toString()));
         });
         app.get("/api/songs", ctx -> ctx.json(SongDeckRequests.songs(SongIndex.read(library.requireIndex()))));
         app.get("/api/liturgy", ctx -> {
             Path index = library.requireIndex();
-            LiturgyDay day = liturgy.load(MassDeckRequests.date(ctx.queryParam("date")), index.resolveSibling("sundays.json"));
+            LiturgyDay day = liturgy.load(MassDeckRequests.date(ctx.queryParam("date")), index.resolveSibling(SundayLibrary.FILE_NAME));
             ctx.json(MassDeckRequests.preview(day));
         });
         app.get("/api/eucharist-draft", ctx -> {
-            JsonNode draft = drafts.read();
+            JsonNode draft = drafts.readNewSession();
             ctx.json(draft == null ? Map.of() : draft);
         });
         app.put("/api/eucharist-draft", ctx -> {
@@ -94,21 +116,64 @@ public final class SongDeckServer {
             Path folder = status.index() == null ? null : status.index().getParent();
             ctx.json(folder == null ? Map.of() : Map.of("directory", folder.toString()));
         });
-        app.post("/api/choose-index", ctx -> {
+        app.post("/api/choose-library-folder", ctx -> {
             try {
-                LibraryStore.Status status = library.status();
-                Path chosen = FolderChooser.chooseFile(browseStart(status));
+                Path chosen = FolderChooser.choose(libraryStart(library.status()));
                 if (chosen == null) {
                     ctx.json(Map.of("cancelled", true));
                 } else {
-                    library.save(chosen);
-                    ctx.json(libraryJson(library.status()));
+                    ctx.json(libraryJson(library.useFolder(chosen)));
                 }
             } catch (IllegalArgumentException e) {
                 throw e;
             } catch (Exception e) {
                 String message = e.getMessage();
-                throw new IOException(message == null || message.isBlank() ? "Could not open the file chooser." : message, e);
+                throw new IOException(message == null || message.isBlank() ? "Could not open the folder chooser." : message, e);
+            }
+        });
+        app.post("/api/choose-directory", ctx -> {
+            try {
+                Path chosen = FolderChooser.choose(libraryStart(library.status()));
+                if (chosen == null) {
+                    ctx.json(Map.of("cancelled", true));
+                } else {
+                    ctx.json(Map.of("directory", chosen.toString()));
+                }
+            } catch (IllegalArgumentException e) {
+                throw e;
+            } catch (Exception e) {
+                String message = e.getMessage();
+                throw new IOException(message == null || message.isBlank() ? "Could not open the folder chooser." : message, e);
+            }
+        });
+        app.post("/api/choose-import-folder", ctx -> {
+            try {
+                Path chosen = FolderChooser.choose(exportStart(library.status()));
+                if (chosen == null) {
+                    ctx.json(Map.of("cancelled", true));
+                } else {
+                    ctx.json(Map.of("directory", chosen.toString()));
+                }
+            } catch (IllegalArgumentException e) {
+                throw e;
+            } catch (Exception e) {
+                String message = e.getMessage();
+                throw new IOException(message == null || message.isBlank() ? "Could not open the folder chooser." : message, e);
+            }
+        });
+        app.post("/api/choose-export-folder", ctx -> {
+            try {
+                Path chosen = FolderChooser.choose(exportStart(library.status()));
+                if (chosen == null) {
+                    ctx.json(Map.of("cancelled", true));
+                } else {
+                    ctx.json(Map.of("directory", library.exportTo(chosen).toString()));
+                }
+            } catch (IllegalArgumentException e) {
+                throw e;
+            } catch (Exception e) {
+                String message = e.getMessage();
+                throw new IOException(message == null || message.isBlank() ? "Could not open the folder chooser." : message, e);
             }
         });
         app.post("/api/choose-image", ctx -> {
@@ -149,6 +214,7 @@ public final class SongDeckServer {
                 throw new IllegalArgumentException("The generate request must be an object.");
             }
             Path index = library.requireIndex();
+            JsonNode draftBefore = drafts.read();
             List<SongCfg> songs = SongIndex.read(index);
             Path besideIndex = index.getParent() == null ? stateDirectory : index.getParent();
             String mode = text(body, "mode");
@@ -173,9 +239,9 @@ public final class SongDeckServer {
             Path written;
             int slides;
             if (massReady != null) {
-                LiturgyDay day = liturgy.load(massReady.request().date(), index.resolveSibling("sundays.json"));
+                LiturgyDay day = liturgy.load(massReady.request().date(), index.resolveSibling(SundayLibrary.FILE_NAME));
                 if (!massReady.manual()) {
-                    LiturgyDay remembered = new SundayLibrary(index.resolveSibling("sundays.json")).rememberSentences(
+                    LiturgyDay remembered = new SundayLibrary(index.resolveSibling(SundayLibrary.FILE_NAME)).rememberSentences(
                             day.date(),
                             massReady.request().primeira(),
                             massReady.request().segunda(),
@@ -192,6 +258,7 @@ public final class SongDeckServer {
                         mass);
                 written = massReady.output().toAbsolutePath().normalize();
                 slides = generated.slides();
+                drafts.markExportedIfUnchanged(draftBefore);
             } else {
                 DeckService.Generated generated = new DeckService().generateSongs(
                         new AppConfig(null, index, PackagedTemplate.file(), null).withOutput(songReady.output()),
@@ -260,6 +327,21 @@ public final class SongDeckServer {
         return text.isEmpty() ? null : text;
     }
 
+    private static Path libraryStart(LibraryStore.Status status) {
+        if (status.folder() != null && Files.isDirectory(status.folder())) {
+            return status.folder();
+        }
+        return browseStart(status);
+    }
+
+    private static Path exportStart(LibraryStore.Status status) {
+        Path documents = LibraryStore.documents();
+        if (documents != null) {
+            return documents;
+        }
+        return libraryStart(status);
+    }
+
     private static Path browseStart(LibraryStore.Status status) {
         if (status.index() != null && status.index().getParent() != null) {
             return status.index().getParent();
@@ -301,6 +383,15 @@ public final class SongDeckServer {
         }
         if (status.missing()) {
             body.put("missing", true);
+        }
+        if (status.index() == null) {
+            body.put("needsChoice", true);
+        }
+        if (status.mode() != null) {
+            body.put("mode", status.mode());
+        }
+        if (status.folder() != null) {
+            body.put("folder", status.folder().toString());
         }
         Path output = status.outputDirectory() != null ? status.outputDirectory() : LibraryStore.documents();
         if (output != null) {

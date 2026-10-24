@@ -15,6 +15,7 @@ import org.amargs.chorusdeck.index.SourceSnapshot;
 import org.amargs.chorusdeck.index.StaleSources;
 import org.amargs.chorusdeck.liturgy.LiturgyClient;
 import org.amargs.chorusdeck.liturgy.LiturgyDay;
+import org.amargs.chorusdeck.liturgy.SundayLibrary;
 import org.amargs.chorusdeck.web.AppState;
 import org.amargs.chorusdeck.web.SongDeckServer;
 import org.apache.logging.log4j.LogManager;
@@ -186,7 +187,7 @@ public final class Cli {
                         MassRequest request = mass.request();
                         LocalDate day = liturgyDate != null ? liturgyDate : request.date();
                         if (day != null) {
-                            LiturgyDay liturgy = new LiturgyClient().load(day, config.indexFile().resolveSibling("sundays.json"));
+                            LiturgyDay liturgy = new LiturgyClient().load(day, config.indexFile().resolveSibling(SundayLibrary.FILE_NAME));
                             request = request.withLiturgy(liturgy);
                             LOG.info("Read " + liturgy.domingo() + " (" + liturgy.ano() + ")");
                         }

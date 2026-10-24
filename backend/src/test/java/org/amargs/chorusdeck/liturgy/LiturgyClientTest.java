@@ -34,7 +34,7 @@ class LiturgyClientTest {
 
     @Test
     void aNewSundayIsStoredUntilThePortugueseSentencesAreFilled() throws IOException {
-        Path file = Files.createTempDirectory("sundays").resolve("sundays.json");
+        Path file = Files.createTempDirectory("sundays").resolve(SundayLibrary.FILE_NAME);
         LocalDate date = LocalDate.of(2026, 10, 18);
         LiturgyClient client = new LiturgyClient(ignored -> CALENDAR);
 
@@ -79,7 +79,7 @@ class LiturgyClientTest {
                   "readings": { "first_reading": "Is 61:1-2, 10-11", "gospel": "Jn 1:6-8, 19-28" }
                 }
                 """);
-        Path file = Files.createTempDirectory("sundays").resolve("sundays.json");
+        Path file = Files.createTempDirectory("sundays").resolve(SundayLibrary.FILE_NAME);
         LiturgyDay day = new SundayLibrary(file).resolve(LocalDate.of(2026, 12, 13), calendar);
         assertEquals("Domingo III", day.domingo());
         assertNull(day.segunda());
@@ -110,7 +110,7 @@ class LiturgyClientTest {
 
     @Test
     void aStoredRefraoIsReadAsSalmo() throws IOException {
-        Path file = Files.createTempDirectory("sundays").resolve("sundays.json");
+        Path file = Files.createTempDirectory("sundays").resolve(SundayLibrary.FILE_NAME);
         Files.writeString(file, """
                 {
                   "dates": { "2026-10-18": "ordinary-29/A" },
@@ -130,7 +130,7 @@ class LiturgyClientTest {
 
     @Test
     void aWeekdaySolemnityKeepsItsNameAndCoverWithoutScriptures() throws IOException {
-        Path file = Files.createTempDirectory("sundays").resolve("sundays.json");
+        Path file = Files.createTempDirectory("sundays").resolve(SundayLibrary.FILE_NAME);
         LiturgyClient client = new LiturgyClient(date -> {
             if (date.equals(LocalDate.of(2026, 8, 15))) {
                 return day("solemnity", "The Assumption of the Blessed Virgin Mary", "ordinary", null);
@@ -181,7 +181,7 @@ class LiturgyClientTest {
 
     @Test
     void aWeekdayCaptionComesFromTheSundayThatOpensTheWeek() throws IOException {
-        Path file = Files.createTempDirectory("sundays").resolve("sundays.json");
+        Path file = Files.createTempDirectory("sundays").resolve(SundayLibrary.FILE_NAME);
         LiturgyClient client = new LiturgyClient(date -> switch (date.toString()) {
             case "2026-10-17" -> day("memorial", "Saint Ignatius of Antioch", "ordinary", null);
             case "2026-10-11" -> day("ferial", null, "ordinary", "ordinary-28");
@@ -209,7 +209,7 @@ class LiturgyClientTest {
 
     @Test
     void holyFamilyKeepsItsPortugueseName() throws IOException {
-        Path file = Files.createTempDirectory("sundays").resolve("sundays.json");
+        Path file = Files.createTempDirectory("sundays").resolve(SundayLibrary.FILE_NAME);
         Files.writeString(file, """
                 {
                   "dates": { "2026-12-27": "holy-family/B" },
@@ -245,7 +245,7 @@ class LiturgyClientTest {
 
     @Test
     void epiphanyAndBaptismUseTheirPortugueseNames() throws IOException {
-        Path file = Files.createTempDirectory("sundays").resolve("sundays.json");
+        Path file = Files.createTempDirectory("sundays").resolve(SundayLibrary.FILE_NAME);
         LiturgyClient client = new LiturgyClient(date -> switch (date.toString()) {
             case "2027-01-03" -> """
                     {
@@ -273,7 +273,7 @@ class LiturgyClientTest {
 
     @Test
     void aSundaySolemnityStaysTheSunday() throws IOException {
-        Path file = Files.createTempDirectory("sundays").resolve("sundays.json");
+        Path file = Files.createTempDirectory("sundays").resolve(SundayLibrary.FILE_NAME);
         LiturgyClient client = new LiturgyClient(ignored -> """
                 {
                   "day": {
@@ -306,7 +306,7 @@ class LiturgyClientTest {
     void movableSolemnitiesUseTheGoldAccent() throws IOException {
         assertEquals(LocalDate.of(2027, 5, 27), LiturgyClient.corpusChristi(2027));
         assertEquals(LocalDate.of(2026, 6, 4), LiturgyClient.corpusChristi(2026));
-        Path file = Files.createTempDirectory("sundays").resolve("sundays.json");
+        Path file = Files.createTempDirectory("sundays").resolve(SundayLibrary.FILE_NAME);
         LiturgyClient client = new LiturgyClient(date -> switch (date.toString()) {
             case "2027-05-09" -> sunday("easter-7", "easter");
             case "2027-05-23" -> sunday("trinity", "ordinary");

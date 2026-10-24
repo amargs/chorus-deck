@@ -118,6 +118,12 @@ def uiDist = layout.projectDirectory.dir('../frontend/dist')
 
 tasks.named('processResources') {
     from(layout.projectDirectory.file('data/template_4x3.pptx'))
+    from(layout.projectDirectory.file('data/index.json')) {
+        into 'seed'
+    }
+    from(layout.projectDirectory.file('data/liturgy.json')) {
+        into 'seed'
+    }
     from(uiDist) {
         into 'ui'
     }

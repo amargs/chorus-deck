@@ -41,18 +41,25 @@ class SongDeckServerTest {
         SongIndex.write(chosen, List.of(new SongCfg(7, "From dropbox", List.of("verso"), "118")));
         Javalin app = app(dir, configIndex, false);
         try {
+            HttpResponse<String> open = send(app, HttpRequest.newBuilder(uri(app, "/api/library")).GET().build());
+            assertEquals(200, open.statusCode());
+            assertTrue(JSON.readTree(open.body()).get("needsChoice").asBoolean());
+
             HttpResponse<String> missing = send(app, HttpRequest.newBuilder(uri(app, "/api/songs")).GET().build());
             assertEquals(400, missing.statusCode());
-            assertTrue(missing.body().contains("Choose the song index first."));
+            assertTrue(missing.body().contains("Escolha onde guardar a biblioteca."));
 
             HttpResponse<String> saved = send(app, HttpRequest.newBuilder(uri(app, "/api/library"))
                     .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(JSON.writeValueAsString(Map.of("index", chosen.toString()))))
+                    .POST(HttpRequest.BodyPublishers.ofString(JSON.writeValueAsString(Map.of(
+                            "mode", "folder",
+                            "directory", chosen.getParent().toString()))))
                     .build());
             assertEquals(200, saved.statusCode());
             JsonNode library = JSON.readTree(saved.body());
             assertEquals(chosen.toAbsolutePath().normalize().toString(), library.get("index").asText());
             assertEquals(chosen.getParent().toAbsolutePath().normalize().toString(), library.get("directory").asText());
+            assertEquals("folder", library.get("mode").asText());
             assertEquals(LibraryStore.documents().toString(), library.get("outputDirectory").asText());
 
             JsonNode songs = JSON.readTree(send(app, HttpRequest.newBuilder(uri(app, "/api/songs")).GET().build()).body());
@@ -324,7 +331,7 @@ class SongDeckServerTest {
                 "Aclamai",
                 new LiturgyDay.Reading("Mt 22, 15-21", "Dai a César"),
                 null);
-        new LibraryStore(dir).save(index);
+        new LibraryStore(dir).useFolder(index.getParent());
         Javalin app = SongDeckServer.create(dir, (date, file) -> day).start("127.0.0.1", 0);
         try {
             HttpResponse<String> preview = send(app, HttpRequest.newBuilder(uri(app, "/api/liturgy?date=2026-10-18")).GET().build());
@@ -398,6 +405,61 @@ class SongDeckServerTest {
     }
 
     @Test
+    void anExportedMassIsForgottenOnTheNextVisitUnlessTheDraftChanged() throws Exception {
+        Path dir = Files.createTempDirectory("chorus-deck");
+        Path index = dir.resolve("index.json");
+        SongIndex.write(index, List.of(new SongCfg(1, "A festa da música", List.of("verso"), "118")));
+        LiturgyDay day = new LiturgyDay(
+                LocalDate.of(2026, 10, 18),
+                "Domingo XXIX",
+                "comum",
+                null,
+                "A",
+                new LiturgyDay.Reading("Is 45, 1", "Tomei Ciro"),
+                null,
+                "Aclamai",
+                new LiturgyDay.Reading("Mt 22, 15-21", "Dai a César"),
+                null);
+        new LibraryStore(dir).useFolder(index.getParent());
+        Javalin app = SongDeckServer.create(dir, (date, file) -> day).start("127.0.0.1", 0);
+        try {
+            putDraft(app, "{\"date\":\"2026-11-01\",\"form\":{\"frase\":\"A festa\"}}");
+            HttpResponse<String> songs = post(app, "{\"ids\":[1],\"output\":\"canto.pptx\"}");
+            assertEquals(200, songs.statusCode(), songs.body());
+            assertFalse(JSON.readTree(Files.readString(dir.resolve("eucharist-draft.json"))).path("exported").asBoolean());
+
+            HttpResponse<String> generated = post(app, """
+                    {"mode":"mass","date":"2026-10-18","output":"missa.pptx","songs":{"entrada":"118"},"opcoes":{"credo":"longo","interval":"vazio"}}
+                    """);
+            assertEquals(200, generated.statusCode(), generated.body());
+            assertTrue(JSON.readTree(Files.readString(dir.resolve("eucharist-draft.json"))).path("exported").asBoolean());
+
+            HttpResponse<String> occupied = post(app, """
+                    {"mode":"mass","date":"2026-10-18","output":"missa.pptx","songs":{"entrada":"118"},"opcoes":{"credo":"longo","interval":"vazio"}}
+                    """);
+            assertEquals(409, occupied.statusCode());
+            assertTrue(JSON.readTree(Files.readString(dir.resolve("eucharist-draft.json"))).path("exported").asBoolean());
+
+            HttpResponse<String> nextVisit = send(app, HttpRequest.newBuilder(uri(app, "/api/eucharist-draft")).GET().build());
+            assertEquals(200, nextVisit.statusCode());
+            assertFalse(JSON.readTree(nextVisit.body()).has("date"));
+            assertFalse(Files.exists(dir.resolve("eucharist-draft.json")));
+
+            putDraft(app, "{\"date\":\"2026-11-01\",\"form\":{\"frase\":\"A festa\"}}");
+            HttpResponse<String> again = post(app, """
+                    {"mode":"mass","date":"2026-10-18","output":"outra.pptx","songs":{"entrada":"118"},"opcoes":{"credo":"longo","interval":"vazio"}}
+                    """);
+            assertEquals(200, again.statusCode(), again.body());
+            putDraft(app, "{\"date\":\"2026-11-01\",\"form\":{\"frase\":\"Mudou\"}}");
+            HttpResponse<String> kept = send(app, HttpRequest.newBuilder(uri(app, "/api/eucharist-draft")).GET().build());
+            assertEquals("Mudou", JSON.readTree(kept.body()).path("form").path("frase").asText());
+            assertFalse(JSON.readTree(Files.readString(dir.resolve("eucharist-draft.json"))).path("exported").asBoolean());
+        } finally {
+            app.stop();
+        }
+    }
+
+    @Test
     void serveRemembersStateWithoutAConfigFile() throws Exception {
         Path dir = Files.createTempDirectory("chorus-deck-serve");
         assertFalse(Files.exists(dir.resolve("config.json")));
@@ -420,7 +482,7 @@ class SongDeckServerTest {
         Path chosen = Files.createDirectories(dir.resolve("destino"));
         Javalin app = app(dir, index);
         try {
-            new LibraryStore(dir).save(index);
+            new LibraryStore(dir).useFolder(index.getParent());
             new LibraryStore(dir).saveOutput(chosen);
             HttpResponse<String> again = send(app, HttpRequest.newBuilder(uri(app, "/api/library")).GET().build());
             assertEquals(200, again.statusCode());
@@ -438,7 +500,7 @@ class SongDeckServerTest {
 
     private static Javalin app(Path dir, Path index, boolean remember) throws Exception {
         if (remember && Files.isRegularFile(index)) {
-            new LibraryStore(dir).save(index);
+            new LibraryStore(dir).useFolder(index.getParent());
         }
         return SongDeckServer.create(dir).start("127.0.0.1", 0);
     }
@@ -449,6 +511,14 @@ class SongDeckServerTest {
         } finally {
             app.stop();
         }
+    }
+
+    private static void putDraft(Javalin app, String json) throws Exception {
+        HttpResponse<String> saved = send(app, HttpRequest.newBuilder(uri(app, "/api/eucharist-draft"))
+                .header("Content-Type", "application/json")
+                .PUT(HttpRequest.BodyPublishers.ofString(json))
+                .build());
+        assertEquals(200, saved.statusCode(), saved.body());
     }
 
     private static HttpResponse<String> post(Javalin app, String json) throws Exception {

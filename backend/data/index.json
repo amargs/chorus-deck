@@ -11,7 +11,7 @@
 }, {
   "id" : 3,
   "title" : "A ti meu Deus",
-  "content" : [ "", "**A tua ternura Senhor, **\n**vem abraçar-me**\n**E a tua bondade infinita **\n**vem perdoar-me.**\n**Vou ser o teu seguidor,**\n** e dar-te o meu coração**\n**Eu quero sentir o calor**\n** das tuas mãos.**" ],
+  "content" : [ "A ti meu Deus, elevo o meu coração\nElevo as minhas mãos, meu olhar, minha voz.\nA ti meu Deus, eu quero oferecer\nMeus passos e meu viver,\nMeus caminhos, meu sofrer.", "**A tua ternura Senhor, **\n**vem abraçar-me**\n**E a tua bondade infinita **\n**vem perdoar-me.**\n**Vou ser o teu seguidor,**\n** e dar-te o meu coração**\n**Eu quero sentir o calor**\n** das tuas mãos.**" ],
   "bookId" : "192"
 }, {
   "id" : 4,
@@ -109,9 +109,10 @@
   "content" : [ "**Cantai, rezai, celebrai o Senhor**\n**Deus nos acolhe povo do mundo.**\n**Cantai, rezai, celebrai o Seu nome**\n**Deus nos acolhe na sua casa.**", "Ele fez o céu e a terra,\nEterno é o seu amor.\nFez o homem à sua imagem\nEterno é o seu amor.", "**Cantai, rezai, celebrai o Senhor**\n**Deus nos acolhe povo do mundo.**\n**Cantai, rezai, celebrai o Seu nome**\n**Deus nos acolhe na sua casa**", "Ele falou pelos profetas,\nEterno é o seu amor.\nSua palavra é uma promessa,\nEterno é o seu amor.", "**Cantai, rezai, celebrai o Senhor**\n**Deus nos acolhe povo do mundo.**\n**Cantai, rezai, celebrai o Seu nome**\n**Deus nos acolhe na sua casa**", "No espírito fomos batizados,\nEterno é o seu amor.\nO seu amor molda a nossa igreja,\nEterno é o seu amor.", "**Cantai, rezai, celebrai o Senhor**\n**Deus nos acolhe povo do mundo.**\n**Cantai, rezai, celebrai o Seu nome**\n**Deus nos acolhe na sua casa**", "Aclamai Deus, a sua palavra,\nEterno é o seu amor.\nNos criou e nos libertou,\nEterno é o seu amor." ],
   "bookId" : "21"
 }, {
-  "id" : 23,
-  "title" : "Cantai todos os povos",
-  "content" : [ "Cantai todos os povos\nLouvai nosso Senhor\nCantai todos os povos\nLouvai nosso Senhor" ]
+  "id" : 240,
+  "title" : "Cantai, todos os povos (Laudate omnes gentes)",
+  "content" : [ "Cantai todos os povos\nLouvai nosso Senhor\nCantai todos os povos\nLouvai nosso Senhor" ],
+  "bookId" : "22"
 }, {
   "id" : 24,
   "title" : "Cantarei ao Senhor",
@@ -160,7 +161,7 @@
 }, {
   "id" : 229,
   "title" : "Da pacem cordium",
-  "content" : [ "" ],
+  "content" : [ "Da pacem cordium\nDa pacem cordium\nDa pacem, da pacem" ],
   "bookId" : "32"
 }, {
   "id" : 34,
@@ -178,9 +179,10 @@
   "content" : [ "**Deixa Deus entrar,**\n**Na Tua própria casa**\n**Deixa-te tocar pela sua graça,**\n**Dentro em segredo**\n**Reza-lhe sem medo**\n**Senhor, Senhor**\n**Que queres que eu faça**", "Só no fundo do ser \nEu vou encontrar\nAs razões de viver, \nAs razões de amar\nÉ bem dentro de nós \nQue está a raiz\nQue nos faz amar\nE ser feliz…", "**Deixa Deus entrar,**\n**Na Tua própria casa**\n**Deixa-te tocar pela sua graça,**\n**Dentro em segredo**\n**Reza-lhe sem medo**\n**Senhor, Senhor**\n**Que queres que eu faça**", "Tanta coisa me impede\nDe O escutar\nMe desvia da meta\nA que me propus\nEu vou ter coragem\nDe O deixar entrar\nVou sentir o clarão,\nDa Sua luz…", "**Deixa Deus entrar,**\n**Na Tua própria casa**\n**Deixa-te tocar pela sua graça,**\n**Dentro em segredo**\n**Reza-lhe sem medo**\n**Senhor, Senhor**\n**Que queres que eu faça**" ],
   "bookId" : "36"
 }, {
-  "id" : 230,
-  "title" : "Dentro de mim",
-  "content" : [ "Dentro de mim existe uma luz\nQue me mostra por onde por onde deverei andar.\nDentro de mim também mora Jesus\nQue me ensina a buscar o seu jeito de sonhar.", "**Minha luz é Jesus, e Jesus me conduz**\n**Pelos caminhos da paz.**", "Dentro de mim existe um farol\nQue me mostra por onde por onde deverei remar.\nDentro de mim Jesus Cristo é o sol\nQue me ensina a buscar o seu jeito de amar.", "**Minha luz é Jesus, e Jesus me conduz**\n**Pelos caminhos da paz.**" ]
+  "id" : 241,
+  "title" : "Dentro de mim (Minha luz é Jesus)",
+  "content" : [ "Dentro de mim existe uma luz\nQue me mostra por onde por onde deverei andar.\nDentro de mim também mora Jesus\nQue me ensina a buscar o seu jeito de sonhar.", "**Minha luz é Jesus, e Jesus me conduz**\n**Pelos caminhos da paz.**", "Dentro de mim existe um farol\nQue me mostra por onde por onde deverei remar.\nDentro de mim Jesus Cristo é o sol\nQue me ensina a buscar o seu jeito de amar.", "**Minha luz é Jesus, e Jesus me conduz**\n**Pelos caminhos da paz.**" ],
+  "bookId" : "201"
 }, {
   "id" : 37,
   "title" : "Deus é amor",
@@ -334,7 +336,7 @@
 }, {
   "id" : 67,
   "title" : "Fui Judeu com o Judeu",
-  "content" : [ "**Fui Judeu com o Judeu**\n**E pagão com o pagão**\n**Fiz-me débil com o débil**\n**Fiz-me pobre com o pobre**\n**E fiz-me tudo **\n**  P’ra todos para servir     **", "Anunciar os novos Céus,\nNão é outro o meu dever,\nVão é o orgulho qu’encerra.\n\nA semente lanço à terra\nOutro é que a faz crescer\nTodo o mérito é de Deus.", "**Fui Judeu com o Judeu**\n**E pagão com o pagão**\n**Fiz-me débil com o débil**\n**Fiz-me pobre com o pobre**\n**E fiz-me tudo **\n**  P’ra todos para servir **", "Não avanço à aventura\nSem norte no horizonte\nCorro ao encontro da meta.\n\nIncansável, qual atleta,\nAté que um dia desponte\nA manhã na noite escura.", "**Fui Judeu com o Judeu**\n**E pagão com o pagão**\n**Fiz-me débil com o débil**\n**Fiz-me pobre com o pobre**\n**E fiz-me tudo **\n**  P’ra todos para servir **", "A coroa da vitória\nQue aos seus tem Deus guardada\nNo termo me cingirá.\n\nDe alegria se ergue já\nEm vida nova mudada\nNo universo a antiga História.", "**Fui Judeu com o Judeu**\n**E pagão com o pagão**\n**Fiz-me débil com o débil**\n**Fiz-me pobre com o pobre**\n**E fiz-me tudo **\n**  P’ra todos para servir **" ],
+  "content" : [ "**Fui Judeu com o Judeu**\n**E pagão com o pagão**\n**Fiz-me débil com o débil**\n**Fiz-me pobre com o pobre**\n**E fiz-me tudo p’ra todos para servir**\n**E fiz-me tudo p’ra todos para servir     **", "Anunciar os novos Céus,\nNão é outro o meu dever,\nVão é o orgulho qu’encerra.\nA semente lanço à terra\nOutro é que a faz crescer\nTodo o mérito é de Deus.", "**Fui Judeu com o Judeu**\n**E pagão com o pagão**\n**Fiz-me débil com o débil**\n**Fiz-me pobre com o pobre**\n**E fiz-me tudo p’ra todos para servir**\n**E fiz-me tudo p’ra todos para servir**", "Não avanço à aventura\nSem norte no horizonte\nCorro ao encontro da meta.\nIncansável, qual atleta,\nAté que um dia desponte\nA manhã na noite escura.", "**Fui Judeu com o Judeu**\n**E pagão com o pagão**\n**Fiz-me débil com o débil**\n**Fiz-me pobre com o pobre**\n**E fiz-me tudo p’ra todos para servir**\n**E fiz-me tudo p’ra todos para servir**", "A coroa da vitória\nQue aos seus tem Deus guardada\nNo termo me cingirá.\nDe alegria se ergue já\nEm vida nova mudada\nNo universo a antiga História.", "**Fui Judeu com o Judeu**\n**E pagão com o pagão**\n**Fiz-me débil com o débil**\n**Fiz-me pobre com o pobre**\n**E fiz-me tudo p’ra todos para servir**\n**E fiz-me tudo p’ra todos para servir**" ],
   "bookId" : "72"
 }, {
   "id" : 68,
@@ -377,19 +379,15 @@
   "content" : [ "Inunda o meu ser,\ninunda o meu ser,  \nEspírito, inunda o meu ser.  \nCom fogo de amor,  \nó vem sobre mim.  \nEspírito inunda o meu ser.", "Ensina-me a amar,  \nensina-me a amar,  \nEspírito, ensina-me a amar.  \nComo ama Jesus,  \nó vem sobre mim.  \nEspírito ensina-me a amar.", "Aumenta-me a fé,  \naumenta-me a fé,  \nEspírito, aumenta-me a fé.  \nCom fogo de amor,  \nó vem sobre mim.  \nEspírito aumenta-me a fé", "Ensina-me a orar,  \nensina-me a orar,  \nEspírito, ensina-me a orar.  \nComo ora Jesus,  \nó vem sobre mim.  \nEspírito ensina-me a orar" ],
   "bookId" : "80"
 }, {
-  "id" : 239,
-  "title" : "Jesus Cristo és vida em mim",
-  "content" : [ "**Jesus Cristo, és vida em mim**\n**Aleluia, aleluia!**\n**Jesus Cristo, és vida em mim**\n**És vida em mim, Aleluia!**", "És caminho, Tu és verdade\nTu és a nossa vida\nCaminhando junto a Ti\nViveremos p’ra sempre", "**Jesus Cristo, és vida em mim**\n**Aleluia, aleluia!**\n**Jesus Cristo, és vida em mim**\n**És vida em mim, Aleluia!**", "Na alegria caminharemos\nTrazendo o Teu Evangelho.\nTestemunhos de caridade,\nFilhos de Deus no mundo.", "**Jesus Cristo, és minha vida**\n**Aleluia, aleluia!**\n**Jesus Cristo, és minha luz**\n**És minha luz, Aleluia!**", "Tu nos reúnes na unidade,\nTu nos reúnes em Teu amor.\nDiante de Ti em alegria,\nCantamos tua Glória.", "**Jesus Cristo, és minha vida**\n**Aleluia, aleluia!**\n**Jesus Cristo, és minha luz**\n**És minha luz, Aleluia!**" ],
-  "bookId" : "81"
-}, {
   "id" : 77,
   "title" : "Jesus Cristo mora aqui",
   "content" : [ "Onde moras meu Senhor, quero saber\nOs caminhos que percorres quero ver\nOs Teus sonhos, Tua paz quero viver\nTeu caminho, Teu amor quero sentir", "**Porque sei que amas, que**\n** me queres que me adoras**\n**Porque sempre, sempre,**\n** sempre sem pensares em Ti**\n**Tu darias Tua vida por aquele**\n**  por aquela**\n**Pelo outro pela outra por**\n**  nós todos e por mim.**", "**Jesus Cristo mora aqui**\n**Na paz do meu coração**\n**Me seduz e me convoca**\n**Ao encontro do irmão.**\n**Se este sim lhe quero dar**\n**Contigo hei-de cantar**\n**Que ser feliz é amar**\n**Que viver é respirar**\n**    JESUS CRISTO!**" ],
   "bookId" : "82"
 }, {
-  "id" : 78,
-  "title" : "Jesus, filho de Deus",
-  "content" : [ "Jesus, filho de Deus\nNo teu reino lembra-Te de mim\nJesus, filho de Deus\nNo teu reino lembra-te  de mim" ]
+  "id" : 242,
+  "title" : "Jesus, filho de Deus (Jesus, remember me)",
+  "content" : [ "Jesus, filho de Deus\nNo teu reino lembra-Te de mim\nJesus, filho de Deus\nNo teu reino lembra-te  de mim" ],
+  "bookId" : "83"
 }, {
   "id" : 79,
   "title" : "Jovem ergue o teu lema",
@@ -521,9 +519,10 @@
   "content" : [ "Se eu fosse capaz de avistar o seu manso olhar\nPorquê não voar então, já que tudo é tão perfeito\nNeste sonho meu de um dia te encontrar", "Tenho sua palavra guardada em meu coração\nA promessa divina de que a vida não é em vão\nPorque não sorrir então, se apesar do imperfeito\nDesse corpo meu, tens um céu a me esperar", "**Para nunca mais separar-me de ti**\n**E viver onde a dor não vai existir**\n**Ah se o mundo soubesse quão perto estás de vir**", "Hoje o homem procura na sua vida realizar\nOs seus sonhos terrestres sem ao menos se importar\nDe que existe um Deus no céu e o que importa é a vida\nDedicada ao senhor, uma vida de valor", "O maior dissabor é viver longe de ti senhor\nPois eu tento voar, mas consigo apenas afundar\nNão fui feito pra viver uma vida em que nela\nO senhor não está\nVem logo me levar", "**Para nunca mais separar-me de ti**\n**E viver onde a dor não vai existir**\n**Ah se o mundo soubesse quão perto estás de vir**" ],
   "bookId" : "114"
 }, {
-  "id" : 105,
-  "title" : "O reino de Deus",
-  "content" : [ "O reino de Deus é um reino de paz, justiça e alegria.\nSenhor, em nós vem abrir as portas do Teu reino" ]
+  "id" : 243,
+  "title" : "O reino de Deus (The kingdom of God)",
+  "content" : [ "O reino de Deus é um reino de paz, justiça e alegria.\nSenhor, em nós vem abrir as portas do Teu reino" ],
+  "bookId" : "115"
 }, {
   "id" : 232,
   "title" : "O Senhor é a minha força",
@@ -677,7 +676,7 @@
 }, {
   "id" : 136,
   "title" : "Recebe Senhor",
-  "content" : [ "**Recebe Senhor, **\n**os nossos dons:**\n**Que eles se tornem **\n**fonte de vida,**\n**Que eles se tornem**\n**fonte de amor           **", "Nas tuas mãos venho entregar\nO meu viver, minha vontade,\nEu creio em Ti, Senhor (bis)", "**Recebe Senhor, os nossos dons:**\n**Que eles se tornem **\n**fonte de vida,**\n**Que eles se tornem **\n**fonte de amor **", "Às tuas mãos venho trazer\nO meu amor e meus irmãos,\nSerei sinal, Senhor (bis)", "**Recebe Senhor, os nossos dons:**\n**Que eles se tornem **\n**fonte de vida,**\n**Que eles se tornem **\n**fonte de amor **", "Junto a Ti quero deixar\nMinha pobreza e liberdade\nEspero em Ti, Senhor (bis)", "**Recebe Senhor, os nossos dons:**\n**Que eles se tornem **\n**fonte de vida,**\n**Que eles se tornem **\n**fonte de amor **" ],
+  "content" : [ "**Recebe Senhor, os nossos dons:**\n\n**Que eles se tornem fonte de vida,**\n**Que eles se tornem fonte de amor**\n**(x2)           **", "Nas tuas mãos venho entregar\nO meu viver, minha vontade,\nEu creio em Ti, Senhor\nEu creio em Ti, Senhor", "**Recebe Senhor, os nossos dons:**\n\n**Que eles se tornem fonte de vida,**\n**Que eles se tornem fonte de amor**\n**(x2) **", "Às tuas mãos venho trazer\nO meu amor e meus irmãos,\nSerei sinal, Senhor\nSerei sinal, Senhor", "**Recebe Senhor, os nossos dons:**\n\n**Que eles se tornem fonte de vida,**\n**Que eles se tornem fonte de amor**\n**(x2) **", "Junto a Ti quero deixar\nMinha pobreza e liberdade\nEspero em Ti, Senhor\nEspero em Ti, Senhor", "**Recebe Senhor, os nossos dons:**\n\n**Que eles se tornem fonte de vida,**\n**Que eles se tornem fonte de amor**\n**(x2) **" ],
   "bookId" : "149"
 }, {
   "id" : 137,
@@ -717,16 +716,12 @@
 }, {
   "id" : 234,
   "title" : "Senhor, meu Deus",
-  "content" : [ "" ],
+  "content" : [ "Diz-me por onde ir, saberei onde andar?\nTua luz me encaminha, na noite que finda,\nVais-me embalar? \nDiz-me como é amar, saberei eu sentir?\nTuas mãos me aconchegam,\nNo frio caminho, para Te encontrar", "**Senhor, hoje sou tua semente**\n**Teu trigo à terra vai germinar…**", "**Leva-me assim, **\n**faz-me viver por Ti **\n**Senhor eu sou, Teu**\n**Pois na Tua luz, **\n**Eu não me vou perder**\n**Meu sol És, Senhor meu Deus…**", "Pois tudo sou, quando me És\nSuspiro cantado em palavras, \nTua voz me levou\nPois tudo És, semente ao meu jardim\nPois quero encontrar o Teu céu dentro de mim" ],
   "bookId" : "157"
-}, {
-  "id" : 145,
-  "title" : "Senhora da noite",
-  "content" : [ "" ]
 }, {
   "id" : 146,
   "title" : "Só Deus basta",
-  "content" : [ "" ],
+  "content" : [ "Tu nada temas, nada te espante\nPois tudo passa, Deus nunca muda\nA paciência, tudo alcança\nQuem a Deus tem, nada lhe falta", "**Só Deus basta, só Deus basta**\n**Só Deus basta, Aleluia!**\n**Só Deus basta, só Deus basta**\n**Só Deus basta, Aleluia.**" ],
   "bookId" : "159"
 }, {
   "id" : 147,
@@ -814,10 +809,6 @@
   "content" : [ "**Vede Senhor, quanta gente.**\n**Nunca ouviu falar de Vós; **\n**Quanta gente não sabe **\n**Que deve amar alguém**\n**Senhor, aceita-nos assim!**", "**Vede Senhor, nós chegamos **\n**Prontos a dar o que temos,**\n**A vida alegre ou triste**\n**O amor que em nós existe**\n**Senhor, aceita-nos assim!**", "**Vede Senhor, nós queremos**\n**Ser instrumentos do teu reino**\n**Espalhar a paz, o amor,**\n**Alegria esperança**\n**Senhor, ajuda-nos a ser!**" ],
   "bookId" : "176"
 }, {
-  "id" : 235,
-  "title" : "Vem connosco a caminhar",
-  "content" : [ "" ]
-}, {
   "id" : 164,
   "title" : "Vem daí",
   "content" : [ "Quando as trevas se dissiparam\nQuando amanheceu o amor\nO Homem feliz, vivia sem dor\nQuando depois a escuridão\nTornou a noite solidão\nE o Homem sofria sem o seu Senhor", "**Vem daí, vem daí**\n**É Deus que te chama, é Deus que te ama**\n**O Deus que os Homens precisam de olhar**", "**Vem daí, vem daí**\n**É Deus que te manda pelo mundo inteiro**\n**És o sal da terra, luz sempre a brilhar**", "Quando apareceu Jesus,\nquando Ele se fez pão\nAlguns entenderam e deram as mãos\nHouve porém quem cheio de si\nVirasse as costas à Verdade\nAo Deus da História, à eternidade", "**Vem daí, vem daí**\n**É Deus que te chama, é Deus que te ama**\n**O Deus que os Homens precisam de olhar**", "**Vem daí, vem daí**\n**É Deus que te manda pelo mundo inteiro**\n**És o sal da terra, luz sempre a brilhar**", "Estás aqui tu que acreditaste\nNaquela Cruz, naquela hora\nTambém tu, agora, te queres ir embora\nO mundo porém precisa de ti\nDos jovens que hoje se querem dar\nE a toda a gente Cristo anunciar", "**Vem daí, vem daí**\n**É Deus que te chama, é Deus que te ama**\n**O Deus que os Homens precisam de olhar**", "**Vem daí, vem daí**\n**É Deus que te manda pelo mundo inteiro**\n**És o sal da terra, luz sempre a brilhar**" ],
@@ -893,9 +884,10 @@
   "content" : [ "Senhor tem piedade (X3)\nDe nós. \nCristo...\nSenhor ..." ],
   "bookId" : "RP8"
 }, {
-  "id" : 179,
-  "title" : "Senhor tem piedade (clássico)",
-  "content" : [ "Senhor tem piedade de nós.\nSomos o teu povo pecador.\nToma a nossa vida \nDe pecado e dor\nEnche-nos o espírito de amor. \n\nCristo… Senhor…" ]
+  "id" : 244,
+  "title" : "Senhor tem piedade de nós (clássico)",
+  "content" : [ "Senhor tem piedade de nós.\nSomos o teu povo pecador.\nToma a nossa vida \nDe pecado e dor\nEnche-nos o espírito de amor. \n\nCristo… Senhor…" ],
+  "bookId" : "RP9"
 }, {
   "id" : 180,
   "title" : "Senhor tende piedade",
@@ -912,9 +904,10 @@
   "content" : [ "**Senhor tem piedade**\n**Senhor tem piedade**\n**Senhor tem piedade de nós**\n**Senhor tem piedade**", "**Cristo tem piedade**\n**Cristo tem piedade**\n**Oh Cristo tem piedade de nós**\n**Oh Cristo tem piedade**", "**Senhor tem piedade**\n**Senhor tem piedade**\n**Senhor tem piedade de nós**\n**Senhor tem piedade**" ],
   "bookId" : "RP10"
 }, {
-  "id" : 183,
-  "title" : "Fala Senhor",
-  "content" : [ "Mostra Senhor o caminho que tu queres que eu percorra\nMostra Senhor o caminho, quero ouvir tua voz", "**Fala Senhor que teu servo escuta (x4)**" ]
+  "id" : 245,
+  "title" : "Fala Senhor (Mostra Senhor o caminho)",
+  "content" : [ "Mostra Senhor o caminho que tu queres que eu percorra\nMostra Senhor o caminho, quero ouvir tua voz", "**Fala Senhor que teu servo escuta (x4)**" ],
+  "bookId" : "66"
 }, {
   "id" : 184,
   "title" : "Aleluia Deus está",
@@ -931,9 +924,10 @@
   "content" : [ "**Aleluia, Aleluia! Aleluia, **\n**Aleluia, Aleluia! **\n\nCantai ao Senhor um cântico novo,\nCantai ao Senhor, Povos da terra." ],
   "bookId" : "A9"
 }, {
-  "id" : 187,
-  "title" : "Aleluia Shrek",
-  "content" : [ "Eu canto para ti Senhor\nE tu me acompanhas\nEm todos os momentos tu me ouves", "Por amor do teu nome\nCantarei para ti\nLouvado sejas, Aleluia!", "**Aleluia, Aleluia, Aleluia, Aleluia**", "Por amor do teu nome\nCantarei para ti\nLouvado sejas, Aleluia!", "**Aleluia, Aleluia, Aleluia, Aleluia**" ]
+  "id" : 246,
+  "title" : "Aleluia (Leonard Cohen)",
+  "content" : [ "Eu canto para ti Senhor\nE tu me acompanhas\nEm todos os momentos tu me ouves", "Por amor do teu nome\nCantarei para ti\nLouvado sejas, Aleluia!", "**Aleluia, Aleluia, Aleluia, Aleluia**", "Por amor do teu nome\nCantarei para ti\nLouvado sejas, Aleluia!", "**Aleluia, Aleluia, Aleluia, Aleluia**" ],
+  "bookId" : "A8"
 }, {
   "id" : 188,
   "title" : "Aleluia Taizé",
@@ -952,7 +946,8 @@
 }, {
   "id" : 76,
   "title" : "Jesus Cristo és minha vida",
-  "content" : [ "**Jesus Cristo, És minha vida, Aleluia, Aleluia!**\n**Jesus Cristo, És minha luz, És minha luz, Aleluia!**", "1.És caminho, És a verdade,\nTu és a nossa vida.\nCaminhando junto a Ti,\nVivemos em Ti p’ra sempre", "2.Na alegria caminharemos\nTrazendo o Teu Evangelho.\nTestemunhos de caridade,\nFilhos de Deus no mundo", "3.Tu nos reúnes na unidade,\nTu nos reúnes em Teu amor.\nDiante de Ti em alegria,\nCantamos tua Glória." ]
+  "content" : [ "**Jesus Cristo, És minha vida, Aleluia, Aleluia!**\n**Jesus Cristo, És minha vida, És minha vida, Aleluia!**", "És caminho, Tu És a verdade,\nTu és a nossa vida.\nCaminhando junto a Ti,\nViveremos p’ra sempre", "**Jesus Cristo, És minha vida, Aleluia, Aleluia!**\n**Jesus Cristo, És minha vida, És minha vida, Aleluia!**", "Caminhando em alegria\nTrazendo o Teu Evangelho.\nTestemunhas de caridade,\nFilhos de Deus no mundo.", "**Jesus Cristo, És minha vida, Aleluia, Aleluia!**\n**Jesus Cristo, És minha vida, És minha vida, Aleluia!**", "Congregados na unidade,\nNo Teu amor unidos.\nNa alegria diante de Ti,\nCantemos Tua Glória.", "**Jesus Cristo, És minha vida, Aleluia, Aleluia!**\n**Jesus Cristo, És minha vida, És minha vida, Aleluia!**" ],
+  "bookId" : "81"
 }, {
   "id" : 192,
   "title" : "Louvor a vós",
@@ -964,9 +959,10 @@
   "content" : [ "Sou a Vida e a Verdade\nQuem crê em Mim ressuscitará\nE feliz na eternidade\nPara sempre viverá.", "**Aleluia, Aleluia,**\n**Louvor e Glória **\n**a Ti Senhor. (X2)**" ],
   "bookId" : "A13"
 }, {
-  "id" : 194,
-  "title" : "Santo (Toureiro)",
-  "content" : [ "Santo, Santo, Santo é o Senhor \nDeus do Universo.\nCheios estão os Céus e terra \nDa Tua glória, Hossana.\n\n**Hossana, Hossana, **\n**Hossana nos Céus! (X2)**", "Bendito o que vem \nEm nome do Senhor\nHossana nos Céus, Hossana.\n\n**Hossana, Hossana, **\n**Hossana nos Céus! (X2)**" ]
+  "id" : 247,
+  "title" : "Santo (Hossana nos Céus)",
+  "content" : [ "Santo, Santo, Santo é o Senhor \nDeus do Universo.\nCheios estão os Céus e terra \nDa Tua glória, Hossana.\n\n**Hossana, Hossana, **\n**Hossana nos Céus! (X2)**", "Bendito o que vem \nEm nome do Senhor\nHossana nos Céus, Hossana.\n\n**Hossana, Hossana, **\n**Hossana nos Céus! (X2)**" ],
+  "bookId" : "S5"
 }, {
   "id" : 195,
   "title" : "Santo (Braga)",
@@ -988,9 +984,10 @@
   "content" : [ "**Santo, Santo, Santo é o Senhor **\n**Deus do universo.(X2)**\n\nOs Céus e toda a Terra\nProclamam para sempre\nA Vossa glória.(X2)", "**Santo, Santo, Santo é o Senhor **\n**Deus do universo.(X2)**\n\nHossana nas alturas\nBendito aquele que vem\nEm nome do Senhor.(X2)\n\n**Santo, Santo, Santo é o Senhor **\n**Deus do universo.(X2)**" ],
   "bookId" : "S4"
 }, {
-  "id" : 199,
-  "title" : "Santo 2V",
-  "content" : [ "**Santo, Santo é o Senhor  **\n(Santo, Santo é o Senhor )                 \n**Senhor Deus do universo **\n(Senhor Deus do universo )              \n**Os Céus e a terra proclamam **\n(Os Céus e a terra proclamam ) \n**   A Vossa glória.                        **\n**(X2)**", "Os Céus e a terra proclamam \na Vossa glória, \nHossana nas alturas.\n\nBendito o que vem \nem nome do Senhor, \nHossana nas alturas.", "**Santo, Santo é o Senhor **\n(Santo, Santo é o Senhor )                 \n**Senhor Deus do universo **\n(Senhor Deus do universo )              \n**Bendito aquele que vem **\n(Bendito aquele que vem) \n**Em nome do Senhor. **" ]
+  "id" : 248,
+  "title" : "Santo (2 vozes)",
+  "content" : [ "**Santo, Santo é o Senhor  **\n(Santo, Santo é o Senhor )                 \n**Senhor Deus do universo **\n(Senhor Deus do universo )              \n**Os Céus e a terra proclamam **\n(Os Céus e a terra proclamam ) \n**   A Vossa glória.                        **\n**(X2)**", "Os Céus e a terra proclamam \na Vossa glória, \nHossana nas alturas.\n\nBendito o que vem \nem nome do Senhor, \nHossana nas alturas.", "**Santo, Santo é o Senhor **\n(Santo, Santo é o Senhor )                 \n**Senhor Deus do universo **\n(Senhor Deus do universo )              \n**Bendito aquele que vem **\n(Bendito aquele que vem) \n**Em nome do Senhor. **" ],
+  "bookId" : "S6"
 }, {
   "id" : 200,
   "title" : "Pai Nosso Galego",
@@ -1014,12 +1011,13 @@
 }, {
   "id" : 204,
   "title" : "Cordeiro Novo",
-  "content" : [ "**Cordeiro de Deus, **\n**Que tirais o pecado do mundo.**\n**Tende piedade de nós**\n**         Tende piedade de nós. (x2)**", "**Cordeiro de Deus, **\n**Que tirais o pecado do mundo.**\n**Dai-nos a vossa paz.**\n**Dai-nos a vossa paz.**" ],
+  "content" : [ "**Cordeiro de Deus, **\n**Que tirais o pecado do mundo.**\n**Tende piedade de nós**\n**Tende piedade de nós. (x2)**", "**Cordeiro de Deus, **\n**Que tirais o pecado do mundo.**\n**Dai-nos a vossa paz.**\n**Dai-nos a vossa paz.**" ],
   "bookId" : "C4"
 }, {
-  "id" : 205,
-  "title" : "Cordeiro 2V",
-  "content" : [ "**Cordeiro de Deus,                      **\n**Que tiras o Pecado do Mundo.    **\n**Tem piedade de nós. **\n**(Tem piedade de nós.) **\n**(x4)**", "**Cordeiro de Deus, **\n**Que tiras o pecado do Mundo.**\n**Dá-nos a tua Paz. **\n**(Dá-nos a tua Paz.) **\n**(x4)**" ]
+  "id" : 249,
+  "title" : "Cordeiro (2 vozes)",
+  "content" : [ "**Cordeiro de Deus,                      **\n**Que tiras o Pecado do Mundo.    **\n**Tem piedade de nós. **\n**(Tem piedade de nós.) **\n**(x4)**", "**Cordeiro de Deus, **\n**Que tiras o pecado do Mundo.**\n**Dá-nos a tua Paz. **\n**(Dá-nos a tua Paz.) **\n**(x4)**" ],
+  "bookId" : "C5"
 }, {
   "id" : 206,
   "title" : "Cordeiro (Paz Senhor)",

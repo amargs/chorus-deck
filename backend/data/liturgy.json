@@ -20,7 +20,10 @@
     "2026-12-27" : "holy-family/B",
     "2027-01-03" : "epiphany/B",
     "2027-01-17" : "ordinary-2/B",
-    "2027-04-18" : "easter-4/B"
+    "2027-04-18" : "easter-4/B",
+    "2026-11-08" : "ordinary-32/A",
+    "2026-08-16" : "ordinary-20/A",
+    "2027-01-10" : "baptism-of-the-lord/B"
   },
   "sundays" : {
     "ordinary-29/A" : {
@@ -169,16 +172,16 @@
       "season" : "comum",
       "primeira" : {
         "referencia" : "Ex 22, 20-26",
-        "citacao" : ""
+        "citacao" : "Se fizerdes algum mal à viúva e ao órfão, inflamar-se-á a minha ira contra vós"
       },
       "segunda" : {
         "referencia" : "1Ts 1, 5-10",
-        "citacao" : ""
+        "citacao" : "Convertestes-vos dos ídolos para servir a Deus e esperar o seu Filho"
       },
-      "salmo" : "",
+      "salmo" : "Eu Vos amo, Senhor: Vós sois a minha força.",
       "evangelho" : {
         "referencia" : "Mt 22, 34-40",
-        "citacao" : ""
+        "citacao" : "Amarás o Senhor teu Deus e o próximo como a ti mesmo"
       }
     },
     "ordinary-28/A" : {
@@ -384,6 +387,57 @@
       "salmo" : "",
       "evangelho" : {
         "referencia" : "Jo 10, 11-18",
+        "citacao" : ""
+      }
+    },
+    "ordinary-32/A" : {
+      "domingo" : "Domingo XXXII",
+      "season" : "comum",
+      "primeira" : {
+        "referencia" : "Sb 6, 12-16",
+        "citacao" : ""
+      },
+      "segunda" : {
+        "referencia" : "1Ts 4, 13-18",
+        "citacao" : ""
+      },
+      "salmo" : "",
+      "evangelho" : {
+        "referencia" : "Mt 25, 1-13",
+        "citacao" : ""
+      }
+    },
+    "ordinary-20/A" : {
+      "domingo" : "Domingo XX",
+      "season" : "comum",
+      "primeira" : {
+        "referencia" : "Is 56, 1, 6-7",
+        "citacao" : ""
+      },
+      "segunda" : {
+        "referencia" : "Rm 11, 13-15, 29-32",
+        "citacao" : ""
+      },
+      "salmo" : "",
+      "evangelho" : {
+        "referencia" : "Mt 15, 21-28",
+        "citacao" : ""
+      }
+    },
+    "baptism-of-the-lord/B" : {
+      "domingo" : "Solenidade do Batismo do Senhor",
+      "season" : "natal",
+      "primeira" : {
+        "referencia" : "Is 42, 1-4, 6-7",
+        "citacao" : ""
+      },
+      "segunda" : {
+        "referencia" : "At 10, 34-38",
+        "citacao" : ""
+      },
+      "salmo" : "",
+      "evangelho" : {
+        "referencia" : "Mc 1, 7-11",
         "citacao" : ""
       }
     }

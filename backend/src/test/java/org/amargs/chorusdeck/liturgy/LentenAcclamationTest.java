@@ -71,7 +71,7 @@ class LentenAcclamationTest {
     void aNewLentSundayStoresTheVerse() throws Exception {
         Path directory = Files.createTempDirectory("sundays");
         Files.copy(louvorFile(), directory.resolve("louvor.json"));
-        Path file = directory.resolve("sundays.json");
+        Path file = directory.resolve(SundayLibrary.FILE_NAME);
         RomanCalendar calendar = RomanCalendar.parse("""
                 {
                   "day": { "sunday_id": "lent-5", "sunday_cycle": "C", "season": "lent" },

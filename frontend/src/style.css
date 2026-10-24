@@ -289,7 +289,7 @@ header .alter svg {
 }
 
 .welcome p {
-  max-width: 36rem;
+  max-width: 42rem;
   margin: 0 0 1.5rem;
   color: #5c564c;
   font-size: 1.15rem;
@@ -449,6 +449,69 @@ header .alter svg {
 
 .choice span {
   color: #5c564c;
+}
+
+.choice.compact {
+  min-height: 0;
+  padding: 1.4rem 1.2rem;
+}
+
+.config-header {
+  margin-bottom: 1.25rem;
+}
+
+.config-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.config-title {
+  margin: 0 0 0.75rem;
+  font-size: 1.2rem;
+  font-weight: 650;
+}
+
+.config-heading {
+  margin: 0.85rem 0 0;
+  font-size: 0.95rem;
+  font-weight: 650;
+}
+
+.config-fields .config-heading:first-child {
+  margin-top: 0;
+}
+
+.config-fields .config-heading:not(:first-child) {
+  margin-top: 1.45rem;
+}
+
+.config-hint {
+  margin: 0.2rem 0 0;
+  color: #5c564c;
+  font-size: 0.92rem;
+}
+
+.sync-apply {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.sync-apply .path-row {
+  flex: 1;
+  min-width: 0;
+}
+
+.config-fields .kind label span {
+  line-height: 1.25;
+  white-space: normal;
+}
+
+.config-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .lede {

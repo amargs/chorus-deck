@@ -36,11 +36,6 @@ public final class FolderChooser {
         return choose(start, true, "Escolher pasta", null);
     }
 
-    /** @return the chosen file, or null when the dialog is cancelled */
-    public static Path chooseFile(Path start) throws Exception {
-        return choose(start, false, "Escolher índice", new FileNameExtensionFilter("JSON", "json"));
-    }
-
     /** @return the chosen image, or null when the dialog is cancelled */
     public static Path chooseImage(Path start) throws Exception {
         return choose(start, false, "Escolher imagem", new FileNameExtensionFilter("Imagem", "png", "jpg", "jpeg", "gif"));
