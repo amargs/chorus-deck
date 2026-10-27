@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BoldMarkupTest {
 
@@ -38,6 +39,23 @@ class BoldMarkupTest {
                         "IBM Plex Sans SemiBold",
                         "Playfair Display",
                         "not a deck font")));
+    }
+
+    @Test
+    void italicAndUnderlineStayOnTheRunsAndLeaveThePlainText() throws Exception {
+        assertEquals("suave e linha", BoldMarkup.plain("*suave* e __linha__"));
+        assertEquals("negrito", BoldMarkup.plain("**negrito**"));
+        try (XMLSlideShow ppt = new XMLSlideShow()) {
+            XSLFTextBox box = textBox(ppt);
+            box.addNewTextParagraph().addNewTextRun().setText("x");
+            BoldMarkup.apply(box, "antes *suave* e __linha__");
+            List<XSLFTextRun> runs = box.getTextParagraphs().get(0).getTextRuns();
+            assertEquals("antes ", runs.get(0).getRawText());
+            assertEquals("suave", runs.get(1).getRawText());
+            assertTrue(runs.get(1).isItalic());
+            assertEquals("linha", runs.get(3).getRawText());
+            assertTrue(runs.get(3).isUnderlined());
+        }
     }
 
     @Test

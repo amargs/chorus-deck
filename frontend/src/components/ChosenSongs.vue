@@ -21,7 +21,7 @@ const emit = defineEmits(['remove', 'up', 'down', 'clear'])
     <ul class="songs">
       <li v-for="(song, index) in songs" :key="`${song.id}-${index}`">
         <span class="song-label">
-          <span v-if="song.bookId" class="book-badge">{{ song.bookId }}</span>
+          <span class="book-badge">{{ song.bookId || '#' }}</span>
           {{ song.title }}
         </span>
         <span class="row-actions">

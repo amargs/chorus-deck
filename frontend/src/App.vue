@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from
 import ChosenSongs from './components/ChosenSongs.vue'
 import CoverFields from './components/CoverFields.vue'
 import Eucharist from './components/Eucharist.vue'
+import Library from './components/Library.vue'
 import SongList from './components/SongList.vue'
 import { THEME, deckFileName, occasionFileName } from './songs.js'
 
@@ -13,6 +14,7 @@ const deckMenuHover = ref(false)
 const deckMenuPinned = ref(false)
 const presentations = ref(null)
 const eucharistMounted = ref(false)
+const libraryMounted = ref(false)
 const eucharistDraft = ref(null)
 const hasEucharistDraft = ref(false)
 const draftChecked = ref(false)
@@ -133,6 +135,12 @@ function openSongs() {
   songsMounted.value = true
   lastDeck.value = 'songs'
   screen.value = 'songs'
+}
+
+function openLibrary() {
+  deckMenuPinned.value = false
+  libraryMounted.value = true
+  screen.value = 'library'
 }
 
 function openPresentations() {
@@ -261,6 +269,11 @@ async function loadSongs() {
       throw new Error(await errorText(response))
     }
     library.value = await response.json()
+    const byId = new Map(library.value.map((song) => [song.id, song]))
+    chosen.value = chosen.value.flatMap((song) => {
+      const next = byId.get(song.id)
+      return next ? [next] : []
+    })
   } catch (e) {
     loadError.value = e.message
   }
@@ -678,6 +691,13 @@ async function errorText(response) {
         <button type="button" role="menuitem" :aria-current="screen === 'songs' ? 'page' : undefined" @click="openSongs">Cânticos</button>
       </div>
     </div>
+    <button type="button" class="nav-link" :class="{ current: screen === 'library' }" :aria-current="screen === 'library' ? 'page' : undefined" @click="openLibrary">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.8c-2.4-1.4-5-1.7-8-.9v-11.3c3-.8 5.6-.5 8 1 2.4-1.5 5-1.8 8-1V17.9c-3-.8-5.6-.5-8 .9z" />
+        <path stroke-linecap="round" d="M12 18.8v-11.2" />
+      </svg>
+      <span class="nav-label" data-text="Biblioteca"><span>Biblioteca</span></span>
+    </button>
     <button type="button" class="nav-cog" :class="{ current: screen === 'config' }" aria-label="Configuração" :aria-current="screen === 'config' ? 'page' : undefined" @click="openConfig">
       <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
         <path stroke-linecap="round" stroke-linejoin="round" d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
@@ -711,9 +731,9 @@ async function errorText(response) {
   </main>
   <main v-else-if="indexPath && (screen === 'home' || screen === 'decks')" class="welcome home-screen">
     <h1 v-if="screen === 'home'">O que vamos preparar?</h1>
-    <div class="choice-row">
+    <div class="choice-row" :class="{ 'with-library': screen === 'home' }">
       <button class="choice" type="button" @click="openEucharist">
-        <img src="/logo_comunhao.png" alt="" />
+        <img src="/logo_eucaristia.png" alt="" />
         <span class="choice-name">
           <strong>Eucaristia</strong>
           <span v-if="hasEucharistDraft" class="draft-chip">Rascunho guardado</span>
@@ -721,9 +741,14 @@ async function errorText(response) {
         <span>Missa de domingo, com um cântico para cada momento.</span>
       </button>
       <button class="choice" type="button" @click="openSongs">
-        <img src="/logo_luz.png" alt="" />
+        <img src="/logo_canticos.png" alt="" />
         <strong>Lista de cânticos</strong>
         <span>Uma apresentação só com cânticos, pela ordem escolhida.</span>
+      </button>
+      <button v-if="screen === 'home'" class="choice" type="button" @click="openLibrary">
+        <img src="/logo_biblioteca.png" alt="" />
+        <strong>Biblioteca</strong>
+        <span>Adicionar novos cânticos ou editar os existentes.</span>
       </button>
     </div>
   </main>
@@ -780,6 +805,12 @@ async function errorText(response) {
       </div>
     </div>
   </main>
+  <Library
+    v-if="indexPath && libraryMounted"
+    v-show="screen === 'library'"
+    :songs="library"
+    @saved="loadSongs"
+  />
   <Eucharist
     v-if="indexPath && eucharistMounted"
     v-show="screen === 'eucharist'"

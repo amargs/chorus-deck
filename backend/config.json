@@ -3,8 +3,8 @@
   "indexFile" : "data/index.json",
   "template4x3" : "data/template_4x3.pptx",
   "sourceHashes" : {
-    "pptx" : "0bd078ce17f49c2d9a5b62926ced6fb2de1c53c5816105e593d40bde827f2e73",
-    "songbook" : "b59aaeca6dcdf0957f8a34821ba36f51686e16b6862b22f9ad355ca950910a4d",
+    "pptx" : "fabe7c2e1237650ec7b8956add14ea7332616b29e93c84399394fbb79b8c864c",
+    "songbook" : "b7e694b3dd75ac49ac039b34bcb9b24bc1662e204051e10c2e138c461128f990",
     "rites" : "9b76bbd358f2331ee34a3bd6021a5f1b5993c3fcb4ac1a8c5b00ceafaadf984b"
   }
 }

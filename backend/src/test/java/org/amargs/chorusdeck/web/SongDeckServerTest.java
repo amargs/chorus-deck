@@ -107,6 +107,51 @@ class SongDeckServerTest {
     }
 
     @Test
+    void savingASongWritesTheIndexInUse() throws Exception {
+        Path dir = Files.createTempDirectory("chorus-deck");
+        Path shared = dir.resolve("shared");
+        Path index = shared.resolve("index.json");
+        SongIndex.write(index, List.of(
+                new SongCfg(2, "Já estava", List.of("verso"), "4"),
+                new SongCfg(7, "Incompleto", List.of())));
+        Path other = dir.resolve("data").resolve("index.json");
+        SongIndex.write(other, List.of(new SongCfg(1, "Local", List.of("verso"), "1")));
+        Javalin app = app(dir, index);
+        try {
+            HttpResponse<String> created = putSong(app, """
+                    {"title":"Nunca esteve no índice","bookId":"A1","content":["primeira","**refrão**"]}
+                    """);
+            assertEquals(200, created.statusCode(), created.body());
+            assertEquals(8, JSON.readTree(created.body()).get("id").asInt());
+
+            HttpResponse<String> edited = putSong(app, """
+                    {"id":7,"title":"Incompleto","bookId":"RP3","content":["agora com letra"]}
+                    """);
+            assertEquals(200, edited.statusCode(), edited.body());
+
+            List<SongCfg> stored = SongIndex.read(index);
+            assertEquals(List.of(2, 7, 8), stored.stream().map(SongCfg::id).toList());
+            assertEquals("Já estava", stored.get(0).title());
+            assertEquals(List.of("verso"), stored.get(0).content());
+            assertEquals("4", stored.get(0).bookId());
+            assertEquals(List.of("agora com letra"), stored.get(1).content());
+            assertEquals("RP3", stored.get(1).bookId());
+            assertEquals(List.of("primeira", "**refrão**"), stored.get(2).content());
+            assertEquals(List.of(new SongCfg(1, "Local", List.of("verso"), "1")), SongIndex.read(other));
+
+            JsonNode list = JSON.readTree(send(app, HttpRequest.newBuilder(uri(app, "/api/songs")).GET().build()).body());
+            assertEquals(3, list.size());
+            assertTrue(list.get(2).get("hasVerses").asBoolean());
+            assertEquals("A1", list.get(2).get("bookId").asText());
+            JsonNode one = JSON.readTree(send(app, HttpRequest.newBuilder(uri(app, "/api/songs/8")).GET().build()).body());
+            assertEquals("Nunca esteve no índice", one.get("title").asText());
+            assertEquals("**refrão**", one.get("content").get(1).asText());
+        } finally {
+            app.stop();
+        }
+    }
+
+    @Test
     void generateRejectsAnEmptyListAnUnknownIdAndASongWithoutVerses() throws Exception {
         Path dir = Files.createTempDirectory("chorus-deck");
         Path index = dir.resolve("index.json");
@@ -511,6 +556,13 @@ class SongDeckServerTest {
         } finally {
             app.stop();
         }
+    }
+
+    private static HttpResponse<String> putSong(Javalin app, String json) throws Exception {
+        return send(app, HttpRequest.newBuilder(uri(app, "/api/songs"))
+                .header("Content-Type", "application/json")
+                .PUT(HttpRequest.BodyPublishers.ofString(json))
+                .build());
     }
 
     private static void putDraft(Javalin app, String json) throws Exception {

@@ -39,7 +39,8 @@ button:disabled {
 
 button:focus-visible,
 input:focus-visible,
-select:focus-visible {
+select:focus-visible,
+textarea:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
@@ -80,7 +81,8 @@ a {
 }
 
 input:not([type="checkbox"]):not([type="radio"]),
-select {
+select,
+textarea {
   width: 100%;
   border: 1px solid #c8c1b4;
   border-radius: 6px;
@@ -467,6 +469,10 @@ header .alter svg {
   display: flex;
   gap: 1.75rem;
   width: min(52rem, 100%);
+}
+
+.choice-row.with-library {
+  width: min(76rem, 100%);
 }
 
 .choice {
@@ -868,6 +874,13 @@ header .alter svg {
   margin: 0;
 }
 
+.catalog-list .panel-head h2,
+.catalog-editor > h2 {
+  font-size: 0.85rem;
+  font-weight: 650;
+  color: #5c564c;
+}
+
 .panel-head .clear {
   display: inline-flex;
   align-items: center;
@@ -929,6 +942,282 @@ input:not([type="checkbox"]):not([type="radio"])::placeholder {
   gap: 0.6rem;
   padding: 0.45rem 0;
   border-top: 1px solid #eeeae2;
+}
+
+.catalog-song {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  padding: 0.1rem 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.catalog-song:hover {
+  color: var(--accent-ink);
+}
+
+.catalog-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 13.5rem;
+  gap: 0.75rem;
+}
+
+.catalog-editor .field {
+  margin-top: 0.9rem;
+}
+
+.page.catalog-list {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.page.catalog-list .catalog-head {
+  position: static;
+}
+
+.catalog-list > .panel {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.catalog-list .songs {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+}
+
+.catalog-head {
+  position: sticky;
+  top: 3.4rem;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  padding: 0.35rem 0;
+  background: #f3f0e8;
+}
+
+.verse-field {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.format-bar {
+  position: absolute;
+  top: -1.85rem;
+  left: -1px;
+  z-index: 2;
+  display: flex;
+  gap: 0.15rem;
+  height: 1.85rem;
+  padding: 0.15rem 0.2rem 0;
+  background: #fff;
+  border: 1px solid #c8c1b4;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+}
+
+.format {
+  min-width: 1.7rem;
+  height: 1.5rem;
+  padding: 0 0.35rem;
+  color: #1c1915;
+}
+
+.format-bar .format em,
+.format-bar .format strong,
+.format-bar .format .format-u {
+  color: inherit;
+  font-size: inherit;
+}
+
+.format-bar .format strong {
+  font-weight: 650;
+}
+
+.format-bar .format em,
+.format-bar .format .format-u {
+  font-weight: 400;
+}
+
+.format-bar .format em {
+  font-style: italic;
+}
+
+.format[aria-pressed="true"] {
+  color: var(--accent-ink);
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.format-u {
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+
+.verse-row {
+  display: flex;
+  gap: 0.4rem;
+  align-items: stretch;
+  margin-top: 0.35rem;
+  border-radius: 8px;
+}
+
+.verse-insert {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 1rem;
+  margin: 0.15rem 2.4rem;
+  position: relative;
+}
+
+.verse-insert::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: #e2dcd0;
+}
+
+.verse-plus {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  padding: 0;
+  border-radius: 999px;
+  color: var(--accent);
+  background: #fff;
+}
+
+.verse-plus svg {
+  width: 0.7rem;
+  height: 0.7rem;
+}
+
+.verse-plus:hover {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.verse-gap {
+  height: 0;
+  margin: 0 2.4rem;
+}
+
+.verse-gap::before {
+  opacity: 0;
+}
+
+.verse-insert.verse-drop::before {
+  height: 3px;
+  background: var(--accent);
+  opacity: 1;
+}
+
+.verse-gap.verse-drop {
+  height: 0.65rem;
+  margin: 0.15rem 2.4rem;
+}
+
+.verse-row.verse-dragging {
+  opacity: 0.45;
+}
+
+.verse-move {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  align-self: center;
+  justify-content: center;
+  gap: 0.1rem;
+  width: 2rem;
+}
+
+button.icon.nudge,
+button.icon.drag-handle {
+  border: none;
+  background: transparent;
+  color: #8a8378;
+}
+
+button.icon.nudge {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+button.icon.nudge svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+button.icon.nudge:hover:not(:disabled) {
+  color: var(--accent-ink);
+  background: var(--accent-soft);
+}
+
+button.icon.drag-handle {
+  width: 2rem;
+  height: 1.65rem;
+  cursor: grab;
+}
+
+button.icon.drag-handle:active {
+  cursor: grabbing;
+}
+
+.verse-box {
+  flex: 1;
+  min-width: 0;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #c8c1b4;
+  border-radius: 6px;
+  background: #fff;
+  white-space: pre-wrap;
+  line-height: 1.45;
+}
+
+.verse-box:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.verse-field.verse-focused .verse-box {
+  border-top-left-radius: 0;
+}
+
+.verse-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.catalog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
 }
 
 .song-label {
@@ -1368,6 +1657,7 @@ input:not([type="checkbox"]):not([type="radio"])::placeholder {
 @media (max-width: 800px) {
   .columns,
   .fields,
+  .catalog-fields,
   .choice-row {
     grid-template-columns: 1fr;
     flex-direction: column;

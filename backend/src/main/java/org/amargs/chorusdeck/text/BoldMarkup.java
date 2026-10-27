@@ -72,7 +72,17 @@ public final class BoldMarkup {
         if (marked == null || marked.isEmpty()) {
             return "";
         }
-        return marked.replace("**", "");
+        StringBuilder text = new StringBuilder();
+        List<List<Segment>> lines = parse(marked);
+        for (int i = 0; i < lines.size(); i++) {
+            if (i > 0) {
+                text.append('\n');
+            }
+            for (Segment segment : lines.get(i)) {
+                text.append(segment.text());
+            }
+        }
+        return text.toString();
     }
 
     public static String plainIfFullyBold(String marked) {
@@ -116,20 +126,38 @@ public final class BoldMarkup {
 
     private static String markParagraph(XSLFTextParagraph paragraph) {
         StringBuilder text = new StringBuilder();
-        boolean inBold = false;
+        boolean bold = false;
+        boolean italic = false;
+        boolean underline = false;
         for (XSLFTextRun run : paragraph.getTextRuns()) {
             String raw = run.getRawText();
             if (raw == null || raw.isEmpty()) {
                 continue;
             }
-            boolean bold = run.isBold() && !raw.isBlank();
-            if (bold != inBold) {
+            boolean nextBold = run.isBold() && !raw.isBlank();
+            boolean nextItalic = run.isItalic() && !raw.isBlank();
+            boolean nextUnderline = run.isUnderlined() && !raw.isBlank();
+            if (nextBold != bold) {
                 text.append("**");
-                inBold = bold;
+                bold = nextBold;
+            }
+            if (nextItalic != italic) {
+                text.append("*");
+                italic = nextItalic;
+            }
+            if (nextUnderline != underline) {
+                text.append("__");
+                underline = nextUnderline;
             }
             text.append(raw);
         }
-        if (inBold) {
+        if (underline) {
+            text.append("__");
+        }
+        if (italic) {
+            text.append("*");
+        }
+        if (bold) {
             text.append("**");
         }
         return text.toString();
@@ -148,27 +176,38 @@ public final class BoldMarkup {
         List<Segment> segments = new ArrayList<>();
         StringBuilder current = new StringBuilder();
         boolean bold = false;
-        for (int i = 0; i < line.length(); i++) {
+        boolean italic = false;
+        boolean underline = false;
+        for (int i = 0; i < line.length(); ) {
             if (line.startsWith("**", i)) {
-                addSegment(segments, current, bold);
+                addSegment(segments, current, bold, italic, underline);
                 bold = !bold;
-                i++;
-                continue;
+                i += 2;
+            } else if (line.startsWith("__", i)) {
+                addSegment(segments, current, bold, italic, underline);
+                underline = !underline;
+                i += 2;
+            } else if (line.charAt(i) == '*') {
+                addSegment(segments, current, bold, italic, underline);
+                italic = !italic;
+                i += 1;
+            } else {
+                current.append(line.charAt(i));
+                i += 1;
             }
-            current.append(line.charAt(i));
         }
-        addSegment(segments, current, bold);
+        addSegment(segments, current, bold, italic, underline);
         if (segments.isEmpty()) {
-            segments.add(new Segment("", false));
+            segments.add(new Segment("", false, false, false));
         }
         return segments;
     }
 
-    private static void addSegment(List<Segment> segments, StringBuilder current, boolean bold) {
+    private static void addSegment(List<Segment> segments, StringBuilder current, boolean bold, boolean italic, boolean underline) {
         if (current.isEmpty()) {
             return;
         }
-        segments.add(new Segment(current.toString(), bold));
+        segments.add(new Segment(current.toString(), bold, italic, underline));
         current.setLength(0);
     }
 
@@ -208,6 +247,8 @@ public final class BoldMarkup {
         } else if (segment.bold() || layoutBold) {
             run.setBold(true);
         }
+        run.setItalic(segment.italic());
+        run.setUnderlined(segment.underline());
     }
 
     private static CTTextCharacterProperties copyProperties(XSLFTextRun run) {
@@ -217,6 +258,6 @@ public final class BoldMarkup {
         return null;
     }
 
-    private record Segment(String text, boolean bold) {
+    private record Segment(String text, boolean bold, boolean italic, boolean underline) {
     }
 }

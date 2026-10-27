@@ -511,6 +511,14 @@ function flushDraft() {
 }
 
 watch(() => props.songs, (songs) => {
+  const byId = new Map(songs.map((song) => [song.id, song]))
+  for (const key of Object.keys(slots)) {
+    const current = slots[key]
+    const next = current && byId.get(current.id)
+    if (next && next !== current) {
+      slots[key] = next
+    }
+  }
   if (!pendingSlots || !props.draft || !songs.length) {
     return
   }
@@ -800,7 +808,7 @@ async function generate(force = false, replace = false) {
               <span v-if="moment.fixed" class="moment-song">{{ form.louvor || 'O refrão fica no diapositivo' }}</span>
               <span v-else-if="spoken[moment.id]" class="moment-song">Rezado</span>
               <span v-else-if="slots[moment.id]" class="moment-song picked">
-                <span class="book-badge">{{ slots[moment.id].bookId }}</span>
+                <span class="book-badge">{{ slots[moment.id].bookId || '#' }}</span>
                 {{ slots[moment.id].title }}
               </span>
               <span v-else class="missing">por escolher</span>

@@ -48,11 +48,10 @@ const visible = computed(() =>
     <ul class="songs">
       <li v-for="song in visible" :key="song.id">
         <span class="song-label">
-          <span v-if="song.bookId" class="book-badge">{{ song.bookId }}</span>
+          <span class="book-badge">{{ song.bookId || '#' }}</span>
           {{ song.title }}
         </span>
         <span v-if="!song.hasVerses" class="missing">sem letra</span>
-        <span v-else-if="requireBookId && !song.bookId" class="missing">sem número</span>
         <button
           type="button"
           class="icon"

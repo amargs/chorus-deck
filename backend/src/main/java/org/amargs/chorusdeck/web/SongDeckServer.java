@@ -12,6 +12,7 @@ import org.amargs.chorusdeck.liturgy.LiturgyClient;
 import org.amargs.chorusdeck.liturgy.LiturgyDay;
 import org.amargs.chorusdeck.liturgy.SundayLibrary;
 import org.amargs.chorusdeck.text.BoldMarkup;
+import org.amargs.chorusdeck.index.SongCatalog;
 import org.amargs.chorusdeck.index.SongCfg;
 import org.amargs.chorusdeck.index.SongIndex;
 import org.apache.logging.log4j.LogManager;
@@ -84,6 +85,21 @@ public final class SongDeckServer {
             ctx.json(Map.of("directory", library.exportTo(Path.of(directory.asText())).toString()));
         });
         app.get("/api/songs", ctx -> ctx.json(SongDeckRequests.songs(SongIndex.read(library.requireIndex()))));
+        app.get("/api/songs/{id}", ctx -> {
+            int id = songId(ctx.pathParam("id"));
+            SongCfg song = SongCatalog.find(SongIndex.read(library.requireIndex()), id);
+            if (song == null) {
+                throw new IllegalArgumentException("Cântico desconhecido.");
+            }
+            ctx.json(song);
+        });
+        app.put("/api/songs", ctx -> {
+            JsonNode body = readObject(ctx.body(), "O cântico tem de ser um objeto.");
+            Path index = library.requireIndex();
+            SongCatalog.Saved saved = SongCatalog.save(SongIndex.read(index), body);
+            SongIndex.write(index, saved.songs());
+            ctx.json(saved.song());
+        });
         app.get("/api/liturgy", ctx -> {
             Path index = library.requireIndex();
             LiturgyDay day = liturgy.load(MassDeckRequests.date(ctx.queryParam("date")), index.resolveSibling(SundayLibrary.FILE_NAME));
@@ -316,6 +332,18 @@ public final class SongDeckServer {
     @FunctionalInterface
     interface LiturgyLookup {
         LiturgyDay load(LocalDate date, Path libraryFile);
+    }
+
+    private static int songId(String raw) {
+        try {
+            int id = Integer.parseInt(raw);
+            if (id >= 1) {
+                return id;
+            }
+        } catch (NumberFormatException e) {
+            // The message below covers a missing or non-numeric id.
+        }
+        throw new IllegalArgumentException("O número do cântico começa em 1.");
     }
 
     private static String text(JsonNode node, String field) {

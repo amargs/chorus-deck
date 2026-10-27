@@ -1,39 +1,61 @@
 # chorus-deck
 
-Chorus Deck builds a PowerPoint for Mass: a cover slide, then the songs you pick.
+eCoral prepares the PowerPoint for Mass. It writes a cover, the readings, the prayers that stay the same, and the songs.
 
-The files it uses are listed in `backend/config.json`. By default the song source, the index, the template, and the generated deck all live in `backend/data/`.
+- **Eucaristia** builds a Sunday Mass. The date fills the name, the season, the year, and the reading sentences, and a Sunday it has not seen before is fetched and remembered. Each moment of the Mass can take a song. Advent and Lent leave out the Glória, and in Lent the Alleluia is the Louvor verse. You can choose the Creed, a response for the prayer of the faithful, the pause between slides, and the highlight color. A Sunday that is also a fixed solemnity can stay the Sunday or use that solemnity. An unfinished Mass is kept on this computer.
+- **Lista de cânticos** is a deck of songs in the order you choose, with an optional cover.
+- **Biblioteca** is where you add or correct a song: the title, the songbook number, and the verses, including bold, italic, and underline. A saved song is then available in either deck.
 
-Open a terminal in `backend` and use Java 20.
+## Launch the application
 
-To refresh the song list from the source PowerPoint:
+The page is built with Node.js 20, and the backend runs on Java 20. Build the pages first, then start eCoral.
+
+From `frontend`:
+
+```bash
+npm run build
+```
+
+From `backend`:
+
+```bash
+./gradlew run --args "serve"
+```
+
+eCoral will open in its own window. The window needs the Microsoft Edge WebView2 runtime, which current Windows already includes.
+
+To work on the page with live reload, leave `serve` running and, from `frontend`, run `npm run dev`. `./gradlew packageApp`, after `npm run build`, writes the Windows installer to `backend/build/distributions/`.
+
+## Command line
+
+Run these from `backend`. `config.json` points at the files, which normally all live in `data/`: the source PowerPoint, the song index, the template, and the two songbooks. When a value has spaces, put single quotes around `--args` so the sentence stays in one piece.
+
+`index` refreshes the song list. The lyrics come from `data/input.pptx`, and the numbers from `data/songbook_default.docx` and `data/songbook_rites.docx`. If the PowerPoint has changed, the lyrics are rebuilt and each song keeps its id. If only a songbook has changed, the numbers are updated and the lyrics stay as they are. When both are unchanged, it says `Sources unchanged`.
 
 ```bash
 ./gradlew run --args "index"
 ```
 
-If the PowerPoint changed, this rebuilds the lyrics and keeps each song id. If only a songbook changed, it updates the songbook numbers and leaves the lyrics as they are. If nothing changed, it prints `Sources unchanged`.
-
-To see slides and songbook headings that do not match:
+`diff-sources` lists slides and songbook headings that do not match, and leaves the files alone. `generate` will mention it too, if one of those files has changed since the last `index`.
 
 ```bash
 ./gradlew run --args "diff-sources"
 ```
 
-`generate` warns when one of those files has changed since the last `index`.
-
-To build a deck, name the songs in the order they should appear, and say which Sunday it is. `--ids` uses the id stored in the index. `--book-ids` uses the songbook number, including a rite code such as `A1` or `RP3`, so you can check that order against the book. Use one of those flags. The season is one of `comum`, `advento`, `natal`, `quaresma`, `ramos`, `pascoa`, or `pentecostes`. The year is `A`, `B`, or `C`. You do not type the «» around the sentence or the "Tempo … · Ano …" line; the program adds those.
-
-```bash
-./gradlew run --args 'generate --ids 1,2 --season advento --ano B --domingo "Domingo II" --frase "Dai a César o que é de César e a Deus o que é de Deus" --versiculo "Mt 3, 15-21"'
-```
-
-The same two songs by songbook number:
+`generate` builds a deck from the songs you name and the Sunday you describe. Use the songbook number (`2`, `A1`, `RP3`) or the id stored on the song, and write the Sunday name, the sentence, and the verse as you want them read. eCoral adds the «» around the sentence, and the season line (`Tempo do Advento · Ano B`).
 
 ```bash
 ./gradlew run --args 'generate --book-ids 2,1 --season advento --ano B --domingo "Domingo II" --frase "Dai a César o que é de César e a Deus o que é de Deus" --versiculo "Mt 3, 15-21"'
 ```
 
-Keep the single quotes. Without them the terminal splits the sentence and Gradle treats the leftover words as extra tasks.
+The season is `comum`, `advento`, `natal`, `quaresma`, `ramos`, `pascoa`, or `pentecostes`, and the year is `A`, `B`, or `C`. `--cover "Capa - Domingo III Advento"` uses that cover for a special Sunday. `--mode songs` makes a deck that is only those songs.
 
-For a special Sunday, add `--cover` with the layout name from the template, for example `Capa - Domingo III Advento`. That cover is used instead of the one for the season.
+A full Mass can also sit in a small YAML file, such as `backend/domingo.yml`. `--date` picks a different day from the one written there. The Sunday texts come from `data/liturgy.json`, next to the index.
+
+```bash
+./gradlew run --args "generate --mass domingo.yml"
+```
+
+The deck is saved beside `config.json`. Name it with `outputFile` in that file, or with `output` in the Mass file. Close it in PowerPoint before generating it again.
+
+`./gradlew test` runs the tests.
