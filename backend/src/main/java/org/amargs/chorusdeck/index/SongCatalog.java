@@ -31,26 +31,21 @@ public final class SongCatalog {
         if (title == null) {
             throw new IllegalArgumentException("O cântico precisa de um título.");
         }
-        JsonNode verses = body.get("content");
-        if (verses == null || !verses.isArray()) {
-            throw new IllegalArgumentException("O cântico precisa das estrofes.");
-        }
-        List<String> content = new ArrayList<>();
-        for (JsonNode verse : verses) {
-            if (!verse.isTextual()) {
-                throw new IllegalArgumentException("Cada estrofe é texto.");
-            }
-            String text = verse.asText().strip();
-            if (!text.isEmpty()) {
-                content.add(text);
-            }
-        }
+        List<String> content = verses(body.get("content"), true);
         String bookId = text(body.get("bookId"));
+        String titleAlt = text(body.get("titleAlt"));
+        List<String> contentAlt = verses(body.get("contentAlt"), false);
+        String lang = language(body.get("lang"));
+        String langAlt = language(body.get("langAlt"));
+        String defaultLyrics = defaultLyrics(body.get("defaultLyrics"));
+        if (contentAlt != null && lang != null && lang.equals(langAlt)) {
+            throw new IllegalArgumentException("As duas línguas têm de ser diferentes.");
+        }
         List<SongCfg> next = new ArrayList<>(songs == null ? List.of() : songs);
         JsonNode idNode = body.get("id");
         if (idNode == null || idNode.isNull()) {
             int id = nextId(next);
-            SongCfg song = new SongCfg(id, title, content, bookId);
+            SongCfg song = new SongCfg(id, title, content, bookId, titleAlt, contentAlt, lang, langAlt, defaultLyrics);
             next.add(song);
             return new Saved(next, song);
         }
@@ -60,12 +55,38 @@ public final class SongCatalog {
         int id = idNode.intValue();
         for (int i = 0; i < next.size(); i++) {
             if (next.get(i).id() == id) {
-                SongCfg song = new SongCfg(id, title, content, bookId);
+                SongCfg song = new SongCfg(id, title, content, bookId, titleAlt, contentAlt, lang, langAlt, defaultLyrics);
                 next.set(i, song);
                 return new Saved(next, song);
             }
         }
         throw new IllegalArgumentException("Cântico desconhecido.");
+    }
+
+    private static List<String> verses(JsonNode node, boolean required) {
+        if (node == null || node.isNull()) {
+            if (required) {
+                throw new IllegalArgumentException("O cântico precisa das estrofes.");
+            }
+            return null;
+        }
+        if (!node.isArray()) {
+            throw new IllegalArgumentException("O cântico precisa das estrofes.");
+        }
+        List<String> content = new ArrayList<>();
+        for (JsonNode verse : node) {
+            if (!verse.isTextual()) {
+                throw new IllegalArgumentException("Cada estrofe é texto.");
+            }
+            String text = verse.asText().strip();
+            if (!text.isEmpty()) {
+                content.add(text);
+            }
+        }
+        if (content.isEmpty() && !required) {
+            return null;
+        }
+        return content;
     }
 
     private static int nextId(List<SongCfg> songs) {
@@ -83,9 +104,45 @@ public final class SongCatalog {
             return null;
         }
         if (!node.isTextual()) {
-            throw new IllegalArgumentException("O título e o número são texto.");
+            throw new IllegalArgumentException("O título, o título alternativo e o número são texto.");
         }
         String text = node.asText().strip();
         return text.isEmpty() ? null : text;
+    }
+
+    private static String language(JsonNode node) {
+        if (node == null || node.isNull()) {
+            return null;
+        }
+        if (!node.isTextual()) {
+            throw new IllegalArgumentException(
+                    "A língua tem de ser português, inglês, espanhol, francês ou latim.");
+        }
+        String code = node.asText().strip();
+        if (code.isEmpty()) {
+            return null;
+        }
+        if (!SongCfg.LANGUAGES.contains(code)) {
+            throw new IllegalArgumentException(
+                    "A língua tem de ser português, inglês, espanhol, francês ou latim.");
+        }
+        return code;
+    }
+
+    private static String defaultLyrics(JsonNode node) {
+        if (node == null || node.isNull()) {
+            return null;
+        }
+        if (!node.isTextual()) {
+            throw new IllegalArgumentException("A língua por omissão tem de ser uma das línguas do cântico.");
+        }
+        String value = node.asText().strip();
+        if (value.isEmpty() || value.equals("content")) {
+            return null;
+        }
+        if (value.equals("contentAlt")) {
+            return value;
+        }
+        throw new IllegalArgumentException("A língua por omissão tem de ser uma das línguas do cântico.");
     }
 }

@@ -1,7 +1,7 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import SongList from './SongList.vue'
-import { ACCENTS, COVERS, MOMENTS, SEASONS, comingSunday } from '../songs.js'
+import { ACCENTS, COVERS, MOMENTS, SEASONS, comingSunday, languageName, preferredLyrics, slideChoice, withShow } from '../songs.js'
 
 const props = defineProps({
   songs: { type: Array, required: true },
@@ -410,14 +410,19 @@ function applySlots(saved) {
     delete slots[key]
   }
   const byId = new Map(props.songs.map((song) => [song.id, song]))
-  for (const [moment, id] of Object.entries(saved || {})) {
+  for (const [moment, raw] of Object.entries(saved || {})) {
+    const id = Number.isInteger(raw) ? raw : raw?.id
     if (!SONG_MOMENTS.has(moment) || !Number.isInteger(id)) {
       continue
     }
     const song = byId.get(id)
-    if (song) {
-      slots[moment] = song
+    if (!song) {
+      continue
     }
+    const previous = Number.isInteger(raw) ? null : {
+      showLyrics: raw.lyrics === 'contentAlt' || raw.lyrics === 'content' ? raw.lyrics : undefined,
+    }
+    slots[moment] = withShow(song, previous)
   }
 }
 
@@ -425,7 +430,7 @@ function draftBody() {
   const slotIds = {}
   for (const [moment, song] of Object.entries(slots)) {
     if (SONG_MOMENTS.has(moment) && Number.isInteger(song?.id)) {
-      slotIds[moment] = song.id
+      slotIds[moment] = { id: song.id, ...slideChoice(song) }
     }
   }
   const savedForm = {}
@@ -515,8 +520,8 @@ watch(() => props.songs, (songs) => {
   for (const key of Object.keys(slots)) {
     const current = slots[key]
     const next = current && byId.get(current.id)
-    if (next && next !== current) {
-      slots[key] = next
+    if (next) {
+      slots[key] = withShow(next, current)
     }
   }
   if (!pendingSlots || !props.draft || !songs.length) {
@@ -549,7 +554,37 @@ function pick(song) {
   if (spoken[active.value]) {
     spoken[active.value] = false
   }
-  slots[active.value] = song
+  slots[active.value] = withShow(song)
+}
+
+function setShow(moment, patch) {
+  const song = slots[moment]
+  if (!song) return
+  slots[moment] = { ...song, ...patch }
+}
+
+function bothLanguages(song) {
+  return !!song && (song.verses || 0) > 0 && (song.versesAlt || 0) > 0
+}
+
+function shownLyrics(song) {
+  return song?.showLyrics || preferredLyrics(song)
+}
+
+function momentLanguage(song) {
+  const alt = shownLyrics(song) === 'contentAlt'
+  return languageName(alt ? song.langAlt : song.lang) || (alt ? 'Latim' : 'Português')
+}
+
+function otherMomentLanguage(song) {
+  const alt = shownLyrics(song) === 'contentAlt'
+  return languageName(alt ? song.lang : song.langAlt) || (alt ? 'Português' : 'Latim')
+}
+
+function toggleLanguage(id) {
+  const song = slots[id]
+  if (!bothLanguages(song)) return
+  setShow(id, { showLyrics: shownLyrics(song) === 'contentAlt' ? 'content' : 'contentAlt' })
 }
 
 function unpick(id) {
@@ -635,7 +670,8 @@ async function generate(force = false, replace = false) {
     }
     const song = slots[moment.id]
     if (song?.bookId) {
-      songs[moment.id] = song.bookId
+      const choice = slideChoice(song)
+      songs[moment.id] = Object.keys(choice).length ? { bookId: song.bookId, ...choice } : song.bookId
     }
   }
   const day = liturgy.value
@@ -797,21 +833,33 @@ async function generate(force = false, replace = false) {
         <h2>Momentos</h2>
         <ul class="moments">
           <li v-for="moment in rows" :key="moment.id">
+            <div class="moment-pick">
+              <button
+                type="button"
+                class="moment"
+                :class="{ armed: !moment.fixed && active === moment.id }"
+                :disabled="moment.fixed"
+                @click="active = moment.id"
+              >
+                <span class="moment-name" :class="{ waiting: !moment.fixed && !slots[moment.id] && !spoken[moment.id] }">{{ moment.label }}</span>
+                <span v-if="moment.fixed" class="moment-song">{{ form.louvor || 'O refrão fica no diapositivo' }}</span>
+                <span v-else-if="spoken[moment.id]" class="moment-song">Rezado</span>
+                <span v-else-if="slots[moment.id]" class="moment-song picked">
+                  <span class="book-badge">{{ slots[moment.id].bookId || '#' }}</span>
+                  {{ slots[moment.id].title }}
+                </span>
+                <span v-else class="missing">por escolher</span>
+              </button>
+            </div>
             <button
+              v-if="bothLanguages(slots[moment.id])"
               type="button"
-              class="moment"
-              :class="{ armed: !moment.fixed && active === moment.id }"
-              :disabled="moment.fixed"
-              @click="active = moment.id"
+              class="rezado"
+              :title="'Mudar para ' + otherMomentLanguage(slots[moment.id])"
+              :aria-label="'Língua ' + momentLanguage(slots[moment.id]) + '. Mudar para ' + otherMomentLanguage(slots[moment.id])"
+              @click="toggleLanguage(moment.id)"
             >
-              <span class="moment-name" :class="{ waiting: !moment.fixed && !slots[moment.id] && !spoken[moment.id] }">{{ moment.label }}</span>
-              <span v-if="moment.fixed" class="moment-song">{{ form.louvor || 'O refrão fica no diapositivo' }}</span>
-              <span v-else-if="spoken[moment.id]" class="moment-song">Rezado</span>
-              <span v-else-if="slots[moment.id]" class="moment-song picked">
-                <span class="book-badge">{{ slots[moment.id].bookId || '#' }}</span>
-                {{ slots[moment.id].title }}
-              </span>
-              <span v-else class="missing">por escolher</span>
+              {{ momentLanguage(slots[moment.id]) }}
             </button>
             <button
               v-if="moment.optional && !slots[moment.id] && !spoken[moment.id]"

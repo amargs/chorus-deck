@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.amargs.chorusdeck.deck.Cover;
 import org.amargs.chorusdeck.deck.Season;
+import org.amargs.chorusdeck.deck.SlideChoice;
 import org.amargs.chorusdeck.index.SongCfg;
 
 import java.nio.file.Path;
@@ -18,10 +19,20 @@ public final class SongDeckRequests {
     }
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    public record SongView(int id, String title, String bookId, boolean hasVerses) {
+    public record SongView(
+            int id,
+            String title,
+            String titleAlt,
+            String bookId,
+            boolean hasVerses,
+            int verses,
+            int versesAlt,
+            String lang,
+            String langAlt,
+            String defaultLyrics) {
     }
 
-    public record Ready(List<Integer> ids, Path output, Cover cover) {
+    public record Ready(List<Integer> ids, Path output, Cover cover, List<SlideChoice> choices) {
     }
 
     public static List<SongView> songs(List<SongCfg> songs) {
@@ -31,8 +42,18 @@ public final class SongDeckRequests {
             if (bookId != null && bookId.isBlank()) {
                 bookId = null;
             }
-            boolean hasVerses = song.content() != null && !song.content().isEmpty();
-            views.add(new SongView(song.id(), song.title(), bookId, hasVerses));
+            int verses = song.content() == null ? 0 : song.content().size();
+            int versesAlt = song.contentAlt() == null ? 0 : song.contentAlt().size();
+            String titleAlt = song.titleAlt();
+            if (titleAlt != null && titleAlt.isBlank()) {
+                titleAlt = null;
+            }
+            String lang = versesAlt > 0 ? song.lang() : null;
+            String langAlt = versesAlt > 0 ? song.langAlt() : null;
+            String defaultLyrics = versesAlt > 0 ? song.defaultLyrics() : null;
+            views.add(new SongView(
+                    song.id(), song.title(), titleAlt, bookId,
+                    verses > 0 || versesAlt > 0, verses, versesAlt, lang, langAlt, defaultLyrics));
         }
         return views;
     }
@@ -41,29 +62,49 @@ public final class SongDeckRequests {
         if (body == null || !body.isObject()) {
             throw new IllegalArgumentException("The generate request must be an object.");
         }
-        List<Integer> ids = ids(body.get("ids"), songs);
+        Picked picked = ids(body.get("ids"), songs);
         Cover cover = cover(body.get("cover"));
         Path folder = LocalFiles.folder(text(body, "directory"), directory);
-        return new Ready(ids, LocalFiles.deckFile(text(body, "output"), folder), cover);
+        return new Ready(picked.ids(), LocalFiles.deckFile(text(body, "output"), folder), cover, picked.choices());
     }
 
-    private static List<Integer> ids(JsonNode node, List<SongCfg> songs) {
+    private record Picked(List<Integer> ids, List<SlideChoice> choices) {
+    }
+
+    private static Picked ids(JsonNode node, List<SongCfg> songs) {
         if (node == null || !node.isArray() || node.isEmpty()) {
             throw new IllegalArgumentException("A song deck needs at least one song.");
         }
         List<Integer> ids = new ArrayList<>();
+        List<SlideChoice> choices = new ArrayList<>();
         for (JsonNode item : node) {
-            if (!item.isIntegralNumber() || item.intValue() < 1) {
+            int id;
+            SlideChoice choice = null;
+            if (item.isObject() && item.has("id")) {
+                JsonNode idNode = item.get("id");
+                if (!idNode.isIntegralNumber() || idNode.intValue() < 1) {
+                    throw new IllegalArgumentException("Song ids start at 1.");
+                }
+                id = idNode.intValue();
+                choice = SlideChoice.from(item);
+            } else if (item.isIntegralNumber() && item.intValue() >= 1) {
+                id = item.intValue();
+            } else {
                 throw new IllegalArgumentException("Song ids start at 1.");
             }
-            int id = item.intValue();
             SongCfg song = find(songs, id);
-            if (song.content() == null || song.content().isEmpty()) {
-                throw new IllegalArgumentException("Song " + id + " has no verses.");
+            if (choice == null) {
+                SongCfg shown = song.prepared();
+                if (shown.content() == null || shown.content().isEmpty()) {
+                    throw new IllegalArgumentException("Song " + id + " has no verses.");
+                }
+            } else {
+                choice.show(song);
             }
             ids.add(id);
+            choices.add(choice);
         }
-        return ids;
+        return new Picked(ids, choices);
     }
 
     private static SongCfg find(List<SongCfg> songs, int id) {

@@ -5,9 +5,14 @@
   "bookId" : "2"
 }, {
   "id" : 2,
-  "title" : "A minh’alma descansa em paz",
+  "title" : "Mon âme se repose",
   "content" : [ "A minh’alma descansa em paz, no Senhor,\nQue é fonte de salvação\nSim, só em Deus descansa a minha alma:\nNele encontra a paz" ],
-  "bookId" : "1"
+  "bookId" : "1",
+  "titleAlt" : "A minh’alma descansa em paz",
+  "contentAlt" : [ "Mon âme se repose en paix sur Dieu seul:\nDe lui vient mon salut\nOui, sur Dieu seul mon âme se repose\nSe repose en paix" ],
+  "lang" : "pt",
+  "langAlt" : "fr",
+  "defaultLyrics" : "contentAlt"
 }, {
   "id" : 3,
   "title" : "A ti meu Deus",
@@ -75,9 +80,14 @@
   "bookId" : "14"
 }, {
   "id" : 16,
-  "title" : "Bendiz o Senhor (Bless the Lord, my soul)",
-  "content" : [ "Bendiz o Senhor, louva o Seu Santo Nome\nBendiz o Senhor, que à vida nos conduz" ],
-  "bookId" : "15"
+  "title" : "Bendiz o Senhor",
+  "content" : [ "Bendiz o Senhor,\nLouva o Seu Santo Nome\nBendiz o Senhor,\nQue à vida nos conduz" ],
+  "bookId" : "15",
+  "titleAlt" : "Bless the Lord, my soul",
+  "contentAlt" : [ "Bless the Lord, my soul\nAnd bless God's holy name\nBless the Lord, my soul\nWho leads me into life" ],
+  "lang" : "pt",
+  "langAlt" : "en",
+  "defaultLyrics" : "contentAlt"
 }, {
   "id" : 17,
   "title" : "Bendizemos o teu nome",
@@ -130,9 +140,10 @@
   "bookId" : "25"
 }, {
   "id" : 27,
-  "title" : "Confiarei (O Senhor é meu pastor)",
+  "title" : "Confiarei",
   "content" : [ "Confiarei, nessa voz que não se impõe\nMas que ouço bem cá dentro \nNo silêncio a segredar. \nConfiarei, ainda que mil outras vozes \nCorram muito mais velozes \nPara me fazer parar.", "E avançarei, \nAvançarei no meu caminho \nAgora eu sei, \nQue Tu comigo vens também, \nAonde fores, aí estarei \nEm Ti avançarei!", "**O Senhor é meu Pastor **\n**Sei que nada temerei, **\n**Ele guia o meu andar **\n**Sem medo avançarei. (X2)**", "Confiarei, por verdes prados me levas\nE em Teu olhar sossegas \nA pressa do meu olhar. \nConfiarei, a frescura das Tuas fontes\nDeixa a minha vida cheia\nMinha taça a transbordar.", "E avançarei, \nAvançarei no meu caminho \nAgora eu sei, \nQue Tu comigo vens também, \nAonde fores, aí estarei \nEm Ti avançarei!", "**O Senhor é meu Pastor **\n**Sei que nada temerei, **\n**Ele guia o meu andar **\n**Sem medo avançarei. (X2)**", "Confiarei, na Tua mão que\n  não me prende\nMas que guia cada passo \nDo caminho que eu fizer, \nConfiarei, ainda que o dia\n  escureça \nNão há mal que me aconteça, \nSe eu contigo estiver.", "E avançarei, \nAvançarei no meu caminho \nAgora eu sei, \nQue Tu comigo vens também, \nAonde fores, aí estarei \nEm Ti avançarei!", "**O Senhor é meu Pastor **\n**Sei que nada temerei, **\n**Ele guia o meu andar **\n**Sem medo avançarei. (X2)**" ],
-  "bookId" : "26"
+  "bookId" : "26",
+  "titleAlt" : "O Senhor é meu pastor"
 }, {
   "id" : 28,
   "title" : "Consagração a Nossa Senhora",

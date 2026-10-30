@@ -48,7 +48,16 @@ public final class SongIds {
                 id = ++maxId;
                 bookId = null;
             }
-            SongCfg assigned = new SongCfg(id, song.title(), song.content(), bookId);
+            SongCfg assigned = new SongCfg(
+                    id,
+                    song.title(),
+                    song.content(),
+                    bookId,
+                    match == null ? null : match.titleAlt(),
+                    match == null ? null : match.contentAlt(),
+                    match == null ? null : match.lang(),
+                    match == null ? null : match.langAlt(),
+                    match == null ? null : match.defaultLyrics());
             songs.add(assigned);
             if (match == null) {
                 added.add(assigned);

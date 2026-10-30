@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.amargs.chorusdeck.deck.DeckSpec;
 import org.amargs.chorusdeck.deck.MassRequest;
 import org.amargs.chorusdeck.deck.Season;
+import org.amargs.chorusdeck.deck.SlideChoice;
 import org.amargs.chorusdeck.index.SongCfg;
 import org.amargs.chorusdeck.liturgy.LiturgyClient;
 import org.amargs.chorusdeck.liturgy.LiturgyDay;
@@ -38,7 +39,8 @@ public final class MassDeckRequests {
             String segundaRef,
             String accent,
             boolean manual,
-            String cover) {
+            String cover,
+            Map<String, SlideChoice> choices) {
     }
 
     public static Map<String, Object> preview(LiturgyDay day) {
@@ -143,26 +145,45 @@ public final class MassDeckRequests {
         }
         LocalDate date = date(text(body, "date"));
         JsonNode moments = body.get("songs");
+        ObjectNode normalized = JSON.createObjectNode();
+        Map<String, SlideChoice> choices = new LinkedHashMap<>();
         if (moments != null && !moments.isNull()) {
             if (!moments.isObject()) {
                 throw new IllegalArgumentException("songs must be a mapping.");
             }
             moments.fields().forEachRemaining(entry -> {
-                if (entry.getValue().isNull()) {
+                JsonNode value = entry.getValue();
+                if (value == null || value.isNull()) {
                     return;
                 }
-                if (!entry.getValue().isTextual()) {
+                String bookId;
+                SlideChoice choice = null;
+                if (value.isTextual()) {
+                    bookId = value.asText().trim();
+                } else if (value.isObject()) {
+                    bookId = text(value, "bookId");
+                    if (bookId == null) {
+                        throw new IllegalArgumentException("A song moment needs a songbook id.");
+                    }
+                    choice = SlideChoice.from(value);
+                } else {
                     throw new IllegalArgumentException("Song moments take a songbook id.");
                 }
-                String bookId = entry.getValue().asText().trim();
-                if (!bookId.isEmpty()) {
-                    checkBook(songs, bookId);
+                if (bookId.isEmpty()) {
+                    return;
+                }
+                checkBook(songs, bookId, choice);
+                normalized.put(entry.getKey(), bookId);
+                if (choice != null) {
+                    choices.put(entry.getKey(), choice);
                 }
             });
         }
         ObjectNode request = JSON.createObjectNode();
         request.put("date", date.toString());
-        copyGroup(body, request, "songs");
+        if (moments != null && !moments.isNull()) {
+            request.set("songs", normalized);
+        }
         copyGroup(body, request, "leituras");
         copyGroup(body, request, "opcoes");
         Path folder = LocalFiles.folder(text(body, "directory"), directory);
@@ -177,10 +198,11 @@ public final class MassDeckRequests {
                 text(references, "segunda"),
                 accent(text(body, "accent")),
                 body.path("manual").asBoolean(false),
-                text(body, "cover"));
+                text(body, "cover"),
+                choices);
     }
 
-    private static void checkBook(List<SongCfg> songs, String bookId) {
+    private static void checkBook(List<SongCfg> songs, String bookId, SlideChoice choice) {
         SongCfg found = null;
         for (SongCfg song : songs) {
             if (!bookId.equals(song.bookId())) {
@@ -194,9 +216,14 @@ public final class MassDeckRequests {
         if (found == null) {
             throw new IllegalArgumentException("Unknown songbook id: " + bookId);
         }
-        if (found.content() == null || found.content().isEmpty()) {
-            throw new IllegalArgumentException("Song " + found.id() + " has no verses.");
+        if (choice == null) {
+            SongCfg shown = found.prepared();
+            if (shown.content() == null || shown.content().isEmpty()) {
+                throw new IllegalArgumentException("Song " + found.id() + " has no verses.");
+            }
+            return;
         }
+        choice.show(found);
     }
 
     private static void copyGroup(JsonNode body, ObjectNode request, String name) {

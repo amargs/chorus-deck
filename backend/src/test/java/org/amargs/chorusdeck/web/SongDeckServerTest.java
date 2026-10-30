@@ -644,6 +644,42 @@ class SongDeckServerTest {
         }
     }
 
+    @Test
+    void theSongListOffersTheAlternativeTitleAndBothVerseCounts() throws Exception {
+        Path dir = Files.createTempDirectory("chorus-deck");
+        Path index = dir.resolve("index.json");
+        SongIndex.write(index, List.of(
+                new SongCfg(1, "Pelos caminhos", List.of("um", "dois"), "12", "Per viam", List.of("unus")),
+                new SongCfg(2, "Só latim", List.of(), "A1", null, List.of("unus", "duo"))));
+        Javalin app = app(dir, index);
+        try {
+            JsonNode songs = JSON.readTree(send(app, HttpRequest.newBuilder(uri(app, "/api/songs")).GET().build()).body());
+            assertEquals("Per viam", songs.get(0).get("titleAlt").asText());
+            assertEquals(2, songs.get(0).get("verses").asInt());
+            assertEquals(1, songs.get(0).get("versesAlt").asInt());
+            assertEquals("pt", songs.get(0).get("lang").asText());
+            assertEquals("la", songs.get(0).get("langAlt").asText());
+            assertTrue(songs.get(0).get("hasVerses").asBoolean());
+            assertFalse(songs.get(1).has("titleAlt"));
+            assertEquals(0, songs.get(1).get("verses").asInt());
+            assertEquals(2, songs.get(1).get("versesAlt").asInt());
+            assertTrue(songs.get(1).get("hasVerses").asBoolean());
+
+            HttpResponse<String> created = putSong(app, """
+                    {"title":"Novo","bookId":"3","content":["a"],"titleAlt":"Aliud","contentAlt":["b","c"]}
+                    """);
+            assertEquals(200, created.statusCode(), created.body());
+            SongCfg stored = SongIndex.read(index).get(2);
+            assertEquals("Aliud", stored.titleAlt());
+            assertEquals(List.of("b", "c"), stored.contentAlt());
+            assertEquals("pt", stored.lang());
+            assertEquals("la", stored.langAlt());
+            assertEquals("Pelos caminhos", SongIndex.read(index).get(0).title());
+        } finally {
+            app.stop();
+        }
+    }
+
     private static Javalin app(Path dir, Path index) throws Exception {
         return app(dir, index, true);
     }

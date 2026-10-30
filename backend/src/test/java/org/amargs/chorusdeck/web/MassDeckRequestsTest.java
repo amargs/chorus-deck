@@ -3,6 +3,7 @@ package org.amargs.chorusdeck.web;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.amargs.chorusdeck.deck.MassRequest;
 import org.amargs.chorusdeck.deck.Season;
+import org.amargs.chorusdeck.deck.SlideChoice;
 import org.amargs.chorusdeck.index.SongCfg;
 import org.amargs.chorusdeck.liturgy.LiturgyDay;
 import org.junit.jupiter.api.Test;
@@ -116,6 +117,7 @@ class MassDeckRequestsTest {
         assertEquals(dir.resolve("missa.pptx").toAbsolutePath().normalize(), ready.output());
         assertEquals("118", ready.request().entrada());
         assertEquals(null, ready.request().gloria());
+        assertEquals(Map.of(), ready.choices());
 
         LiturgyDay day = new LiturgyDay(
                 LocalDate.of(2026, 10, 18),
@@ -143,6 +145,25 @@ class MassDeckRequestsTest {
                 {"date":"2026-10-18","output":"a.pptx","songs":{"cordeiro":"999"},"opcoes":{"credo":"longo"}}
                 """), songs, dir));
         assertTrue(unknown.getMessage().contains("Unknown songbook id: 999"));
+    }
+
+    @Test
+    void aMassSongCanChooseTheTitleAndTheLanguage() throws Exception {
+        Path dir = Files.createTempDirectory("mass-deck");
+        List<SongCfg> songs = List.of(new SongCfg(
+                1, "Pelos caminhos", List.of("um", "dois"), "12", "Per viam", List.of("unus")));
+        MassDeckRequests.Ready ready = MassDeckRequests.parse(JSON.readTree("""
+                {
+                  "date": "2026-10-18",
+                  "output": "missa.pptx",
+                  "songs": {
+                    "entrada": {"bookId": "12", "title": "titleAlt", "lyrics": "contentAlt"}
+                  },
+                  "opcoes": {"credo": "breve", "interval": "vazio"}
+                }
+                """), songs, dir);
+        assertEquals("12", ready.request().entrada());
+        assertEquals(new SlideChoice("titleAlt", "contentAlt"), ready.choices().get("entrada"));
     }
 
     @Test

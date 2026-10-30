@@ -1,5 +1,6 @@
 package org.amargs.chorusdeck.index;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import org.apache.poi.sl.usermodel.Placeholder;
@@ -150,6 +151,46 @@ class SongIndexTest {
         assertNull(bookId(attached, "Adorasmus te o Christe"));
         assertNull(bookId(attached, "Quero ser como tu, Maria"));
         assertEquals(4, song(attached, "A Ti Senhor meu Deus").id());
+    }
+
+    @Test
+    void alternativeTitleAndSecondLanguageStayOutOfTheFileUntilTheyAreSet() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        String plain = mapper.writeValueAsString(List.of(new SongCfg(1, "A", List.of("v"), "12")));
+        assertFalse(plain.contains("titleAlt"));
+        assertFalse(plain.contains("contentAlt"));
+        assertFalse(plain.contains("lang"));
+
+        SongCfg both = new SongCfg(1, "Pelos caminhos", List.of("um", "dois"), "12", "Per viam", List.of("unus", "duo"));
+        String json = mapper.writeValueAsString(List.of(both));
+        assertTrue(json.contains("\"titleAlt\":\"Per viam\""));
+        assertTrue(json.contains("\"contentAlt\":[\"unus\",\"duo\"]"));
+        assertTrue(json.contains("\"lang\":\"pt\""));
+        assertTrue(json.contains("\"langAlt\":\"la\""));
+        assertEquals(List.of(both), mapper.readValue(json, new TypeReference<List<SongCfg>>() {}));
+
+        SongCfg blank = new SongCfg(1, "A", List.of("v"), "12", "  ", List.of());
+        assertNull(blank.titleAlt());
+        assertNull(blank.contentAlt());
+        assertNull(blank.lang());
+        assertNull(blank.langAlt());
+    }
+
+    @Test
+    void reindexKeepsTheAlternativeTitleAndTheSecondLanguage() {
+        List<SongCfg> previous = List.of(new SongCfg(
+                4, "Pelos caminhos", List.of("velho"), "9", "Per viam", List.of("unus"), "en", "fr", "contentAlt"));
+        List<SongCfg> fresh = List.of(new SongCfg(1, "Pelos caminhos", List.of("novo")));
+        SongCfg kept = SongIds.assign(fresh, previous).songs().get(0);
+        assertEquals(4, kept.id());
+        assertEquals(List.of("novo"), kept.content());
+        assertEquals("9", kept.bookId());
+        assertEquals("Per viam", kept.titleAlt());
+        assertEquals(List.of("unus"), kept.contentAlt());
+        assertEquals("en", kept.lang());
+        assertEquals("fr", kept.langAlt());
+        assertEquals("contentAlt", kept.defaultLyrics());
+        assertEquals(List.of("unus"), kept.prepared().content());
     }
 
     @Test

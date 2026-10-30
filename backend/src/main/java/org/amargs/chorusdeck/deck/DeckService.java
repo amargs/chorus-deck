@@ -20,6 +20,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public final class DeckService {
 
@@ -140,6 +141,10 @@ public final class DeckService {
     }
 
     public Generated generateMass(AppConfig config, MassRequest mass) throws IOException {
+        return generateMass(config, mass, Map.of());
+    }
+
+    public Generated generateMass(AppConfig config, MassRequest mass, Map<String, SlideChoice> choices) throws IOException {
         BoldMarkup.requireDeckFonts();
         LOG.info("Found " + BoldMarkup.SEMIBOLD + ", " + BoldMarkup.TITLE + ", " + BoldMarkup.PLAYFAIR + ", " + BoldMarkup.PLAYFAIR_BOLD);
         DeckFile.ensureWritable(config.outputFile());
@@ -177,16 +182,17 @@ public final class DeckService {
                     ? templatePpt.addPicture(Files.readAllBytes(mass.interval().image()), mass.interval().pictureType())
                     : null;
             MassAssembler deck = new MassAssembler(
-                    templatePpt, titleLayout, lyricLayout, fits, songs, mass.interval(), picture);
+                    templatePpt, titleLayout, lyricLayout, fits, songs, mass.interval(), picture,
+                    choices == null ? Map.of() : choices);
             XSLFSlide coverSlide = templatePpt.createSlide(TemplateLayouts.findLayout(templatePpt, season.coverLayout()));
             fillCover(coverSlide, mass.cover(), season);
             deck.slides++;
             deck.interval();
-            deck.song(mass.entrada(), true);
-            deck.song(mass.kyrie(), true);
+            deck.song("entrada", mass.entrada(), true);
+            deck.song("kyrie", mass.kyrie(), true);
             if (!season.omitsGloria()) {
                 if (mass.gloria() != null) {
-                    deck.song(mass.gloria(), true);
+                    deck.song("gloria", mass.gloria(), true);
                 } else {
                     deck.layouts(TemplateLayouts.GLORIA);
                     deck.interval();
@@ -214,7 +220,7 @@ public final class DeckService {
                 }
                 deck.louvor(mass.liturgy() == null ? null : mass.liturgy().louvor());
             } else {
-                deck.song(mass.aleluia(), false);
+                deck.song("aleluia", mass.aleluia(), false);
             }
             if (mass.liturgy() != null && mass.liturgy().evangelho() != null) {
                 deck.gospel(mass.liturgy().evangelho());
@@ -229,23 +235,23 @@ public final class DeckService {
                 deck.markContent();
                 deck.interval();
             }
-            deck.song(mass.dons(), true);
+            deck.song("dons", mass.dons(), true);
             deck.layouts(TemplateLayouts.PREPARACAO);
             deck.interval();
             deck.layouts(TemplateLayouts.DIALOGO);
             deck.interval();
-            deck.song(mass.santo(), true);
+            deck.song("santo", mass.santo(), true);
             deck.layouts(TemplateLayouts.MEMORIAL);
             deck.interval();
-            deck.song(mass.paiNosso(), true);
+            deck.song("paiNosso", mass.paiNosso(), true);
             deck.layouts(TemplateLayouts.ACLAMACAO);
             deck.interval();
-            deck.song(mass.cordeiro(), true);
+            deck.song("cordeiro", mass.cordeiro(), true);
             deck.layouts(TemplateLayouts.CONVITE);
             deck.interval();
-            deck.song(mass.comunhao(), true);
-            deck.song(mass.acaoDeGracas(), true);
-            deck.song(mass.finalSong(), false);
+            deck.song("comunhao", mass.comunhao(), true);
+            deck.song("acaoDeGracas", mass.acaoDeGracas(), true);
+            deck.song("final", mass.finalSong(), false);
             TemplateLayouts.setNotes(coverSlide, notes(deck.placedSongs));
             DeckFile.write(templatePpt, config.outputFile());
             LOG.info("Wrote " + config.outputFile().toAbsolutePath() + " (" + deck.slides + " slides)");
@@ -273,6 +279,7 @@ public final class DeckService {
         private final List<SongCfg> songs;
         private final Interval intervalChoice;
         private final XSLFPictureData picture;
+        private final Map<String, SlideChoice> choices;
         private final List<Picked> placedSongs = new ArrayList<>();
         private final List<Generated.Song> placed = new ArrayList<>();
         private int slides;
@@ -285,7 +292,8 @@ public final class DeckService {
                 FitCache fits,
                 List<SongCfg> songs,
                 Interval intervalChoice,
-                XSLFPictureData picture) {
+                XSLFPictureData picture,
+                Map<String, SlideChoice> choices) {
             this.ppt = ppt;
             this.titleLayout = titleLayout;
             this.lyricLayout = lyricLayout;
@@ -293,13 +301,16 @@ public final class DeckService {
             this.songs = songs;
             this.intervalChoice = intervalChoice;
             this.picture = picture;
+            this.choices = choices;
         }
 
-        private void song(String bookId, boolean trailingInterval) throws IOException {
+        private void song(String moment, String bookId, boolean trailingInterval) throws IOException {
             if (bookId == null) {
                 return;
             }
-            Picked picked = new Picked(bookId, findBook(songs, bookId));
+            SongCfg found = findBook(songs, bookId);
+            SlideChoice choice = choices.get(moment);
+            Picked picked = new Picked(bookId, choice == null ? found.prepared() : choice.show(found));
             slides += appendSong(ppt, titleLayout, lyricLayout, fits, picked, placed);
             placedSongs.add(picked);
             markContent();
@@ -424,6 +435,9 @@ public final class DeckService {
             }
             SongCfg song = pickedSong.song();
             String title = song.title() == null ? "" : song.title().trim();
+            if (song.titleAlt() != null && !song.titleAlt().isBlank()) {
+                title = title + " (" + song.titleAlt().trim() + ")";
+            }
             if (song.bookId() == null || song.bookId().isBlank()) {
                 lines.append(title);
             } else {
@@ -463,10 +477,16 @@ public final class DeckService {
     }
 
     public sealed interface Selection permits Selection.Ids, Selection.BookIds {
-        record Ids(List<Integer> ids) implements Selection {
+        record Ids(List<Integer> ids, List<SlideChoice> choices) implements Selection {
+            public Ids(List<Integer> ids) {
+                this(ids, null);
+            }
         }
 
-        record BookIds(List<String> bookIds) implements Selection {
+        record BookIds(List<String> bookIds, List<SlideChoice> choices) implements Selection {
+            public BookIds(List<String> bookIds) {
+                this(bookIds, null);
+            }
         }
     }
 
@@ -476,14 +496,24 @@ public final class DeckService {
     private static List<Picked> pick(List<SongCfg> songs, Selection selection) {
         List<Picked> picked = new ArrayList<>();
         if (selection instanceof Selection.Ids byId) {
-            for (int id : byId.ids()) {
-                picked.add(new Picked(Integer.toString(id), findId(songs, id)));
+            List<SlideChoice> choices = byId.choices();
+            List<Integer> ids = byId.ids();
+            for (int i = 0; i < ids.size(); i++) {
+                int id = ids.get(i);
+                SlideChoice choice = choices == null || i >= choices.size() ? null : choices.get(i);
+                SongCfg song = findId(songs, id);
+                picked.add(new Picked(Integer.toString(id), choice == null ? song.prepared() : choice.show(song)));
             }
             return picked;
         }
         Selection.BookIds byBook = (Selection.BookIds) selection;
-        for (String bookId : byBook.bookIds()) {
-            picked.add(new Picked(bookId, findBook(songs, bookId)));
+        List<SlideChoice> choices = byBook.choices();
+        List<String> bookIds = byBook.bookIds();
+        for (int i = 0; i < bookIds.size(); i++) {
+            String bookId = bookIds.get(i);
+            SlideChoice choice = choices == null || i >= choices.size() ? null : choices.get(i);
+            SongCfg song = findBook(songs, bookId);
+            picked.add(new Picked(bookId, choice == null ? song.prepared() : choice.show(song)));
         }
         return picked;
     }

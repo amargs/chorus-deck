@@ -1,7 +1,7 @@
 <script setup>
-import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
-import VerseBox from './VerseBox.vue'
-import { SEASONS, byBookId, matches } from '../songs.js'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import VerseList from './VerseList.vue'
+import { SEASONS, byBookId, languageName, matches, otherLanguage } from '../songs.js'
 
 const props = defineProps({
   songs: { type: Array, required: true },
@@ -13,19 +13,18 @@ const query = ref('')
 const editing = ref(false)
 const songId = ref(null)
 const title = ref('')
+const titleAlt = ref('')
 const bookId = ref('')
 const verses = ref([])
+const altVerses = ref([])
+const secondLanguage = ref(false)
+const lang = ref('pt')
+const langAlt = ref('la')
+const defaultLyrics = ref('content')
 const baseline = ref('')
 const busy = ref(false)
 const error = ref('')
 const savedNotice = ref(false)
-const lastVerse = ref(null)
-const activeKey = ref(null)
-const dragFrom = ref(null)
-const dragOver = ref(null)
-const boldOn = ref(false)
-const italicOn = ref(false)
-const underlineOn = ref(false)
 const section = ref('songs')
 const sundays = ref([])
 const sundayQuery = ref('')
@@ -108,8 +107,14 @@ function verse(markup) {
 function formSnapshot() {
   return JSON.stringify({
     title: title.value,
+    titleAlt: titleAlt.value,
     bookId: bookId.value,
     verses: verses.value.map((item) => item.markup),
+    secondLanguage: secondLanguage.value,
+    lang: secondLanguage.value ? lang.value : '',
+    langAlt: secondLanguage.value ? langAlt.value : '',
+    defaultLyrics: secondLanguage.value ? defaultLyrics.value : 'content',
+    altVerses: secondLanguage.value ? altVerses.value.map((item) => item.markup) : [],
   })
 }
 
@@ -214,8 +219,14 @@ async function saveSunday() {
 function startNew() {
   songId.value = null
   title.value = ''
+  titleAlt.value = ''
   bookId.value = ''
   verses.value = [verse('')]
+  altVerses.value = []
+  secondLanguage.value = false
+  lang.value = 'pt'
+  langAlt.value = 'la'
+  defaultLyrics.value = 'content'
   error.value = ''
   savedNotice.value = false
   editing.value = true
@@ -233,9 +244,29 @@ async function openSong(song) {
     }
     songId.value = payload.id
     title.value = payload.title || ''
+    titleAlt.value = payload.titleAlt || ''
     bookId.value = payload.bookId || ''
     const content = Array.isArray(payload.content) && payload.content.length ? payload.content : ['']
-    verses.value = content.map((markup) => verse(markup))
+    const alt = Array.isArray(payload.contentAlt) ? payload.contentAlt : []
+    const hasAlt = alt.some((line) => String(line).trim())
+    if (hasAlt) {
+      const aligned = alignLanguages(content, alt)
+      verses.value = aligned.primary
+      altVerses.value = aligned.secondary
+      secondLanguage.value = true
+      lang.value = payload.lang || 'pt'
+      langAlt.value = payload.langAlt && payload.langAlt !== lang.value
+        ? payload.langAlt
+        : otherLanguage(lang.value)
+      defaultLyrics.value = payload.defaultLyrics === 'contentAlt' ? 'contentAlt' : 'content'
+    } else {
+      verses.value = content.map((markup) => verse(markup))
+      altVerses.value = []
+      secondLanguage.value = false
+      lang.value = 'pt'
+      langAlt.value = 'la'
+      defaultLyrics.value = 'content'
+    }
     editing.value = true
     remember()
   } catch (e) {
@@ -243,110 +274,39 @@ async function openSong(song) {
   }
 }
 
+function alignLanguages(primaryLines, secondaryLines) {
+  const primary = primaryLines.length ? primaryLines : ['']
+  const secondary = secondaryLines.slice()
+  const count = Math.max(primary.length, secondary.length)
+  const primaryRows = []
+  const secondaryRows = []
+  for (let i = 0; i < count; i++) {
+    primaryRows.push(verse(primary[i] ?? ''))
+    secondaryRows.push(verse(secondary[i] ?? primary[i] ?? ''))
+  }
+  return { primary: primaryRows, secondary: secondaryRows }
+}
+
+function setSecondLanguage(on) {
+  if (on) {
+    if (!lang.value) lang.value = 'pt'
+    if (!langAlt.value || langAlt.value === lang.value) langAlt.value = otherLanguage(lang.value)
+    const aligned = alignLanguages(
+      verses.value.map((item) => item.markup),
+      altVerses.value.map((item) => item.markup),
+    )
+    verses.value = aligned.primary
+    altVerses.value = aligned.secondary
+    if (defaultLyrics.value !== 'contentAlt') defaultLyrics.value = 'content'
+  } else {
+    defaultLyrics.value = 'content'
+  }
+  secondLanguage.value = on
+}
+
 function closeEditor() {
   editing.value = false
   error.value = ''
-  lastVerse.value = null
-  activeKey.value = null
-}
-
-function insertVerse(index) {
-  const next = verses.value.slice()
-  next.splice(index + 1, 0, verse(''))
-  verses.value = next
-  nextTick(() => {
-    const boxes = document.querySelectorAll('.catalog-editor .verse-box')
-    boxes[index + 1]?.focus()
-  })
-}
-
-function duplicateVerse(index) {
-  const copy = verse(verses.value[index].markup)
-  const next = verses.value.slice()
-  next.splice(index + 1, 0, copy)
-  verses.value = next
-}
-
-function moveVerse(index, delta) {
-  const to = index + delta
-  if (to < 0 || to >= verses.value.length) return
-  const next = verses.value.slice()
-  const [item] = next.splice(index, 1)
-  next.splice(to, 0, item)
-  verses.value = next
-}
-
-function moveVerseToGap(from, gap) {
-  if (from == null || gap == null || gap === from || gap === from + 1) return
-  const next = verses.value.slice()
-  const [item] = next.splice(from, 1)
-  next.splice(gap > from ? gap - 1 : gap, 0, item)
-  verses.value = next
-}
-
-function gapForRow(index) {
-  if (dragFrom.value == null || index === dragFrom.value) return null
-  return index > dragFrom.value ? index + 1 : index
-}
-
-function showGap(gap) {
-  if (dragFrom.value == null || gap == null || gap === dragFrom.value || gap === dragFrom.value + 1) {
-    dragOver.value = null
-    return
-  }
-  dragOver.value = gap
-}
-
-function onDragStart(index, event) {
-  dragFrom.value = index
-  event.dataTransfer.effectAllowed = 'move'
-  event.dataTransfer.setData('text/plain', String(index))
-}
-
-function onDragOverRow(index) {
-  showGap(gapForRow(index))
-}
-
-function onDropRow(index) {
-  moveVerseToGap(dragFrom.value, gapForRow(index))
-  dragFrom.value = null
-  dragOver.value = null
-}
-
-function onDragOverGap(gap) {
-  showGap(gap)
-}
-
-function onDropGap(gap) {
-  moveVerseToGap(dragFrom.value, gap)
-  dragFrom.value = null
-  dragOver.value = null
-}
-
-function onDragEnd() {
-  dragFrom.value = null
-  dragOver.value = null
-}
-
-function removeVerse(index) {
-  verses.value = verses.value.filter((_, i) => i !== index)
-}
-
-function onVerseFocus(key, el) {
-  activeKey.value = key
-  lastVerse.value = el
-  syncFormatState()
-}
-
-function onVerseBlur(key, event) {
-  const next = event.relatedTarget
-  if (next && event.currentTarget.contains(next)) return
-  if (activeKey.value === key) activeKey.value = null
-}
-
-function onPointerDown(event) {
-  const field = event.target.closest?.('.verse-field')
-  activeKey.value = field ? Number(field.dataset.key) : null
 }
 
 function dismissSaved() {
@@ -357,29 +317,6 @@ function onKeydown(event) {
   if (event.key === 'Escape' && savedNotice.value) dismissSaved()
 }
 
-function format(command) {
-  const box = verseBoxFromSelection() || lastVerse.value
-  if (!box) return
-  box.focus()
-  document.execCommand(command)
-  box.dispatchEvent(new Event('input', { bubbles: true }))
-  syncFormatState()
-}
-
-function verseBoxFromSelection() {
-  const node = document.getSelection()?.anchorNode
-  const el = node?.nodeType === Node.ELEMENT_NODE ? node : node?.parentElement
-  return el?.closest?.('.verse-box') || null
-}
-
-function syncFormatState() {
-  const box = verseBoxFromSelection()
-  if (!box) return
-  boldOn.value = document.queryCommandState('bold')
-  italicOn.value = document.queryCommandState('italic')
-  underlineOn.value = document.queryCommandState('underline')
-}
-
 async function save() {
   if (!canSave.value) return
   error.value = ''
@@ -388,6 +325,17 @@ async function save() {
   const body = {
     title: title.value,
     content: verses.value.map((item) => item.markup),
+  }
+  const altTitle = titleAlt.value.trim()
+  if (altTitle) {
+    body.titleAlt = altTitle
+  }
+  const alt = secondLanguage.value ? altVerses.value.map((item) => item.markup) : []
+  if (alt.some((line) => line.trim())) {
+    body.contentAlt = alt
+    body.lang = lang.value
+    body.langAlt = langAlt.value
+    if (defaultLyrics.value === 'contentAlt') body.defaultLyrics = 'contentAlt'
   }
   const number = bookId.value.trim()
   if (number) {
@@ -426,13 +374,9 @@ watch(section, (value) => {
 })
 
 onMounted(() => {
-  document.addEventListener('selectionchange', syncFormatState)
-  document.addEventListener('pointerdown', onPointerDown)
   document.addEventListener('keydown', onKeydown)
 })
 onUnmounted(() => {
-  document.removeEventListener('selectionchange', syncFormatState)
-  document.removeEventListener('pointerdown', onPointerDown)
   document.removeEventListener('keydown', onKeydown)
 })
 </script>
@@ -459,120 +403,46 @@ onUnmounted(() => {
           <span>Número do cancioneiro</span>
           <input v-model="bookId" type="text" placeholder="118, A1, RP3" />
         </label>
+        <label class="field title-alt-field">
+          <span>Título alternativo (opcional)</span>
+          <input v-model="titleAlt" type="text" />
+        </label>
       </div>
-      <div class="field">
+      <div class="field verses-field">
         <span>Estrofes e refrões</span>
-        <div
-          class="verse-insert verse-gap"
-          :class="{ 'verse-drop': dragOver === 0 }"
-          @dragover.prevent.capture="onDragOverGap(0)"
-          @drop.prevent="onDropGap(0)"
-        ></div>
-        <template v-for="(item, index) in verses" :key="item.key">
-          <div
-            class="verse-row"
-            :class="{ 'verse-dragging': dragFrom === index }"
-            @dragover.prevent.capture="onDragOverRow(index)"
-            @drop.prevent="onDropRow(index)"
-          >
-            <div class="verse-move">
-              <button
-                type="button"
-                class="icon nudge"
-                aria-label="Mover estrofe para cima"
-                :disabled="index === 0"
-                @click="moveVerse(index, -1)"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="m6 14 6-6 6 6" />
-                </svg>
-              </button>
-              <button
-                type="button"
-                class="icon drag-handle"
-                draggable="true"
-                aria-label="Arrastar estrofe"
-                @dragstart="onDragStart(index, $event)"
-                @dragend="onDragEnd"
-              >
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <circle cx="9" cy="7" r="1.3" fill="currentColor" />
-                  <circle cx="15" cy="7" r="1.3" fill="currentColor" />
-                  <circle cx="9" cy="12" r="1.3" fill="currentColor" />
-                  <circle cx="15" cy="12" r="1.3" fill="currentColor" />
-                  <circle cx="9" cy="17" r="1.3" fill="currentColor" />
-                  <circle cx="15" cy="17" r="1.3" fill="currentColor" />
-                </svg>
-              </button>
-              <button
-                type="button"
-                class="icon nudge"
-                aria-label="Mover estrofe para baixo"
-                :disabled="index === verses.length - 1"
-                @click="moveVerse(index, 1)"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="m6 10 6 6 6-6" />
-                </svg>
-              </button>
-            </div>
-            <div
-              class="verse-field"
-              :data-key="item.key"
-              :class="{ 'verse-focused': activeKey === item.key }"
-              @focusout="onVerseBlur(item.key, $event)"
-            >
-              <div v-if="activeKey === item.key" class="format-bar">
-                <button type="button" class="format" :aria-pressed="boldOn" aria-label="Negrito" @mousedown.prevent="format('bold')">
-                  <strong>B</strong>
-                </button>
-                <button type="button" class="format" :aria-pressed="italicOn" aria-label="Itálico" @mousedown.prevent="format('italic')">
-                  <em>I</em>
-                </button>
-                <button type="button" class="format" :aria-pressed="underlineOn" aria-label="Sublinhado" @mousedown.prevent="format('underline')">
-                  <span class="format-u">U</span>
-                </button>
-              </div>
-              <VerseBox
-                v-model="item.markup"
-                :label="`Estrofe ${index + 1}`"
-                @focus="onVerseFocus(item.key, $event)"
-              />
-            </div>
-            <div class="verse-actions">
-              <button type="button" class="icon" aria-label="Duplicar estrofe" @click="duplicateVerse(index)">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                  <rect x="8" y="8" width="10" height="10" rx="1.5" />
-                  <path stroke-linecap="round" d="M6 16V6.5A1.5 1.5 0 0 1 7.5 5H16" />
-                </svg>
-              </button>
-              <button type="button" class="icon" aria-label="Retirar estrofe" @click="removeVerse(index)">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                  <path stroke-linecap="round" d="M6 6l12 12M18 6 6 18" />
-                </svg>
-              </button>
+        <div class="verse-language">
+          <label class="cover-toggle">
+            <input
+              class="switch small"
+              type="checkbox"
+              :checked="secondLanguage"
+              @change="setSecondLanguage($event.target.checked)"
+            />
+            Língua secundária
+          </label>
+          <div v-if="secondLanguage" class="default-language">
+            <span id="default-language-label">Língua por omissão</span>
+            <div class="default-choices" role="radiogroup" aria-labelledby="default-language-label">
+              <label>
+                <input v-model="defaultLyrics" type="radio" value="content" />
+                {{ languageName(lang) }}
+              </label>
+              <label>
+                <input v-model="defaultLyrics" type="radio" value="contentAlt" />
+                {{ languageName(langAlt) }}
+              </label>
             </div>
           </div>
-          <div
-            class="verse-insert"
-            :class="{ 'verse-drop': dragOver === index + 1 }"
-            @dragover.prevent.capture="onDragOverGap(index + 1)"
-            @drop.prevent="onDropGap(index + 1)"
-          >
-            <button type="button" class="verse-plus" aria-label="Inserir estrofe" @click="insertVerse(index)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
-                <path stroke-linecap="round" d="M12 6v12M6 12h12" />
-              </svg>
-            </button>
-          </div>
-        </template>
-        <div v-if="verses.length === 0" class="verse-insert">
-          <button type="button" class="verse-plus" aria-label="Inserir estrofe" @click="insertVerse(-1)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
-              <path stroke-linecap="round" d="M12 6v12M6 12h12" />
-            </svg>
-          </button>
         </div>
+        <VerseList
+          v-model="verses"
+          :alt="secondLanguage ? altVerses : null"
+          :lang="lang"
+          :lang-alt="langAlt"
+          @update:alt="altVerses = $event"
+          @update:lang="lang = $event"
+          @update:lang-alt="langAlt = $event"
+        />
       </div>
       <div class="catalog-actions">
         <button type="button" :disabled="busy" @click="closeEditor">Cancelar</button>
@@ -642,7 +512,10 @@ onUnmounted(() => {
             <button type="button" class="catalog-song" @click="openSong(song)">
               <span class="song-label">
                 <span class="book-badge">{{ song.bookId || '#' }}</span>
-                {{ song.title }}
+                <span class="song-name">
+                  {{ song.title }}
+                  <span class="title-alt">{{ song.titleAlt ? `(${song.titleAlt})` : '' }}</span>
+                </span>
               </span>
               <span v-if="!song.hasVerses" class="missing">sem letra</span>
               <span v-else-if="!song.bookId" class="missing">sem número</span>

@@ -86,8 +86,63 @@ export function occasionFileName(title) {
   return label ? `${label}.pptx` : 'cânticos.pptx'
 }
 
+export const LANGUAGES = [
+  { id: 'pt', label: 'Português' },
+  { id: 'en', label: 'Inglês' },
+  { id: 'es', label: 'Espanhol' },
+  { id: 'fr', label: 'Francês' },
+  { id: 'la', label: 'Latim' },
+]
+
+export function languageName(id) {
+  return LANGUAGES.find((item) => item.id === id)?.label || ''
+}
+
+export function otherLanguage(taken) {
+  return taken === 'la' ? 'pt' : 'la'
+}
+
 export function songText(song) {
-  return `${song.bookId || ''} ${song.title || ''}`.trim()
+  return `${song.bookId || ''} ${song.title || ''} ${song.titleAlt || ''}`.trim()
+}
+
+/** The language a new pick uses when the deck does not choose one. */
+export function preferredLyrics(song) {
+  const verses = song?.verses || 0
+  const versesAlt = song?.versesAlt || 0
+  if (song?.defaultLyrics === 'contentAlt' && versesAlt > 0) {
+    return 'contentAlt'
+  }
+  if (verses > 0) {
+    return 'content'
+  }
+  if (versesAlt > 0) {
+    return 'contentAlt'
+  }
+  return 'content'
+}
+
+/** The slide choice stored on a picked song. */
+export function slideChoice(song) {
+  const choice = {}
+  const preferred = preferredLyrics(song)
+  const shown = song?.showLyrics || preferred
+  if (shown !== preferred) {
+    choice.lyrics = shown
+  }
+  return choice
+}
+
+export function withShow(song, previous) {
+  const verses = song.verses || 0
+  const versesAlt = song.versesAlt || 0
+  let showLyrics = preferredLyrics(song)
+  if (previous?.showLyrics === 'contentAlt' && versesAlt > 0) {
+    showLyrics = 'contentAlt'
+  } else if (previous?.showLyrics === 'content' && verses > 0) {
+    showLyrics = 'content'
+  }
+  return { ...song, showLyrics }
 }
 
 const MASS_PREFIXES = ['RP', 'G', 'A', 'CR', 'S', 'P', 'C']
@@ -148,7 +203,9 @@ export function matches(song, query) {
   if (!needle) {
     return true
   }
-  return fold(song.title).includes(needle) || fold(song.bookId || '').includes(needle)
+  return fold(song.title).includes(needle)
+    || fold(song.titleAlt).includes(needle)
+    || fold(song.bookId || '').includes(needle)
 }
 
 function fold(value) {

@@ -59,6 +59,67 @@ class SongCatalogTest {
         assertEquals(songs, List.copyOf(songs));
     }
 
+    @Test
+    void anAlternativeTitleAndASecondLanguageAreStoredAndCanBeCleared() throws Exception {
+        List<SongCfg> songs = List.of(new SongCfg(2, "Já estava", List.of("verso"), "4"));
+        ObjectNode created = body(null, "Pelos caminhos", "12", List.of("um", "dois"));
+        created.put("titleAlt", "  Per viam  ");
+        created.set("contentAlt", JSON.valueToTree(List.of("unus", "  ", "duo")));
+        SongCatalog.Saved saved = SongCatalog.save(songs, created);
+
+        assertEquals("Per viam", saved.song().titleAlt());
+        assertEquals(List.of("unus", "duo"), saved.song().contentAlt());
+        assertEquals("pt", saved.song().lang());
+        assertEquals("la", saved.song().langAlt());
+        assertNull(saved.songs().get(0).titleAlt());
+
+        ObjectNode named = body(saved.song().id(), "Pelos caminhos", "12", List.of("um", "dois"));
+        named.put("titleAlt", "Per viam");
+        named.set("contentAlt", JSON.valueToTree(List.of("unus", "duo")));
+        named.put("lang", "en");
+        named.put("langAlt", "fr");
+        named.put("defaultLyrics", "contentAlt");
+        SongCatalog.Saved withNames = SongCatalog.save(saved.songs(), named);
+        assertEquals("en", withNames.song().lang());
+        assertEquals("fr", withNames.song().langAlt());
+        assertEquals("contentAlt", withNames.song().defaultLyrics());
+
+        ObjectNode first = named.deepCopy();
+        first.put("defaultLyrics", "content");
+        assertNull(SongCatalog.save(withNames.songs(), first).song().defaultLyrics());
+
+        ObjectNode badDefault = named.deepCopy();
+        badDefault.put("defaultLyrics", "la");
+        IllegalArgumentException notAColumn = assertThrows(
+                IllegalArgumentException.class, () -> SongCatalog.save(withNames.songs(), badDefault));
+        assertEquals("A língua por omissão tem de ser uma das línguas do cântico.", notAColumn.getMessage());
+
+        ObjectNode same = named.deepCopy();
+        same.put("langAlt", "en");
+        IllegalArgumentException duplicate = assertThrows(
+                IllegalArgumentException.class, () -> SongCatalog.save(withNames.songs(), same));
+        assertEquals("As duas línguas têm de ser diferentes.", duplicate.getMessage());
+
+        ObjectNode unknown = named.deepCopy();
+        unknown.put("lang", "de");
+        IllegalArgumentException bad = assertThrows(
+                IllegalArgumentException.class, () -> SongCatalog.save(withNames.songs(), unknown));
+        assertEquals(
+                "A língua tem de ser português, inglês, espanhol, francês ou latim.",
+                bad.getMessage());
+
+        ObjectNode cleared = body(saved.song().id(), "Pelos caminhos", "12", List.of("um", "dois"));
+        cleared.put("titleAlt", " ");
+        cleared.set("contentAlt", JSON.valueToTree(List.of("  ")));
+        SongCatalog.Saved again = SongCatalog.save(saved.songs(), cleared);
+        assertNull(again.song().titleAlt());
+        assertNull(again.song().contentAlt());
+        assertNull(again.song().lang());
+        assertNull(again.song().langAlt());
+        assertNull(again.song().defaultLyrics());
+        assertEquals(List.of("um", "dois"), again.song().content());
+    }
+
     private static ObjectNode body(Integer id, String title, String bookId, List<String> content) throws Exception {
         ObjectNode body = JSON.createObjectNode();
         if (id != null) {

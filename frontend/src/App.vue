@@ -5,7 +5,7 @@ import CoverFields from './components/CoverFields.vue'
 import Eucharist from './components/Eucharist.vue'
 import Library from './components/Library.vue'
 import SongList from './components/SongList.vue'
-import { THEME, deckFileName, occasionFileName } from './songs.js'
+import { THEME, deckFileName, occasionFileName, slideChoice, withShow } from './songs.js'
 
 const screen = ref('home')
 const lastDeck = ref('')
@@ -272,7 +272,7 @@ async function loadSongs() {
     const byId = new Map(library.value.map((song) => [song.id, song]))
     chosen.value = chosen.value.flatMap((song) => {
       const next = byId.get(song.id)
-      return next ? [next] : []
+      return next ? [withShow(next, song)] : []
     })
   } catch (e) {
     loadError.value = e.message
@@ -312,7 +312,15 @@ function add(song) {
   if (!song.hasVerses || chosenIds.value.includes(song.id)) {
     return
   }
-  chosen.value = [...chosen.value, song]
+  chosen.value = [...chosen.value, withShow(song)]
+}
+
+function showSong(index, patch) {
+  const song = chosen.value[index]
+  if (!song) return
+  const next = chosen.value.slice()
+  next[index] = { ...song, ...patch }
+  chosen.value = next
 }
 
 function removeSong(id) {
@@ -582,7 +590,10 @@ async function generate(replace = false) {
   replaceName.value = ''
   busy.value = true
   const body = {
-    ids: chosen.value.map((song) => song.id),
+    ids: chosen.value.map((song) => {
+      const choice = slideChoice(song)
+      return Object.keys(choice).length ? { id: song.id, ...choice } : song.id
+    }),
     output: output.value.trim(),
   }
   if (folder.value) {
@@ -845,7 +856,7 @@ async function errorText(response) {
         @add="add"
         @remove-song="removeSong"
       />
-      <ChosenSongs :songs="chosen" @remove="remove" @up="move($event, -1)" @down="move($event, 1)" @clear="clearChosen" />
+      <ChosenSongs :songs="chosen" @remove="remove" @up="move($event, -1)" @down="move($event, 1)" @clear="clearChosen" @show="showSong" />
     </div>
     <CoverFields v-if="indexPath" v-model:enabled="coverOn" :cover="cover" />
     <section v-if="indexPath" class="panel export">

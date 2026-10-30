@@ -1,9 +1,11 @@
 <script setup>
+import SongShow from './SongShow.vue'
+
 defineProps({
   songs: { type: Array, required: true },
 })
 
-const emit = defineEmits(['remove', 'up', 'down', 'clear'])
+const emit = defineEmits(['remove', 'up', 'down', 'clear', 'show'])
 </script>
 
 <template>
@@ -20,10 +22,13 @@ const emit = defineEmits(['remove', 'up', 'down', 'clear'])
     <p v-if="songs.length === 0" class="missing">Ainda não há cânticos.</p>
     <ul class="songs">
       <li v-for="(song, index) in songs" :key="`${song.id}-${index}`">
-        <span class="song-label">
-          <span class="book-badge">{{ song.bookId || '#' }}</span>
-          {{ song.title }}
-        </span>
+        <div class="chosen-body">
+          <span class="song-label">
+            <span class="book-badge">{{ song.bookId || '#' }}</span>
+            <span class="song-name">{{ song.title }}</span>
+          </span>
+          <SongShow :song="song" @change="emit('show', index, $event)" />
+        </div>
         <span class="row-actions">
           <button type="button" class="icon" aria-label="Subir" :disabled="index === 0" @click="emit('up', index)">
             <svg viewBox="0 0 24 24" aria-hidden="true">

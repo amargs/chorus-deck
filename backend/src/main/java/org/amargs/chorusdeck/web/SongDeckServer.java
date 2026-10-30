@@ -290,14 +290,15 @@ public final class SongDeckServer {
                 MassRequest mass = MassDeckRequests.apply(massReady, day);
                 DeckService.Generated generated = new DeckService().generateMass(
                         new AppConfig(null, index, PackagedTemplate.file(), null).withOutput(massReady.output()),
-                        mass);
+                        mass,
+                        massReady.choices());
                 written = massReady.output().toAbsolutePath().normalize();
                 slides = generated.slides();
                 drafts.markExportedIfUnchanged(draftBefore);
             } else {
                 DeckService.Generated generated = new DeckService().generateSongs(
                         new AppConfig(null, index, PackagedTemplate.file(), null).withOutput(songReady.output()),
-                        new DeckService.Selection.Ids(songReady.ids()),
+                        new DeckService.Selection.Ids(songReady.ids(), songReady.choices()),
                         songReady.cover(),
                         Interval.blank());
                 written = songReady.output().toAbsolutePath().normalize();
