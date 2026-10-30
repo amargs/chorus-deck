@@ -82,6 +82,7 @@ const savedName = computed(() => {
 const draftPrompt = ref(false)
 const openingDraft = ref(false)
 const deckMenuOpen = computed(() => deckMenuHover.value || deckMenuPinned.value)
+let deckMenuClose = 0
 const presentationsCurrent = computed(() =>
   screen.value === 'eucharist' || screen.value === 'songs' || screen.value === 'decks')
 
@@ -181,6 +182,18 @@ function toggleDeckMenu() {
   deckMenuPinned.value = !deckMenuPinned.value
 }
 
+function showDeckMenu() {
+  window.clearTimeout(deckMenuClose)
+  deckMenuHover.value = true
+}
+
+function hideDeckMenu() {
+  window.clearTimeout(deckMenuClose)
+  deckMenuClose = window.setTimeout(() => {
+    deckMenuHover.value = false
+  }, 200)
+}
+
 function onDocumentPointer(event) {
   if (!presentations.value?.contains(event.target)) {
     deckMenuPinned.value = false
@@ -267,6 +280,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  window.clearTimeout(deckMenuClose)
   window.removeEventListener('keydown', onKeydown)
   document.removeEventListener('pointerdown', onDocumentPointer)
 })
@@ -696,8 +710,8 @@ async function errorText(response) {
       ref="presentations"
       class="nav-split"
       :class="{ current: presentationsCurrent }"
-      @mouseenter="deckMenuHover = true"
-      @mouseleave="deckMenuHover = false"
+      @mouseenter="showDeckMenu"
+      @mouseleave="hideDeckMenu"
     >
       <button
         type="button"
@@ -760,6 +774,7 @@ async function errorText(response) {
       </template>.
     </p>
   </div>
+  <div class="app-body">
   <main v-if="libraryReady && !indexPath" class="welcome">
     <h1>Bem-vindo! 👋</h1>
     <p v-if="indexMissing">A biblioteca guardada já não está nesse sítio.</p>
@@ -964,5 +979,6 @@ async function errorText(response) {
         <p v-if="error" class="status error">{{ error }}</p>
       </div>
     </div>
+  </div>
   </div>
 </template>

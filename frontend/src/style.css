@@ -280,6 +280,14 @@ header .alter svg {
   min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+}
+
+.app-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   overflow: auto;
   overscroll-behavior: none;
   scrollbar-gutter: stable;
@@ -319,13 +327,12 @@ header .alter svg {
 }
 
 .topbar {
-  position: sticky;
-  top: 0;
   z-index: 5;
   flex: none;
   display: flex;
   align-items: stretch;
   gap: 0.15rem;
+  width: 100%;
   height: 3.4rem;
   padding: 0 1.15rem;
   background: rgb(255 255 255 / 88%);
@@ -435,18 +442,28 @@ header .alter svg {
 
 .nav-menu {
   position: absolute;
-  top: calc(100% + 3px);
-  left: 1rem;
+  top: calc(100% + 4px);
+  left: 0;
   z-index: 6;
   display: flex;
   flex-direction: column;
   gap: 0.1rem;
+  width: 100%;
   min-width: 11.5rem;
   padding: 0.3rem;
   background: #fff;
   border: 1px solid rgb(28 25 21 / 10%);
   border-radius: 8px;
   box-shadow: 0 10px 28px rgb(28 25 21 / 14%);
+}
+
+.nav-menu::before {
+  content: "";
+  position: absolute;
+  top: -8px;
+  right: 0;
+  left: 0;
+  height: 8px;
 }
 
 .nav-menu button {
