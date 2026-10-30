@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.javalin.Javalin;
 import org.amargs.chorusdeck.deck.Cover;
 import org.amargs.chorusdeck.liturgy.LiturgyDay;
+import org.amargs.chorusdeck.liturgy.RomanCalendar;
+import org.amargs.chorusdeck.liturgy.SundayLibrary;
 import org.amargs.chorusdeck.text.BoldMarkup;
 import org.amargs.chorusdeck.index.SongCfg;
 import org.amargs.chorusdeck.index.SongIndex;
@@ -407,6 +409,109 @@ class SongDeckServerTest {
                     """);
             assertEquals(200, replaced.statusCode(), replaced.body());
             assertTrue(Files.isRegularFile(dir.resolve("missa.pptx")));
+        } finally {
+            app.stop();
+        }
+    }
+
+    @Test
+    void bibliotecaSavesSentencesTheNextEucharistReads() throws Exception {
+        Path dir = Files.createTempDirectory("chorus-deck");
+        Path index = dir.resolve("index.json");
+        SongIndex.write(index, List.of(new SongCfg(1, "A festa da música", List.of("verso"), "118")));
+        Files.writeString(dir.resolve(SundayLibrary.FILE_NAME), """
+                {
+                  "dates": { "2026-10-18": "ordinary-29/A", "2026-12-06": "advent-2/B" },
+                  "sundays": {
+                    "ordinary-29/A": {
+                      "domingo": "Domingo XXIX",
+                      "season": "comum",
+                      "primeira": { "referencia": "Is 45, 1.4-6", "citacao": "Frase antiga" },
+                      "segunda": { "referencia": "1Ts 1, 1-5", "citacao": "" },
+                      "salmo": "",
+                      "evangelho": { "referencia": "Mt 22, 15-21", "citacao": "" }
+                    },
+                    "advent-2/B": {
+                      "domingo": "Domingo II",
+                      "season": "advento",
+                      "primeira": { "referencia": "Is 40, 1-5", "citacao": "" },
+                      "salmo": "",
+                      "evangelho": { "referencia": "Mc 1, 1-8", "citacao": "" }
+                    }
+                  }
+                }
+                """);
+        RomanCalendar calendar = RomanCalendar.parse("""
+                {
+                  "day": { "sunday_id": "ordinary-29", "sunday_cycle": "A", "season": "ordinary" },
+                  "readings": {
+                    "first_reading": "Is 45:1, 4-6",
+                    "second_reading": "1 Thes 1:1-5",
+                    "gospel": "Mt 22:15-21"
+                  }
+                }
+                """);
+        new LibraryStore(dir).useFolder(index.getParent());
+        Javalin app = SongDeckServer.create(dir, (date, file) -> {
+            try {
+                return new SundayLibrary(file).resolve(date, calendar);
+            } catch (Exception e) {
+                throw new IllegalArgumentException(e.getMessage(), e);
+            }
+        }).start("127.0.0.1", 0);
+        try {
+            HttpResponse<String> listed = send(app, HttpRequest.newBuilder(uri(app, "/api/sundays")).GET().build());
+            assertEquals(200, listed.statusCode(), listed.body());
+            JsonNode days = JSON.readTree(listed.body());
+            assertTrue(days.size() > 100);
+            assertEquals("advent-1/A", days.get(0).get("key").asText());
+            assertEquals("I Domingo do Advento", days.get(0).get("name").asText());
+            JsonNode ordinary = null;
+            int ordinaryCount = 0;
+            for (JsonNode row : days) {
+                if ("ordinary-29/A".equals(row.get("key").asText())) {
+                    ordinary = row;
+                    ordinaryCount++;
+                }
+            }
+            assertEquals(1, ordinaryCount);
+            assertEquals("comum", ordinary.get("season").asText());
+            assertEquals("A", ordinary.get("ano").asText());
+            assertEquals(true, ordinary.get("incomplete").asBoolean());
+
+            HttpResponse<String> saved = send(app, HttpRequest.newBuilder(uri(app, "/api/sundays"))
+                    .header("Content-Type", "application/json")
+                    .PUT(HttpRequest.BodyPublishers.ofString("""
+                            {"key":"ordinary-29/A","primeira":"Frase da biblioteca","segunda":"Segunda da biblioteca","salmo":"Salmo da biblioteca","evangelho":"Evangelho da biblioteca","louvor":"Não fica"}
+                            """))
+                    .build());
+            assertEquals(200, saved.statusCode(), saved.body());
+            JsonNode preview = JSON.readTree(saved.body());
+            assertEquals("Frase da biblioteca", preview.get("primeira").asText());
+            assertEquals("Is 45, 1.4-6", preview.get("primeiraRef").asText());
+            assertEquals("Evangelho da biblioteca", preview.get("evangelho").asText());
+            assertEquals("Mt 22, 15-21", preview.get("evangelhoRef").asText());
+            assertEquals("", preview.get("louvor").asText());
+
+            JsonNode stored = JSON.readTree(Files.readString(dir.resolve(SundayLibrary.FILE_NAME)));
+            JsonNode sunday = stored.get("sundays").get("ordinary-29/A");
+            assertEquals("1Ts 1, 1-5", sunday.get("segunda").get("referencia").asText());
+            assertEquals("Segunda da biblioteca", sunday.get("segunda").get("citacao").asText());
+            assertFalse(sunday.has("louvor"));
+            assertEquals("", stored.get("sundays").get("advent-2/B").get("evangelho").get("citacao").asText());
+
+            HttpResponse<String> again = send(app, HttpRequest.newBuilder(uri(app, "/api/liturgy?date=2026-10-18")).GET().build());
+            assertEquals(200, again.statusCode(), again.body());
+            JsonNode read = JSON.readTree(again.body());
+            assertEquals("Frase da biblioteca", read.get("primeira").get("citacao").asText());
+            assertEquals("Evangelho da biblioteca", read.get("frase").asText());
+            assertEquals("Salmo da biblioteca", read.get("salmo").asText());
+
+            HttpResponse<String> missing = send(app, HttpRequest.newBuilder(uri(app, "/api/sundays"))
+                    .header("Content-Type", "application/json")
+                    .PUT(HttpRequest.BodyPublishers.ofString("{\"key\":\"not-a-sunday\",\"evangelho\":\"Não está\"}"))
+                    .build());
+            assertEquals(400, missing.statusCode());
         } finally {
             app.stop();
         }

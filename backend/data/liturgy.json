@@ -23,7 +23,8 @@
     "2027-04-18" : "easter-4/B",
     "2026-11-08" : "ordinary-32/A",
     "2026-08-16" : "ordinary-20/A",
-    "2027-01-10" : "baptism-of-the-lord/B"
+    "2027-01-10" : "baptism-of-the-lord/B",
+    "2027-02-14" : "lent-1/B"
   },
   "sundays" : {
     "ordinary-29/A" : {
@@ -440,6 +441,24 @@
         "referencia" : "Mc 1, 7-11",
         "citacao" : ""
       }
+    },
+    "lent-1/B" : {
+      "domingo" : "Domingo I",
+      "season" : "quaresma",
+      "primeira" : {
+        "referencia" : "Gn 9, 8-15",
+        "citacao" : ""
+      },
+      "segunda" : {
+        "referencia" : "1Pe 3, 18-22",
+        "citacao" : ""
+      },
+      "salmo" : "",
+      "evangelho" : {
+        "referencia" : "Mc 1, 12-15",
+        "citacao" : ""
+      },
+      "louvor" : "Nem só de pão vive o homem,\nMas de toda a palavra que sai da boca de Deus."
     }
   }
 }

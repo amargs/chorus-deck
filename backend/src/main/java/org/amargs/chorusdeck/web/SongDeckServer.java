@@ -105,6 +105,25 @@ public final class SongDeckServer {
             LiturgyDay day = liturgy.load(MassDeckRequests.date(ctx.queryParam("date")), index.resolveSibling(SundayLibrary.FILE_NAME));
             ctx.json(MassDeckRequests.preview(day));
         });
+        app.get("/api/sundays", ctx -> {
+            Path index = library.requireIndex();
+            ctx.json(new SundayLibrary(index.resolveSibling(SundayLibrary.FILE_NAME)).list());
+        });
+        app.put("/api/sundays", ctx -> {
+            JsonNode body = readObject(ctx.body(), "O domingo tem de ser um objeto.");
+            Path index = library.requireIndex();
+            String key = text(body, "key");
+            if (key == null) {
+                throw new IllegalArgumentException("Falta o domingo litúrgico.");
+            }
+            ctx.json(new SundayLibrary(index.resolveSibling(SundayLibrary.FILE_NAME)).replaceSentences(
+                    key,
+                    sentence(body, "primeira"),
+                    sentence(body, "segunda"),
+                    sentence(body, "salmo"),
+                    sentence(body, "evangelho"),
+                    sentence(body, "louvor")));
+        });
         app.get("/api/eucharist-draft", ctx -> {
             JsonNode draft = drafts.readNewSession();
             ctx.json(draft == null ? Map.of() : draft);
@@ -344,6 +363,17 @@ public final class SongDeckServer {
             // The message below covers a missing or non-numeric id.
         }
         throw new IllegalArgumentException("O número do cântico começa em 1.");
+    }
+
+    private static String sentence(JsonNode body, String field) {
+        if (body == null || !body.has(field) || body.get(field).isNull()) {
+            return null;
+        }
+        JsonNode value = body.get(field);
+        if (!value.isTextual()) {
+            throw new IllegalArgumentException("Cada citação é texto.");
+        }
+        return value.asText().trim();
     }
 
     private static String text(JsonNode node, String field) {

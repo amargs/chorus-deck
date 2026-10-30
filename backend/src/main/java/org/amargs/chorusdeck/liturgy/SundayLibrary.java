@@ -44,6 +44,7 @@ public final class SundayLibrary {
             sunday = stub(calendar);
             sundays().set(key, sunday);
         } else {
+            fillBlankReferences(sunday, calendar);
             restoreTitle(calendar.sundayId(), sunday);
             restoreSeason(calendar.sundayId(), sunday);
         }
@@ -114,6 +115,92 @@ public final class SundayLibrary {
                 text(sunday, "louvor"));
     }
 
+    /** One liturgical Sunday or solemnity. {@code ano} is absent when the celebration is the same every year. */
+    public record SundayEntry(
+            String key,
+            String name,
+            String season,
+            String ano,
+            boolean solemnity,
+            boolean lenten,
+            boolean incomplete,
+            int place,
+            String primeiraRef,
+            String primeira,
+            String segundaRef,
+            String segunda,
+            String salmo,
+            String evangelhoRef,
+            String evangelho,
+            String louvor) {
+    }
+
+    /** The lectionary, with whatever sentences are already stored. Does not call the calendar. */
+    public List<SundayEntry> list() throws IOException {
+        if (Files.isRegularFile(file)) {
+            load();
+        }
+        List<SundayEntry> listed = new ArrayList<>();
+        for (Lectionary.Entry entry : Lectionary.all()) {
+            ObjectNode sunday = root == null ? null : sundayNode(entry.key());
+            listed.add(entryOf(entry, sunday));
+        }
+        return listed;
+    }
+
+    /**
+     * Replaces the sentences of one liturgical Sunday. A null sentence is left as it is.
+     * References are not written. {@code louvor} is written only in Lent.
+     */
+    public SundayEntry replaceSentences(
+            String key, String primeira, String segunda, String salmo, String evangelho, String louvor)
+            throws IOException {
+        Lectionary.Entry entry = Lectionary.find(key);
+        if (entry == null) {
+            throw new IllegalArgumentException("Este domingo não faz parte do ano litúrgico.");
+        }
+        load();
+        ObjectNode sunday = ensure(entry);
+        if (segunda != null && !segunda.isBlank() && !(sunday.get("segunda") instanceof ObjectNode)) {
+            sunday.set("segunda", reading(""));
+        }
+        boolean changed = true;
+        changed |= setCitacao(sunday, "primeira", primeira);
+        changed |= setCitacao(sunday, "segunda", segunda);
+        changed |= setText(sunday, "salmo", salmo);
+        changed |= setCitacao(sunday, "evangelho", evangelho);
+        if (entry.lenten()) {
+            changed |= setText(sunday, "louvor", louvor);
+        }
+        if (changed) {
+            save();
+        }
+        return entryOf(entry, sunday);
+    }
+
+    /** Fills blank sentences and references from a solemnity stored on its own key. */
+    public LiturgyDay overlay(LiturgyDay day, String key) throws IOException {
+        if (day == null || key == null || !Files.isRegularFile(file)) {
+            return day;
+        }
+        load();
+        ObjectNode sunday = sundayNode(key);
+        if (sunday == null) {
+            return day;
+        }
+        return new LiturgyDay(
+                day.date(),
+                day.domingo(),
+                day.seasonKey(),
+                day.coverLayout() != null ? day.coverLayout() : text(sunday, "cover"),
+                day.ano(),
+                mergeReading(day.primeira(), sunday.get("primeira")),
+                mergeReading(day.segunda(), sunday.get("segunda")),
+                mergeText(day.refrao(), text(sunday, "salmo")),
+                mergeReading(day.evangelho(), sunday.get("evangelho")),
+                mergeText(day.louvor(), text(sunday, "louvor")));
+    }
+
     /** Writes sentences that are still blank. A sentence already stored is left as it is. */
     public LiturgyDay rememberSentences(
             LocalDate date, String primeira, String segunda, String salmo, String evangelho, String louvor)
@@ -152,6 +239,153 @@ public final class SundayLibrary {
         }
         reading.put("citacao", sentence.trim());
         return true;
+    }
+
+    private ObjectNode sundayNode(String key) {
+        if (root == null || !(sundays().get(key) instanceof ObjectNode sunday)) {
+            return null;
+        }
+        return sunday;
+    }
+
+    private SundayEntry entryOf(Lectionary.Entry entry, ObjectNode sunday) {
+        String primeiraRef = "";
+        String primeira = "";
+        String segundaRef = "";
+        String segunda = "";
+        String salmo = "";
+        String evangelhoRef = "";
+        String evangelho = "";
+        String louvor = "";
+        boolean incomplete = true;
+        if (sunday != null) {
+            primeiraRef = orEmpty(text(sunday.get("primeira"), "referencia"));
+            primeira = orEmpty(text(sunday.get("primeira"), "citacao"));
+            if (sunday.get("segunda") instanceof ObjectNode) {
+                segundaRef = orEmpty(text(sunday.get("segunda"), "referencia"));
+                segunda = orEmpty(text(sunday.get("segunda"), "citacao"));
+            }
+            salmo = orEmpty(text(sunday, "salmo"));
+            evangelhoRef = orEmpty(text(sunday.get("evangelho"), "referencia"));
+            evangelho = orEmpty(text(sunday.get("evangelho"), "citacao"));
+            louvor = orEmpty(text(sunday, "louvor"));
+            LiturgyDay day = day(LocalDate.EPOCH, entry.ano() == null ? "" : entry.ano(), sunday);
+            incomplete = !missingSentences(day).isEmpty()
+                    || (entry.lenten() && louvor.isBlank());
+        }
+        return new SundayEntry(
+                entry.key(),
+                entry.name(),
+                entry.season(),
+                entry.ano(),
+                entry.solemnity(),
+                entry.lenten(),
+                incomplete,
+                entry.place(),
+                primeiraRef,
+                primeira,
+                segundaRef,
+                segunda,
+                salmo,
+                evangelhoRef,
+                evangelho,
+                louvor);
+    }
+
+    private ObjectNode ensure(Lectionary.Entry entry) {
+        ObjectNode sunday = sundayNode(entry.key());
+        if (sunday == null) {
+            sunday = mapper.createObjectNode();
+            sunday.put("domingo", entry.domingo());
+            sunday.put("season", entry.season());
+            if (entry.cover() != null) {
+                sunday.put("cover", entry.cover());
+            }
+            sundays().set(entry.key(), sunday);
+        }
+        if (!(sunday.get("primeira") instanceof ObjectNode)) {
+            sunday.set("primeira", reading(""));
+        }
+        if (text(sunday, "salmo") == null && !sunday.has("salmo")) {
+            sunday.put("salmo", "");
+        }
+        if (!(sunday.get("evangelho") instanceof ObjectNode)) {
+            sunday.set("evangelho", reading(""));
+        }
+        return sunday;
+    }
+
+    private static void fillBlankReferences(ObjectNode sunday, RomanCalendar calendar) {
+        fillRef(sunday, "primeira", calendar.primeira());
+        if (calendar.segunda() != null) {
+            fillRef(sunday, "segunda", calendar.segunda());
+        }
+        fillRef(sunday, "evangelho", calendar.evangelho());
+    }
+
+    private static void fillRef(ObjectNode sunday, String name, String referencia) {
+        if (referencia == null || referencia.isBlank() || !(sunday.get(name) instanceof ObjectNode reading)) {
+            return;
+        }
+        if (text(reading, "referencia") == null) {
+            reading.put("referencia", referencia);
+        }
+    }
+
+    private static LiturgyDay.Reading mergeReading(LiturgyDay.Reading current, JsonNode stored) {
+        if (!(stored instanceof ObjectNode node)) {
+            return current;
+        }
+        String ref = text(node, "referencia");
+        String citacao = text(node, "citacao");
+        if (current == null) {
+            if (ref == null && citacao == null) {
+                return null;
+            }
+            return new LiturgyDay.Reading(ref == null ? "" : ref, citacao == null ? "" : citacao);
+        }
+        String nextRef = blank(current.referencia()) && ref != null ? ref : current.referencia();
+        String nextCitacao = blank(current.citacao()) && citacao != null ? citacao : current.citacao();
+        if ((nextRef == null ? "" : nextRef).equals(current.referencia() == null ? "" : current.referencia())
+                && (nextCitacao == null ? "" : nextCitacao).equals(current.citacao() == null ? "" : current.citacao())) {
+            return current;
+        }
+        return new LiturgyDay.Reading(nextRef == null ? "" : nextRef, nextCitacao == null ? "" : nextCitacao);
+    }
+
+    private static String mergeText(String current, String stored) {
+        if (blank(current) && stored != null) {
+            return stored;
+        }
+        return current;
+    }
+
+    private static String orEmpty(String value) {
+        return value == null ? "" : value;
+    }
+
+    private static boolean setCitacao(ObjectNode sunday, String name, String sentence) {
+        if (!(sunday.get(name) instanceof ObjectNode reading)) {
+            return false;
+        }
+        return setText(reading, "citacao", sentence);
+    }
+
+    private static boolean setText(ObjectNode node, String field, String sentence) {
+        if (sentence == null) {
+            return false;
+        }
+        String next = sentence.trim();
+        String stored = text(node, field);
+        if (next.equals(stored == null ? "" : stored)) {
+            return false;
+        }
+        node.put(field, next);
+        return true;
+    }
+
+    private static boolean lent(String seasonKey) {
+        return "quaresma".equals(seasonKey) || "ramos".equals(seasonKey);
     }
 
     private static boolean fillText(ObjectNode sunday, String name, String sentence) {

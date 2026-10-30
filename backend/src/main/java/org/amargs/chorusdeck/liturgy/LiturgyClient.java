@@ -35,7 +35,8 @@ public final class LiturgyClient {
     public LiturgyDay load(LocalDate date, Path libraryFile) {
         SundayLibrary library = new SundayLibrary(libraryFile);
         if (isCorpusChristi(date)) {
-            return corpusChristi(date);
+            LiturgyDay corpus = corpusChristi(date);
+            return overlay(library, corpus, "corpus-christi/" + corpus.ano());
         }
         RomanCalendar calendar;
         try {
@@ -60,9 +61,28 @@ public final class LiturgyClient {
             if (solemnity != null) {
                 LOG.warn(sundaySolemnity(date, day, calendar, solemnity));
             }
+            if (date.getMonthValue() == 12 && date.getDayOfMonth() == 25) {
+                day = overlay(library, day, "christmas");
+            }
             return withScriptures(day, calendar);
         }
-        return withScriptures(unfilled(date, calendar), calendar);
+        LiturgyDay weekday = withScriptures(unfilled(date, calendar), calendar);
+        FixedSolemnity solemnity = FixedSolemnity.on(date);
+        if (solemnity != null) {
+            weekday = overlay(library, weekday, solemnity.key());
+        }
+        if (date.getMonthValue() == 12 && date.getDayOfMonth() == 25) {
+            weekday = overlay(library, weekday, "christmas");
+        }
+        return weekday;
+    }
+
+    private static LiturgyDay overlay(SundayLibrary library, LiturgyDay day, String key) {
+        try {
+            return library.overlay(day, key);
+        } catch (IOException e) {
+            return day;
+        }
     }
 
     public static String url(LocalDate date) {

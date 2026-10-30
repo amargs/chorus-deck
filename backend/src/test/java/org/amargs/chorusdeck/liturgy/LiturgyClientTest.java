@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class LiturgyClientTest {
 
@@ -331,6 +332,114 @@ class LiturgyClientTest {
         assertEquals("accent4", MassDeckRequests.preview(day).get("accent"));
         assertEquals("Capa - " + ("pascoa".equals(season) ? "Páscoa" : "Tempo Comum"),
                 MassDeckRequests.preview(day).get("cover"));
+    }
+
+    @Test
+    void bibliotecaReplacesSentencesAndLeavesReferences() throws IOException {
+        Path file = Files.createTempDirectory("sundays").resolve(SundayLibrary.FILE_NAME);
+        Files.writeString(file, """
+                {
+                  "dates": {
+                    "2027-03-07": "lent-1/B",
+                    "2026-10-18": "ordinary-29/A"
+                  },
+                  "sundays": {
+                    "ordinary-29/A": {
+                      "domingo": "Domingo XXIX",
+                      "season": "comum",
+                      "primeira": { "referencia": "Is 45, 1.4-6", "citacao": "Frase antiga" },
+                      "segunda": { "referencia": "1Ts 1, 1-5", "citacao": "Segunda antiga" },
+                      "salmo": "Salmo antigo",
+                      "evangelho": { "referencia": "Mt 22, 15-21", "citacao": "Evangelho antigo" }
+                    },
+                    "lent-1/B": {
+                      "domingo": "Domingo I",
+                      "season": "quaresma",
+                      "primeira": { "referencia": "Gn 9, 8-15", "citacao": "" },
+                      "salmo": "",
+                      "evangelho": { "referencia": "Mc 1, 12-15", "citacao": "" }
+                    }
+                  }
+                }
+                """);
+        List<SundayLibrary.SundayEntry> listed = new SundayLibrary(file).list();
+        assertEquals(175, listed.size());
+        assertEquals("advent-1/A", listed.get(0).key());
+        assertEquals("I Domingo do Advento", listed.get(0).name());
+        SundayLibrary.SundayEntry ordinary = listed.stream()
+                .filter(entry -> entry.key().equals("ordinary-29/A")).findFirst().orElseThrow();
+        SundayLibrary.SundayEntry lent = listed.stream()
+                .filter(entry -> entry.key().equals("lent-1/B")).findFirst().orElseThrow();
+        assertEquals(false, ordinary.incomplete());
+        assertEquals("A", ordinary.ano());
+        assertEquals(true, lent.incomplete());
+        assertEquals(1, listed.stream().filter(entry -> entry.key().equals("all-saints")).count());
+        assertEquals(1, listed.stream().filter(entry -> entry.key().equals("ordinary-29/A")).count());
+        assertTrue(listed.stream().anyMatch(entry -> entry.key().equals("corpus-christi/C") && entry.solemnity()));
+        int endOfYearA = indexOf(listed, "ordinary-34/A");
+        assertTrue(endOfYearA < indexOf(listed, "advent-1/B"));
+        assertTrue(indexOf(listed, "advent-2/A") < indexOf(listed, "immaculate-conception"));
+        assertTrue(indexOf(listed, "immaculate-conception") < indexOf(listed, "advent-3/A"));
+
+        SundayLibrary.SundayEntry replaced = new SundayLibrary(file).replaceSentences(
+                "ordinary-29/A",
+                "Frase nova",
+                "Segunda nova",
+                "Salmo novo",
+                "Evangelho novo",
+                "Louvor que não fica");
+        assertEquals("Frase nova", replaced.primeira());
+        assertEquals("Is 45, 1.4-6", replaced.primeiraRef());
+        assertEquals("Segunda nova", replaced.segunda());
+        assertEquals("1Ts 1, 1-5", replaced.segundaRef());
+        assertEquals("", replaced.louvor());
+
+        ObjectNode ordinaryNode = (ObjectNode) new ObjectMapper().readTree(file.toFile()).get("sundays").get("ordinary-29/A");
+        assertEquals("Is 45, 1.4-6", ordinaryNode.get("primeira").get("referencia").asText());
+        assertEquals("Mt 22, 15-21", ordinaryNode.get("evangelho").get("referencia").asText());
+        assertFalse(ordinaryNode.has("louvor"));
+
+        SundayLibrary.SundayEntry kept = new SundayLibrary(file).replaceSentences(
+                "ordinary-29/A", null, null, null, null, null);
+        assertEquals("Frase nova", kept.primeira());
+
+        SundayLibrary.SundayEntry lentDay = new SundayLibrary(file).replaceSentences(
+                "lent-1/B", "Primeira da Quaresma", "Não criar", "Salmo da Quaresma", "Evangelho da Quaresma", "Louvor novo");
+        assertEquals("Louvor novo", lentDay.louvor());
+        assertEquals("Não criar", lentDay.segunda());
+        ObjectNode lentNode = (ObjectNode) new ObjectMapper().readTree(file.toFile()).get("sundays").get("lent-1/B");
+        assertEquals("Gn 9, 8-15", lentNode.get("primeira").get("referencia").asText());
+        assertEquals("Não criar", lentNode.get("segunda").get("citacao").asText());
+        assertEquals("Louvor novo", lentNode.get("louvor").asText());
+        assertEquals(false, new SundayLibrary(file).list().stream()
+                .filter(entry -> entry.key().equals("lent-1/B")).findFirst().orElseThrow().incomplete());
+    }
+
+    @Test
+    void aStoredSolemnityIsUsedOnItsWeekday() throws IOException {
+        Path file = Files.createTempDirectory("sundays").resolve(SundayLibrary.FILE_NAME);
+        new SundayLibrary(file).replaceSentences(
+                "all-saints", "Vi uma multidão", null, "Bendizei o Senhor", "Alegrai-vos e exultai", null);
+        LiturgyClient client = new LiturgyClient(ignored -> """
+                {
+                  "day": { "sunday_cycle": "A", "season": "ordinary", "name": "All Saints" },
+                  "readings": { "first_reading": "Rev 7:2-4, 9-14", "gospel": "Mt 5:1-12a" }
+                }
+                """);
+        LiturgyDay day = client.load(LocalDate.of(2027, 11, 1), file);
+        assertEquals("Solenidade de Todos os Santos", day.domingo());
+        assertEquals("Vi uma multidão", day.primeira().citacao());
+        assertEquals("Ap 7, 2-4, 9-14", day.primeira().referencia());
+        assertEquals("Alegrai-vos e exultai", day.evangelho().citacao());
+    }
+
+    private static int indexOf(List<SundayLibrary.SundayEntry> entries, String key) {
+        for (int i = 0; i < entries.size(); i++) {
+            if (entries.get(i).key().equals(key)) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     private static String sunday(String sundayId, String season) {

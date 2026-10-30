@@ -1,7 +1,7 @@
 <script setup>
-import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import VerseBox from './VerseBox.vue'
-import { byBookId, matches } from '../songs.js'
+import { SEASONS, byBookId, matches } from '../songs.js'
 
 const props = defineProps({
   songs: { type: Array, required: true },
@@ -26,7 +26,73 @@ const dragOver = ref(null)
 const boldOn = ref(false)
 const italicOn = ref(false)
 const underlineOn = ref(false)
+const section = ref('songs')
+const sundays = ref([])
+const sundayQuery = ref('')
+const sundayOrder = ref('liturgical')
+const sundayFill = ref('all')
+const sundayKind = ref('all')
+const years = reactive({ A: true, B: true, C: true })
+const sunday = ref(null)
+const primeira = ref('')
+const segunda = ref('')
+const salmo = ref('')
+const evangelho = ref('')
+const louvor = ref('')
+const sundayBaseline = ref('')
+const savedMessage = ref('')
 let nextKey = 1
+
+const inEditor = computed(() => editing.value || sunday.value)
+
+const seasonLabel = computed(() => {
+  const id = sunday.value?.season
+  return SEASONS.find((item) => item.id === id)?.label || id || ''
+})
+
+const sundayDirty = computed(() => sunday.value && sundaySnapshot() !== sundayBaseline.value)
+
+const canSaveSunday = computed(() => sundayDirty.value && !busy.value)
+
+const SEASON_ORDER = ['advento', 'natal', 'quaresma', 'ramos', 'pascoa', 'pentecostes', 'comum']
+
+const visibleSundays = computed(() => {
+  const q = sundayQuery.value.trim().toLocaleLowerCase('pt')
+  const anyYear = years.A || years.B || years.C
+  const rows = sundays.value.filter((day) => {
+    if (day.ano) {
+      if (!years[day.ano]) return false
+    } else if (!anyYear) {
+      return false
+    }
+    if (sundayKind.value === 'sunday' && day.solemnity) return false
+    if (sundayKind.value === 'solemnity' && !day.solemnity) return false
+    if (sundayFill.value === 'empty' && !day.incomplete) return false
+    if (sundayFill.value === 'filled' && day.incomplete) return false
+    if (q && !(day.name || '').toLocaleLowerCase('pt').includes(q)) return false
+    return true
+  })
+  const copy = rows.slice()
+  if (sundayOrder.value === 'name') {
+    copy.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt'))
+  } else if (sundayOrder.value === 'season') {
+    copy.sort((a, b) => {
+      const left = SEASON_ORDER.indexOf(a.season)
+      const right = SEASON_ORDER.indexOf(b.season)
+      const bySeason = (left < 0 ? 99 : left) - (right < 0 ? 99 : right)
+      return bySeason || liturgicalKey(a) - liturgicalKey(b)
+    })
+  } else {
+    copy.sort((a, b) => liturgicalKey(a) - liturgicalKey(b))
+  }
+  return copy
+})
+
+function liturgicalKey(day) {
+  const cycle = day.ano || (years.A ? 'A' : years.B ? 'B' : 'C')
+  const rank = cycle === 'B' ? 1 : cycle === 'C' ? 2 : 0
+  return rank * 1000 + (Number(day.place) || 0)
+}
 
 const visible = computed(() =>
   props.songs.filter((song) => matches(song, query.value)).sort(byBookId))
@@ -49,6 +115,100 @@ function formSnapshot() {
 
 function remember() {
   baseline.value = formSnapshot()
+}
+
+function sundaySnapshot() {
+  const body = {
+    primeira: primeira.value,
+    segunda: segunda.value,
+    salmo: salmo.value,
+    evangelho: evangelho.value,
+  }
+  if (sunday.value?.lenten) body.louvor = louvor.value
+  return JSON.stringify(body)
+}
+
+function rememberSunday() {
+  sundayBaseline.value = sundaySnapshot()
+}
+
+function seasonName(id) {
+  return SEASONS.find((item) => item.id === id)?.label || id || ''
+}
+
+async function loadSundays() {
+  const response = await fetch('/api/sundays')
+  const payload = await response.json()
+  if (!response.ok) {
+    throw new Error(payload.error || 'Não foi possível ler os domingos.')
+  }
+  sundays.value = payload
+}
+
+function showSunday(payload) {
+  sunday.value = payload
+  primeira.value = payload.primeira || ''
+  segunda.value = payload.segunda || ''
+  salmo.value = payload.salmo || ''
+  evangelho.value = payload.evangelho || ''
+  louvor.value = payload.louvor || ''
+  error.value = ''
+  savedNotice.value = false
+  rememberSunday()
+}
+
+function openSunday(day) {
+  if (!day || busy.value) return
+  showSunday(day)
+}
+
+function closeSunday() {
+  sunday.value = null
+  error.value = ''
+  loadSundays().catch((e) => {
+    error.value = e.message
+  })
+}
+
+function leaveEditor() {
+  if (editing.value) closeEditor()
+  else closeSunday()
+}
+
+async function saveSunday() {
+  if (!canSaveSunday.value || !sunday.value) return
+  error.value = ''
+  savedNotice.value = false
+  busy.value = true
+  const body = {
+    key: sunday.value.key,
+    primeira: primeira.value.trim(),
+    segunda: segunda.value.trim(),
+    salmo: salmo.value.trim(),
+    evangelho: evangelho.value.trim(),
+  }
+  if (sunday.value.lenten) body.louvor = louvor.value.trim()
+  try {
+    const response = await fetch('/api/sundays', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    const payload = await response.json()
+    if (!response.ok) {
+      throw new Error(payload.error || 'Não foi possível guardar o domingo.')
+    }
+    const index = sundays.value.findIndex((row) => row.key === payload.key)
+    if (index >= 0) sundays.value[index] = payload
+    sunday.value = null
+    savedMessage.value = 'Domingo guardado.'
+    savedNotice.value = true
+    await loadSundays()
+  } catch (e) {
+    error.value = e.message
+  } finally {
+    busy.value = false
+  }
 }
 
 function startNew() {
@@ -248,6 +408,7 @@ async function save() {
     }
     emit('saved')
     editing.value = false
+    savedMessage.value = 'Cântico guardado.'
     savedNotice.value = true
   } catch (e) {
     error.value = e.message
@@ -255,6 +416,14 @@ async function save() {
     busy.value = false
   }
 }
+
+watch(section, (value) => {
+  if (value !== 'sundays' || sunday.value) return
+  error.value = ''
+  loadSundays().catch((e) => {
+    error.value = e.message
+  })
+})
 
 onMounted(() => {
   document.addEventListener('selectionchange', syncFormatState)
@@ -269,10 +438,10 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <main class="page" :class="{ 'catalog-list': !editing }">
+  <main class="page" :class="{ 'catalog-list': !inEditor }">
     <header class="catalog-head">
       <h1>Biblioteca</h1>
-      <button v-if="editing" type="button" class="text-action" @click="closeEditor">
+      <button v-if="inEditor" type="button" class="text-action" @click="leaveEditor">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" d="M15 6 9 12l6 6" />
         </svg>
@@ -413,24 +582,130 @@ onUnmounted(() => {
       </div>
       <p v-if="error" class="status error">{{ error }}</p>
     </section>
+    <section v-else-if="sunday" class="panel catalog-editor">
+      <h2>Frases</h2>
+      <p class="sunday-title">{{ sunday.name }}<template v-if="sunday.ano"> · Ano {{ sunday.ano }}</template></p>
+      <p class="sunday-note">
+        <template v-if="seasonLabel">{{ seasonLabel }}. </template>
+        <template v-if="sunday.ano">Estas frases ficam neste domingo do ano {{ sunday.ano }}, para qualquer data em que ele calhe.</template>
+        <template v-else>Estas frases ficam nesta solenidade, para qualquer ano.</template>
+        A próxima Eucaristia lê-as, salvo se as substituir só para essa apresentação.
+      </p>
+      <div class="readings">
+        <label class="reading">
+          <span>Primeira leitura <em v-if="sunday.primeiraRef">{{ sunday.primeiraRef }}</em></span>
+          <input v-model="primeira" type="text" aria-label="Primeira leitura" />
+        </label>
+        <label class="reading">
+          <span>Segunda leitura <em v-if="sunday.segundaRef">{{ sunday.segundaRef }}</em></span>
+          <input v-model="segunda" type="text" aria-label="Segunda leitura" />
+        </label>
+        <label class="reading">
+          <span>Salmo</span>
+          <input v-model="salmo" type="text" aria-label="Salmo" />
+        </label>
+        <label v-if="sunday.lenten" class="reading">
+          <span>Louvor</span>
+          <input v-model="louvor" type="text" aria-label="Louvor" />
+        </label>
+        <label class="reading">
+          <span>Evangelho <em v-if="sunday.evangelhoRef">{{ sunday.evangelhoRef }}</em></span>
+          <input v-model="evangelho" type="text" aria-label="Evangelho" />
+        </label>
+      </div>
+      <div class="catalog-actions">
+        <button type="button" :disabled="busy" @click="closeSunday">Cancelar</button>
+        <button class="primary" type="button" :disabled="!canSaveSunday" @click="saveSunday">
+          {{ busy ? 'A guardar…' : 'Guardar' }}
+        </button>
+      </div>
+      <p v-if="error" class="status error">{{ error }}</p>
+    </section>
     <section v-else class="panel">
       <div class="panel-head">
-        <h2>Cânticos</h2>
-        <button class="primary" type="button" @click="startNew">Novo cântico</button>
+        <div class="kind catalog-lists" role="radiogroup" aria-label="Listas da biblioteca">
+          <label>
+            <input v-model="section" type="radio" name="library-list" value="songs" />
+            <span>Cânticos</span>
+          </label>
+          <label>
+            <input v-model="section" type="radio" name="library-list" value="sundays" />
+            <span>Liturgia</span>
+          </label>
+        </div>
+        <button v-if="section === 'songs'" class="primary" type="button" @click="startNew">Novo cântico</button>
       </div>
-      <input v-model="query" class="search" type="search" placeholder="Título ou número" />
-      <ul class="songs">
-        <li v-for="song in visible" :key="song.id">
-          <button type="button" class="catalog-song" @click="openSong(song)">
-            <span class="song-label">
-              <span class="book-badge">{{ song.bookId || '#' }}</span>
-              {{ song.title }}
+      <template v-if="section === 'songs'">
+        <input v-model="query" class="search" type="search" placeholder="Título ou número" />
+        <ul class="songs">
+          <li v-for="song in visible" :key="song.id">
+            <button type="button" class="catalog-song" @click="openSong(song)">
+              <span class="song-label">
+                <span class="book-badge">{{ song.bookId || '#' }}</span>
+                {{ song.title }}
+              </span>
+              <span v-if="!song.hasVerses" class="missing">sem letra</span>
+              <span v-else-if="!song.bookId" class="missing">sem número</span>
+            </button>
+          </li>
+        </ul>
+      </template>
+      <template v-else>
+        <div class="sunday-filters">
+          <input v-model="sundayQuery" class="search" type="search" placeholder="Nome do domingo ou solenidade" />
+          <div class="year-toggles" role="group" aria-label="Anos">
+            <button type="button" :aria-pressed="years.A" @click="years.A = !years.A">Ano A</button>
+            <button type="button" :aria-pressed="years.B" @click="years.B = !years.B">Ano B</button>
+            <button type="button" :aria-pressed="years.C" @click="years.C = !years.C">Ano C</button>
+          </div>
+          <label>
+            <span>Ordem</span>
+            <span class="select-size">
+              <select v-model="sundayOrder" aria-label="Ordem">
+                <option value="liturgical">Ano litúrgico</option>
+                <option value="name">Nome</option>
+                <option value="season">Tempo</option>
+              </select>
+              <span aria-hidden="true">Ano litúrgico</span>
             </span>
-            <span v-if="!song.hasVerses" class="missing">sem letra</span>
-            <span v-else-if="!song.bookId" class="missing">sem número</span>
-          </button>
-        </li>
-      </ul>
+          </label>
+          <label>
+            <span>Leituras</span>
+            <span class="select-size">
+              <select v-model="sundayFill" aria-label="Leituras">
+                <option value="all">Todas</option>
+                <option value="empty">Por preencher</option>
+                <option value="filled">Preenchidas</option>
+              </select>
+              <span aria-hidden="true">Por preencher</span>
+            </span>
+          </label>
+          <label>
+            <span>Tipo</span>
+            <span class="select-size">
+              <select v-model="sundayKind" aria-label="Tipo">
+                <option value="all">Tudo</option>
+                <option value="sunday">Domingos</option>
+                <option value="solemnity">Solenidades</option>
+              </select>
+              <span aria-hidden="true">Solenidades</span>
+            </span>
+          </label>
+        </div>
+        <ul class="songs">
+          <li v-for="day in visibleSundays" :key="day.key">
+            <button type="button" class="catalog-song" @click="openSunday(day)">
+              <span class="sunday-label">
+                <span>{{ day.name }}</span>
+                <span class="sunday-meta">{{ seasonName(day.season) }}<template v-if="day.ano"> · Ano {{ day.ano }}</template></span>
+              </span>
+              <span v-if="day.solemnity" class="solemnity-badge">Solenidade</span>
+              <span v-if="day.incomplete" class="missing">por preencher</span>
+            </button>
+          </li>
+        </ul>
+        <p v-if="!visibleSundays.length && !error" class="sunday-note">Nenhum domingo com estes filtros.</p>
+      </template>
       <p v-if="error" class="status error">{{ error }}</p>
     </section>
     <div v-if="savedNotice" class="modal-backdrop" @click.self="dismissSaved">
@@ -446,7 +721,7 @@ onUnmounted(() => {
             <path d="m8 12.2 2.6 2.6L16.2 9.2" />
           </svg>
         </div>
-        <p id="song-saved">Cântico guardado.</p>
+        <p id="song-saved">{{ savedMessage }}</p>
         <div class="open-actions">
           <button class="primary" type="button" @click="dismissSaved">Fechar</button>
         </div>
