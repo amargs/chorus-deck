@@ -15,6 +15,7 @@ const deckMenuPinned = ref(false)
 const presentations = ref(null)
 const eucharistMounted = ref(false)
 const libraryMounted = ref(false)
+const lectionaryMounted = ref(false)
 const eucharistDraft = ref(null)
 const hasEucharistDraft = ref(false)
 const draftChecked = ref(false)
@@ -145,6 +146,12 @@ function openLibrary() {
   deckMenuPinned.value = false
   libraryMounted.value = true
   screen.value = 'library'
+}
+
+function openLectionary() {
+  deckMenuPinned.value = false
+  lectionaryMounted.value = true
+  screen.value = 'lectionary'
 }
 
 function openPresentations() {
@@ -724,10 +731,19 @@ async function errorText(response) {
     </div>
     <button type="button" class="nav-link" :class="{ current: screen === 'library' }" :aria-current="screen === 'library' ? 'page' : undefined" @click="openLibrary">
       <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.8c-2.4-1.4-5-1.7-8-.9v-11.3c3-.8 5.6-.5 8 1 2.4-1.5 5-1.8 8-1V17.9c-3-.8-5.6-.5-8 .9z" />
-        <path stroke-linecap="round" d="M12 18.8v-11.2" />
+        <ellipse cx="6.5" cy="18" rx="4" ry="2.7" transform="rotate(-20 6.5 18)" />
+        <path stroke-linecap="round" d="M10 16.4V3" />
+        <path stroke-linecap="round" d="M13 5h8.2M13 9.6h6M13 14.2h8.2" />
       </svg>
-      <span class="nav-label" data-text="Biblioteca"><span>Biblioteca</span></span>
+      <span class="nav-label" data-text="Cancioneiro"><span>Cancioneiro</span></span>
+    </button>
+    <button type="button" class="nav-link" :class="{ current: screen === 'lectionary' }" :aria-current="screen === 'lectionary' ? 'page' : undefined" @click="openLectionary">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+        <path stroke-linecap="round" d="M8.5 7h7M8.5 11h5" />
+      </svg>
+      <span class="nav-label" data-text="Leccionário"><span>Leccionário</span></span>
     </button>
     <button type="button" class="nav-cog" :class="{ current: screen === 'config' }" aria-label="Configuração" :aria-current="screen === 'config' ? 'page' : undefined" @click="openConfig">
       <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -777,8 +793,8 @@ async function errorText(response) {
         <span>Uma apresentação só com cânticos, pela ordem escolhida.</span>
       </button>
       <button v-if="screen === 'home'" class="choice" type="button" @click="openLibrary">
-        <img src="/logo_biblioteca.png" alt="" />
-        <strong>Biblioteca</strong>
+        <img src="/logo_cancioneiro.png" alt="" />
+        <strong>Cancioneiro</strong>
         <span>Adicionar novos cânticos ou editar os existentes.</span>
       </button>
     </div>
@@ -841,6 +857,12 @@ async function errorText(response) {
     v-show="screen === 'library'"
     :songs="library"
     @saved="loadSongs"
+  />
+  <Library
+    v-if="indexPath && lectionaryMounted"
+    v-show="screen === 'lectionary'"
+    mode="lectionary"
+    :songs="library"
   />
   <Eucharist
     v-if="indexPath && eucharistMounted"

@@ -4,7 +4,7 @@ eCoral prepares the PowerPoint for Mass. It writes a cover, the readings, the pr
 
 - **Eucaristia** builds a Sunday Mass. The date fills the name, the season, the year, and the reading sentences, and a Sunday it has not seen before is fetched and remembered. Each moment of the Mass can take a song. Advent and Lent leave out the Glória, and in Lent the Alleluia is the Louvor verse. You can choose the Creed, a response for the prayer of the faithful, the pause between slides, and the highlight color. A Sunday that is also a fixed solemnity can stay the Sunday or use that solemnity. An unfinished Mass is kept on this computer.
 - **Lista de cânticos** is a deck of songs in the order you choose, with an optional cover.
-- **Biblioteca** is where you add or correct a song: the title, the songbook number, and the verses, including bold, italic, and underline. A saved song is then available in either deck.
+- **Cancioneiro** is where you add or correct a song: the title, the songbook number, and the verses, including bold, italic, and underline. A saved song is then available in either deck.
 
 ## Launch the application
 

@@ -1,10 +1,11 @@
 <script setup>
-import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref } from 'vue'
 import VerseList from './VerseList.vue'
 import { SEASONS, byBookId, languageName, matches, otherLanguage } from '../songs.js'
 
 const props = defineProps({
   songs: { type: Array, required: true },
+  mode: { type: String, default: 'songs' },
 })
 
 const emit = defineEmits(['saved'])
@@ -28,8 +29,8 @@ const savedNotice = ref(false)
 const savedSong = ref(false)
 const leavePrompt = ref(false)
 const songList = ref(null)
+const root = ref(null)
 let songScroll = 0
-const section = ref('songs')
 const sundays = ref([])
 const sundayQuery = ref('')
 const sundayOrder = ref('liturgical')
@@ -46,7 +47,11 @@ const sundayBaseline = ref('')
 const savedMessage = ref('')
 let nextKey = 1
 
-const inEditor = computed(() => editing.value || sunday.value)
+const lectionary = computed(() => props.mode === 'lectionary')
+
+const heading = computed(() => (lectionary.value ? 'Leccionário' : 'Cancioneiro'))
+
+const inEditor = computed(() => (lectionary.value ? sunday.value : editing.value))
 
 const seasonLabel = computed(() => {
   const id = sunday.value?.season
@@ -344,7 +349,7 @@ function returnToSongs() {
 }
 
 function onKeydown(event) {
-  if (event.key !== 'Escape') return
+  if (event.key !== 'Escape' || !root.value || root.value.offsetParent === null) return
   if (leavePrompt.value) {
     leavePrompt.value = false
     return
@@ -402,16 +407,12 @@ async function save() {
   }
 }
 
-watch(section, (value) => {
-  if (value !== 'sundays' || sunday.value) return
-  error.value = ''
+onMounted(() => {
+  document.addEventListener('keydown', onKeydown)
+  if (!lectionary.value) return
   loadSundays().catch((e) => {
     error.value = e.message
   })
-})
-
-onMounted(() => {
-  document.addEventListener('keydown', onKeydown)
 })
 onUnmounted(() => {
   document.removeEventListener('keydown', onKeydown)
@@ -419,9 +420,9 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <main class="page" :class="{ 'catalog-list': !inEditor }">
+  <main ref="root" class="page" :class="{ 'catalog-list': !inEditor }">
     <header class="catalog-head">
-      <h1>Biblioteca</h1>
+      <h1>{{ heading }}</h1>
       <button v-if="inEditor" type="button" class="text-action" @click="leaveEditor">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" d="M15 6 9 12l6 6" />
@@ -429,7 +430,7 @@ onUnmounted(() => {
         Voltar
       </button>
     </header>
-    <section v-if="editing" class="panel catalog-editor">
+    <section v-if="!lectionary && editing" class="panel catalog-editor">
       <h2>{{ songId == null ? 'Novo cântico' : 'Editar cântico' }}</h2>
       <div class="catalog-fields">
         <label class="field">
@@ -489,7 +490,7 @@ onUnmounted(() => {
       </div>
       <p v-if="error" class="status error">{{ error }}</p>
     </section>
-    <section v-else-if="sunday" class="panel catalog-editor">
+    <section v-else-if="lectionary && sunday" class="panel catalog-editor">
       <h2>Frases</h2>
       <p class="sunday-title">{{ sunday.name }}<template v-if="sunday.ano"> · Ano {{ sunday.ano }}</template></p>
       <p class="sunday-note">
@@ -528,23 +529,12 @@ onUnmounted(() => {
       </div>
       <p v-if="error" class="status error">{{ error }}</p>
     </section>
-    <section v-else class="panel">
+    <section v-else-if="!lectionary" class="panel">
       <div class="panel-head">
-        <div class="kind catalog-lists" role="radiogroup" aria-label="Listas da biblioteca">
-          <label>
-            <input v-model="section" type="radio" name="library-list" value="songs" />
-            <span>Cânticos</span>
-          </label>
-          <label>
-            <input v-model="section" type="radio" name="library-list" value="sundays" />
-            <span>Liturgia</span>
-          </label>
-        </div>
-        <button v-if="section === 'songs'" class="primary" type="button" @click="startNew">Novo cântico</button>
-      </div>
-      <template v-if="section === 'songs'">
         <input v-model="query" class="search" type="search" placeholder="Título ou número" />
-        <ul ref="songList" class="songs">
+        <button class="primary" type="button" @click="startNew">Novo cântico</button>
+      </div>
+      <ul ref="songList" class="songs">
           <li v-for="song in visible" :key="song.id">
             <button type="button" class="catalog-song" @click="openSong(song)">
               <span class="song-label">
@@ -559,8 +549,9 @@ onUnmounted(() => {
             </button>
           </li>
         </ul>
-      </template>
-      <template v-else>
+      <p v-if="error" class="status error">{{ error }}</p>
+    </section>
+    <section v-else class="panel">
         <div class="sunday-filters">
           <input v-model="sundayQuery" class="search" type="search" placeholder="Nome do domingo ou solenidade" />
           <div class="year-toggles" role="group" aria-label="Anos">
@@ -615,7 +606,6 @@ onUnmounted(() => {
           </li>
         </ul>
         <p v-if="!visibleSundays.length && !error" class="sunday-note">Nenhum domingo com estes filtros.</p>
-      </template>
       <p v-if="error" class="status error">{{ error }}</p>
     </section>
     <div v-if="leavePrompt" class="modal-backdrop" @click.self="leavePrompt = false">
