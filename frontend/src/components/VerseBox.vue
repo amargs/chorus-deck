@@ -41,6 +41,22 @@ function onKeydown(event) {
 function onFocus() {
   emit('focus', el.value)
 }
+
+function onPaste(event) {
+  event.preventDefault()
+  const data = event.clipboardData
+  let text = data?.getData('text/plain') || ''
+  if (!text && data) {
+    const html = data.getData('text/html')
+    if (html) {
+      text = new DOMParser().parseFromString(html, 'text/html').body.innerText || ''
+    }
+  }
+  text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+  if (!text) return
+  document.execCommand('insertText', false, text)
+  onInput()
+}
 </script>
 
 <template>
@@ -53,6 +69,7 @@ function onFocus() {
     :aria-label="label"
     @input="onInput"
     @keydown="onKeydown"
+    @paste="onPaste"
     @focus="onFocus"
   ></div>
 </template>

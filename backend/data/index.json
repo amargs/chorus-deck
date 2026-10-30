@@ -396,9 +396,14 @@
   "bookId" : "82"
 }, {
   "id" : 242,
-  "title" : "Jesus, filho de Deus (Jesus, remember me)",
+  "title" : "Jesus, remember me",
   "content" : [ "Jesus, filho de Deus\nNo teu reino lembra-Te de mim\nJesus, filho de Deus\nNo teu reino lembra-te  de mim" ],
-  "bookId" : "83"
+  "bookId" : "83",
+  "titleAlt" : "Jesus, filho de Deus",
+  "contentAlt" : [ "Jesus, remember me \nWhen you come into your kingdom\nJesus, remember me\nWhen you come into your kingdom" ],
+  "lang" : "pt",
+  "langAlt" : "en",
+  "defaultLyrics" : "contentAlt"
 }, {
   "id" : 79,
   "title" : "Jovem ergue o teu lema",
@@ -916,9 +921,10 @@
   "bookId" : "RP10"
 }, {
   "id" : 245,
-  "title" : "Fala Senhor (Mostra Senhor o caminho)",
+  "title" : "Fala Senhor",
   "content" : [ "Mostra Senhor o caminho que tu queres que eu percorra\nMostra Senhor o caminho, quero ouvir tua voz", "**Fala Senhor que teu servo escuta (x4)**" ],
-  "bookId" : "66"
+  "bookId" : "66",
+  "titleAlt" : "Mostra Senhor o caminho"
 }, {
   "id" : 184,
   "title" : "Aleluia Deus está",

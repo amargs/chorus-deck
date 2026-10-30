@@ -79,6 +79,7 @@ const savedName = computed(() => {
 })
 
 const draftPrompt = ref(false)
+const openingDraft = ref(false)
 const deckMenuOpen = computed(() => deckMenuHover.value || deckMenuPinned.value)
 const presentationsCurrent = computed(() =>
   screen.value === 'eucharist' || screen.value === 'songs' || screen.value === 'decks')
@@ -119,6 +120,9 @@ function showEucharist() {
 
 function openEucharist() {
   deckMenuPinned.value = false
+  if (openingDraft.value) {
+    return
+  }
   if (!draftChecked.value) {
     openEucharistWhenReady.value = true
     return
@@ -178,8 +182,24 @@ function onDocumentPointer(event) {
 
 function continueDraft() {
   draftPrompt.value = false
-  showEucharist()
+  openingDraft.value = true
+  eucharistMounted.value = true
+  lastDeck.value = 'eucharist'
 }
+
+function onEucharistRestored() {
+  if (!openingDraft.value) {
+    return
+  }
+  openingDraft.value = false
+  screen.value = 'eucharist'
+}
+
+watch(screen, (value) => {
+  if (openingDraft.value && value !== 'home' && value !== 'decks') {
+    openingDraft.value = false
+  }
+})
 
 async function discardDraft() {
   draftPrompt.value = false
@@ -831,6 +851,7 @@ async function errorText(response) {
     @choose-folder="chooseFolder"
     @generated="savedPath = $event"
     @draft="onEucharistDraft"
+    @restored="onEucharistRestored"
   />
   <div v-if="draftPrompt" class="modal-backdrop">
     <div class="modal confirm" role="dialog" aria-modal="true" aria-labelledby="draft-prompt">

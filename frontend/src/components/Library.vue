@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import VerseList from './VerseList.vue'
 import { SEASONS, byBookId, languageName, matches, otherLanguage } from '../songs.js'
 
@@ -25,6 +25,10 @@ const baseline = ref('')
 const busy = ref(false)
 const error = ref('')
 const savedNotice = ref(false)
+const savedSong = ref(false)
+const leavePrompt = ref(false)
+const songList = ref(null)
+let songScroll = 0
 const section = ref('songs')
 const sundays = ref([])
 const sundayQuery = ref('')
@@ -176,7 +180,7 @@ function closeSunday() {
 }
 
 function leaveEditor() {
-  if (editing.value) closeEditor()
+  if (editing.value) requestCloseEditor()
   else closeSunday()
 }
 
@@ -207,6 +211,7 @@ async function saveSunday() {
     if (index >= 0) sundays.value[index] = payload
     sunday.value = null
     savedMessage.value = 'Domingo guardado.'
+    savedSong.value = false
     savedNotice.value = true
     await loadSundays()
   } catch (e) {
@@ -217,6 +222,7 @@ async function saveSunday() {
 }
 
 function startNew() {
+  songScroll = songList.value?.scrollTop || 0
   songId.value = null
   title.value = ''
   titleAlt.value = ''
@@ -234,8 +240,10 @@ function startNew() {
 }
 
 async function openSong(song) {
+  songScroll = songList.value?.scrollTop || 0
   error.value = ''
   savedNotice.value = false
+  savedSong.value = false
   try {
     const response = await fetch(`/api/songs/${song.id}`)
     const payload = await response.json()
@@ -307,14 +315,41 @@ function setSecondLanguage(on) {
 function closeEditor() {
   editing.value = false
   error.value = ''
+  leavePrompt.value = false
+  nextTick(() => {
+    if (songList.value) songList.value.scrollTop = songScroll
+  })
+}
+
+function requestCloseEditor() {
+  if (dirty.value) {
+    leavePrompt.value = true
+    return
+  }
+  closeEditor()
+}
+
+function confirmLeave() {
+  closeEditor()
 }
 
 function dismissSaved() {
   savedNotice.value = false
+  savedSong.value = false
+}
+
+function returnToSongs() {
+  dismissSaved()
+  closeEditor()
 }
 
 function onKeydown(event) {
-  if (event.key === 'Escape' && savedNotice.value) dismissSaved()
+  if (event.key !== 'Escape') return
+  if (leavePrompt.value) {
+    leavePrompt.value = false
+    return
+  }
+  if (savedNotice.value) dismissSaved()
 }
 
 async function save() {
@@ -355,8 +390,10 @@ async function save() {
       throw new Error(payload.error || 'Não foi possível guardar o cântico.')
     }
     emit('saved')
-    editing.value = false
+    if (payload.id != null) songId.value = payload.id
+    remember()
     savedMessage.value = 'Cântico guardado.'
+    savedSong.value = true
     savedNotice.value = true
   } catch (e) {
     error.value = e.message
@@ -445,7 +482,7 @@ onUnmounted(() => {
         />
       </div>
       <div class="catalog-actions">
-        <button type="button" :disabled="busy" @click="closeEditor">Cancelar</button>
+        <button type="button" :disabled="busy" @click="requestCloseEditor">Cancelar</button>
         <button class="primary" type="button" :disabled="!canSave" @click="save">
           {{ busy ? 'A guardar…' : 'Guardar' }}
         </button>
@@ -507,7 +544,7 @@ onUnmounted(() => {
       </div>
       <template v-if="section === 'songs'">
         <input v-model="query" class="search" type="search" placeholder="Título ou número" />
-        <ul class="songs">
+        <ul ref="songList" class="songs">
           <li v-for="song in visible" :key="song.id">
             <button type="button" class="catalog-song" @click="openSong(song)">
               <span class="song-label">
@@ -581,8 +618,17 @@ onUnmounted(() => {
       </template>
       <p v-if="error" class="status error">{{ error }}</p>
     </section>
+    <div v-if="leavePrompt" class="modal-backdrop" @click.self="leavePrompt = false">
+      <div class="modal confirm leave-prompt" role="dialog" aria-modal="true" aria-labelledby="leave-song">
+        <p id="leave-song">Há alterações por guardar. Deseja descartá-las?</p>
+        <div class="open-actions">
+          <button type="button" @click="leavePrompt = false">Continuar a editar</button>
+          <button class="primary" type="button" @click="confirmLeave">Sair sem guardar</button>
+        </div>
+      </div>
+    </div>
     <div v-if="savedNotice" class="modal-backdrop" @click.self="dismissSaved">
-      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="song-saved">
+      <div class="modal" :class="{ 'confirm leave-prompt': savedSong }" role="dialog" aria-modal="true" aria-labelledby="song-saved">
         <button class="icon close" type="button" aria-label="Fechar" @click="dismissSaved">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <path d="M6 6l12 12M18 6 6 18" />
@@ -596,7 +642,11 @@ onUnmounted(() => {
         </div>
         <p id="song-saved">{{ savedMessage }}</p>
         <div class="open-actions">
-          <button class="primary" type="button" @click="dismissSaved">Fechar</button>
+          <template v-if="savedSong">
+            <button type="button" @click="dismissSaved">Continuar a editar</button>
+            <button class="primary" type="button" @click="returnToSongs">Voltar para a lista de cânticos</button>
+          </template>
+          <button v-else class="primary" type="button" @click="dismissSaved">Fechar</button>
         </div>
       </div>
     </div>

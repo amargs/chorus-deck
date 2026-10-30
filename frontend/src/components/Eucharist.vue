@@ -9,7 +9,7 @@ const props = defineProps({
   draft: { type: Object, default: null },
 })
 
-const emit = defineEmits(['choose-folder', 'generated', 'draft'])
+const emit = defineEmits(['choose-folder', 'generated', 'draft', 'restored'])
 
 const SONG_MOMENTS = new Set(MOMENTS.map((moment) => moment.id))
 const INTERVALS = new Set(['vazio', 'imagem', 'texto', 'texto+imagem'])
@@ -56,6 +56,7 @@ const replaceName = ref('')
 let saveReady = props.draft == null
 let restorePending = props.draft != null
 let pendingSlots = false
+const restoring = ref(props.draft != null)
 let saveTimer = 0
 let persistTail = Promise.resolve()
 
@@ -352,6 +353,7 @@ async function loadLiturgy() {
       applyDraft(props.draft)
     }
     restorePending = false
+    finishRestore()
   } catch (e) {
     if (token !== liturgyRequest) {
       return
@@ -362,6 +364,7 @@ async function loadLiturgy() {
       applyDraft(props.draft)
     }
     restorePending = false
+    finishRestore()
   } finally {
     if (token === liturgyRequest) {
       loading.value = false
@@ -369,6 +372,14 @@ async function loadLiturgy() {
       schedulePersist()
     }
   }
+}
+
+function finishRestore() {
+  if (!restoring.value || pendingSlots) {
+    return
+  }
+  restoring.value = false
+  emit('restored')
 }
 
 function applyDraft(draft) {
@@ -529,6 +540,7 @@ watch(() => props.songs, (songs) => {
   }
   applySlots(props.draft.slots)
   pendingSlots = false
+  finishRestore()
   if (saveReady) {
     schedulePersist()
   }

@@ -1,3 +1,9 @@
+html,
+body,
+#app {
+  height: 100%;
+}
+
 :root {
   --accent: #377d49;
   --accent-soft: color-mix(in srgb, var(--accent) 18%, #fff);
@@ -14,7 +20,7 @@
 
 body {
   margin: 0;
-  overflow-x: clip;
+  overflow: hidden;
 }
 
 button,
@@ -155,6 +161,7 @@ select option:checked {
 }
 
 .font-banner {
+  flex: none;
   background: #f4e4c4;
   color: #5c3b12;
   border-bottom: 1px solid #e0c48a;
@@ -269,9 +276,13 @@ header .alter svg {
 }
 
 .app {
-  min-height: 100vh;
+  height: 100%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: auto;
+  overscroll-behavior: none;
+  scrollbar-gutter: stable;
 }
 
 .welcome {
@@ -311,6 +322,7 @@ header .alter svg {
   position: sticky;
   top: 0;
   z-index: 5;
+  flex: none;
   display: flex;
   align-items: stretch;
   gap: 0.15rem;
@@ -938,6 +950,7 @@ input:not([type="checkbox"]):not([type="radio"])::placeholder {
   padding: 0 0.35rem 0 0;
   max-height: 28rem;
   overflow: auto;
+  overscroll-behavior: contain;
   scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: #cfc8bc transparent;
@@ -1867,6 +1880,11 @@ button.icon.drag-handle:active {
 
 .modal.confirm {
   width: min(34rem, 100%);
+}
+
+.modal.confirm.leave-prompt {
+  padding-top: 2.75rem;
+  padding-bottom: 2.4rem;
 }
 
 .modal.confirm p + p {
