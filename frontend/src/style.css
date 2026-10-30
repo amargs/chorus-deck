@@ -856,6 +856,18 @@ header .alter svg {
   background: var(--accent-soft);
 }
 
+.songs li > .rezado {
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  height: calc(1rem * 1.4);
+  margin: 0;
+  padding: 0 0.45rem;
+  border-color: transparent;
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
 .field em {
   font-style: normal;
   color: #8a8378;
@@ -1494,30 +1506,6 @@ button.icon.drag-handle:active {
 .chosen-body {
   flex: 1;
   min-width: 0;
-}
-
-.song-show {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem 0.75rem;
-  padding: 0 0.55rem 0.45rem;
-}
-
-.song-show label {
-  display: flex;
-  flex: 1 1 8rem;
-  flex-direction: column;
-  gap: 0.15rem;
-  max-width: 16rem;
-  min-width: 0;
-  font-size: 0.75rem;
-  color: #6f6962;
-}
-
-.song-show select {
-  padding-top: 0.28rem;
-  padding-bottom: 0.28rem;
-  font-size: 0.85rem;
 }
 
 .field-note {

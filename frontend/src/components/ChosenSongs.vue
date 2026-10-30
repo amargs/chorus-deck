@@ -27,8 +27,8 @@ const emit = defineEmits(['remove', 'up', 'down', 'clear', 'show'])
             <span class="book-badge">{{ song.bookId || '#' }}</span>
             <span class="song-name">{{ song.title }}</span>
           </span>
-          <SongShow :song="song" @change="emit('show', index, $event)" />
         </div>
+        <SongShow :song="song" @change="emit('show', index, $event)" />
         <span class="row-actions">
           <button type="button" class="icon" aria-label="Subir" :disabled="index === 0" @click="emit('up', index)">
             <svg viewBox="0 0 24 24" aria-hidden="true">
