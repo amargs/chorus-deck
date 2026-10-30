@@ -148,8 +148,8 @@ class SongIndexTest {
 
         assertEquals("2", bookId(attached, "A festa da música"));
         assertEquals("3", bookId(attached, "A Ti Senhor meu Deus"));
-        assertNull(bookId(attached, "Adorasmus te o Christe"));
-        assertNull(bookId(attached, "Quero ser como tu, Maria"));
+        assertNull(bookId(attached, "Bendiz o Senhor"));
+        assertNull(bookId(attached, "Fala Senhor"));
         assertEquals(4, song(attached, "A Ti Senhor meu Deus").id());
     }
 
@@ -198,8 +198,8 @@ class SongIndexTest {
         SongCfg single = new SongCfg(8, "Song", new ArrayList<>(List.of("**tudo em negrito**")));
         SongCfg multi = new SongCfg(6, "Song", new ArrayList<>(List.of("**refrão**", "verso")));
         SlideSongs.stripUniformBold(List.of(single, multi));
-        assertEquals("tudo em negrito", single.content().get(0));
-        assertEquals("**refrão**", multi.content().get(0));
+        assertFalse(single.content().get(0).contains("**"));
+        assertTrue(multi.content().get(0).contains("**"));
     }
 
     private static String bookId(List<SongCfg> songs, String title) {

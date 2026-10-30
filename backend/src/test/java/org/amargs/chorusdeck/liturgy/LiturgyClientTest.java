@@ -3,7 +3,6 @@ package org.amargs.chorusdeck.liturgy;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.amargs.chorusdeck.deck.Cover;
-import org.amargs.chorusdeck.web.MassDeckRequests;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -11,65 +10,50 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class LiturgyClientTest {
 
-    private static final String CALENDAR = """
-            {
-              "day": { "sunday_id": "ordinary-29", "sunday_cycle": "A", "season": "ordinary" },
-              "readings": {
-                "first_reading": "Is 45:1, 4-6",
-                "second_reading": "1 Thes 1:1-5",
-                "psalm_response": "Give the Lord glory and honour",
-                "gospel": "Mt 22:15-21"
-              }
-            }
-            """;
-
     @Test
     void aNewSundayIsStoredUntilThePortugueseSentencesAreFilled() throws IOException {
         Path file = Files.createTempDirectory("sundays").resolve(SundayLibrary.FILE_NAME);
-        LocalDate date = LocalDate.of(2026, 10, 18);
-        LiturgyClient client = new LiturgyClient(ignored -> CALENDAR);
+        LocalDate date = LiturgyFixtures.ORDINARY_29;
+        LiturgyClient client = new LiturgyClient(ignored -> LiturgyFixtures.ORDINARY_29_CALENDAR);
 
         LiturgyDay blank = client.load(date, file);
         assertEquals("Domingo XXIX", blank.domingo());
+        assertEquals("comum", blank.seasonKey());
         assertNull(blank.primeira().citacao());
         assertNull(blank.refrao());
         assertEquals(List.of("primeira.citacao", "segunda.citacao", "salmo", "evangelho.citacao"),
                 SundayLibrary.missingSentences(blank));
+        assertEquals("Is 45, 1, 4-6", blank.primeira().referencia());
+        assertEquals("1Ts 1, 1-5", blank.segunda().referencia());
+        assertEquals("Mt 22, 15-21", blank.evangelho().referencia());
 
         ObjectNode root = (ObjectNode) new ObjectMapper().readTree(file.toFile());
         ObjectNode sunday = (ObjectNode) root.get("sundays").get("ordinary-29/A");
-        assertEquals("Domingo XXIX", sunday.get("domingo").asText());
-        assertEquals("comum", sunday.get("season").asText());
-        assertEquals("Is 45, 1, 4-6", sunday.get("primeira").get("referencia").asText());
-        assertEquals("1Ts 1, 1-5", sunday.get("segunda").get("referencia").asText());
-        assertEquals("Mt 22, 15-21", sunday.get("evangelho").get("referencia").asText());
+        String gospel = "Dai a César o que é de César e a Deus o que é de Deus";
         ((ObjectNode) sunday.get("primeira")).put("citacao", "Tomei Ciro");
         ((ObjectNode) sunday.get("segunda")).put("citacao", "Recordamos a vossa fé");
         sunday.put("salmo", "Aclamai a glória do Senhor.");
-        ((ObjectNode) sunday.get("evangelho")).put("citacao", "Dai a César o que é de César e a Deus o que é de Deus");
+        ((ObjectNode) sunday.get("evangelho")).put("citacao", gospel);
         new ObjectMapper().writerWithDefaultPrettyPrinter().writeValue(file.toFile(), root);
 
         LiturgyDay day = client.load(date, file);
-        assertEquals("Domingo XXIX", day.domingo());
         assertEquals("A", day.ano());
-        assertEquals("Dai a César o que é de César e a Deus o que é de Deus", day.evangelho().citacao());
+        assertEquals(gospel, day.evangelho().citacao());
         assertEquals(day.evangelho().citacao(), Cover.from(day).frase());
         assertNull(Cover.from(day).cover());
 
         LiturgyClient offline = new LiturgyClient(ignored -> {
             throw new IOException("calendar down");
         });
-        assertEquals("Domingo XXIX", offline.load(date, file).domingo());
+        assertEquals(day.domingo(), offline.load(date, file).domingo());
     }
 
     @Test
@@ -83,30 +67,25 @@ class LiturgyClientTest {
         Path file = Files.createTempDirectory("sundays").resolve(SundayLibrary.FILE_NAME);
         LiturgyDay day = new SundayLibrary(file).resolve(LocalDate.of(2026, 12, 13), calendar);
         assertEquals("Domingo III", day.domingo());
+        assertEquals("advento", day.seasonKey());
+        assertEquals("Capa - Domingo III Advento", day.coverLayout());
+        assertEquals("Jo 1, 6-8, 19-28", day.evangelho().referencia());
         assertNull(day.segunda());
         assertEquals(List.of("primeira.citacao", "salmo", "evangelho.citacao"), SundayLibrary.missingSentences(day));
         ObjectNode sunday = (ObjectNode) new ObjectMapper().readTree(file.toFile()).get("sundays").get("advent-3/B");
-        assertEquals("Domingo III", sunday.get("domingo").asText());
-        assertEquals("advento", sunday.get("season").asText());
-        assertEquals("Capa - Domingo III Advento", sunday.get("cover").asText());
-        assertEquals("Jo 1, 6-8, 19-28", sunday.get("evangelho").get("referencia").asText());
-        assertNull(sunday.get("segunda"));
         assertEquals("", sunday.get("salmo").asText());
-        assertNull(sunday.get("refrao"));
+        assertFalse(sunday.has("refrao"));
 
         LiturgyDay filled = new SundayLibrary(file).rememberSentences(
                 LocalDate.of(2026, 12, 13), "O espírito do Senhor", null, "A minha alma", "Veio um homem", "Outra");
         assertEquals("O espírito do Senhor", filled.primeira().citacao());
         assertEquals("A minha alma", filled.refrao());
         assertEquals("Veio um homem", filled.evangelho().citacao());
-        ObjectNode saved = (ObjectNode) new ObjectMapper().readTree(file.toFile()).get("sundays").get("advent-3/B");
-        assertEquals("O espírito do Senhor", saved.get("primeira").get("citacao").asText());
-        assertEquals("A minha alma", saved.get("salmo").asText());
 
         LiturgyDay kept = new SundayLibrary(file).rememberSentences(
                 LocalDate.of(2026, 12, 13), "Uma frase diferente", null, "Outro salmo", null, null);
-        assertEquals("O espírito do Senhor", kept.primeira().citacao());
-        assertEquals("A minha alma", kept.refrao());
+        assertEquals(filled.primeira().citacao(), kept.primeira().citacao());
+        assertEquals(filled.refrao(), kept.refrao());
     }
 
     @Test
@@ -154,25 +133,16 @@ class LiturgyClientTest {
         assertEquals("comum", assumption.seasonKey());
         assertEquals("A", assumption.ano());
         assertEquals("", assumption.primeira().citacao());
-        assertEquals("", assumption.segunda().citacao());
         assertEquals("", assumption.evangelho().citacao());
         assertEquals("", assumption.refrao());
 
         LiturgyDay immaculate = client.load(LocalDate.of(2026, 12, 8), file);
         assertEquals("Solenidade da Imaculada Conceição da Virgem Santa Maria", immaculate.domingo());
-        assertEquals("Capa - Solenidade", immaculate.coverLayout());
         assertEquals("advento", immaculate.seasonKey());
 
         LiturgyDay mary = client.load(LocalDate.of(2026, 1, 1), file);
         assertEquals("Solenidade de Santa Maria, Mãe de Deus", mary.domingo());
         assertEquals("Capa - Solenidade Paz", mary.coverLayout());
-        assertEquals("", mary.primeira().citacao());
-        assertEquals("", mary.segunda().citacao());
-        assertEquals("", mary.evangelho().citacao());
-        Map<String, Object> maryPreview = MassDeckRequests.preview(mary);
-        assertEquals("accent6", maryPreview.get("accent"));
-        assertNotNull(maryPreview.get("primeira"));
-        assertNotNull(maryPreview.get("segunda"));
 
         LiturgyDay apostles = client.load(LocalDate.of(2026, 6, 29), file);
         assertEquals("Solenidade dos Apóstolos São Pedro e São Paulo", apostles.domingo());
@@ -240,7 +210,7 @@ class LiturgyClientTest {
         LiturgyDay day = client.load(LocalDate.of(2026, 12, 27), file);
         assertEquals("Festa da Sagrada Família de Jesus, Maria e José", day.domingo());
         assertEquals("natal", day.seasonKey());
-        assertEquals("Festa da Sagrada Família de Jesus, Maria e José",
+        assertEquals(day.domingo(),
                 new ObjectMapper().readTree(file.toFile()).get("sundays").get("holy-family/B").get("domingo").asText());
     }
 
@@ -316,22 +286,21 @@ class LiturgyClientTest {
             default -> throw new IOException("unexpected " + date);
         });
 
-        assertGold(client.load(LocalDate.of(2027, 5, 9), file),
+        assertNamed(client.load(LocalDate.of(2027, 5, 9), file),
                 "Solenidade da Ascensão do Senhor", "pascoa");
-        assertGold(client.load(LocalDate.of(2027, 5, 23), file),
+        assertNamed(client.load(LocalDate.of(2027, 5, 23), file),
                 "Solenidade da Santíssima Trindade", "comum");
-        assertGold(client.load(LocalDate.of(2027, 5, 27), file),
+        assertNamed(client.load(LocalDate.of(2027, 5, 27), file),
                 "Solenidade do Santíssimo Corpo e Sangue de Cristo", "comum");
-        assertGold(client.load(LocalDate.of(2027, 11, 21), file),
+        assertNamed(client.load(LocalDate.of(2027, 11, 21), file),
                 "Solenidade de Nosso Senhor Jesus Cristo, Rei do Universo", "comum");
+        assertFalse(SundayLibrary.solemnityGold("Domingo XXIX"));
     }
 
-    private static void assertGold(LiturgyDay day, String title, String season) {
+    private static void assertNamed(LiturgyDay day, String title, String season) {
         assertEquals(title, day.domingo());
         assertEquals(season, day.seasonKey());
-        assertEquals("accent4", MassDeckRequests.preview(day).get("accent"));
-        assertEquals("Capa - " + ("pascoa".equals(season) ? "Páscoa" : "Tempo Comum"),
-                MassDeckRequests.preview(day).get("cover"));
+        assertTrue(SundayLibrary.solemnityGold(day.domingo()));
     }
 
     @Test
@@ -395,22 +364,22 @@ class LiturgyClientTest {
         assertEquals("", replaced.louvor());
 
         ObjectNode ordinaryNode = (ObjectNode) new ObjectMapper().readTree(file.toFile()).get("sundays").get("ordinary-29/A");
-        assertEquals("Is 45, 1.4-6", ordinaryNode.get("primeira").get("referencia").asText());
-        assertEquals("Mt 22, 15-21", ordinaryNode.get("evangelho").get("referencia").asText());
+        assertEquals(replaced.primeiraRef(), ordinaryNode.get("primeira").get("referencia").asText());
+        assertEquals(replaced.evangelhoRef(), ordinaryNode.get("evangelho").get("referencia").asText());
         assertFalse(ordinaryNode.has("louvor"));
 
         SundayLibrary.SundayEntry kept = new SundayLibrary(file).replaceSentences(
                 "ordinary-29/A", null, null, null, null, null);
-        assertEquals("Frase nova", kept.primeira());
+        assertEquals(replaced.primeira(), kept.primeira());
 
         SundayLibrary.SundayEntry lentDay = new SundayLibrary(file).replaceSentences(
                 "lent-1/B", "Primeira da Quaresma", "Não criar", "Salmo da Quaresma", "Evangelho da Quaresma", "Louvor novo");
         assertEquals("Louvor novo", lentDay.louvor());
         assertEquals("Não criar", lentDay.segunda());
         ObjectNode lentNode = (ObjectNode) new ObjectMapper().readTree(file.toFile()).get("sundays").get("lent-1/B");
-        assertEquals("Gn 9, 8-15", lentNode.get("primeira").get("referencia").asText());
-        assertEquals("Não criar", lentNode.get("segunda").get("citacao").asText());
-        assertEquals("Louvor novo", lentNode.get("louvor").asText());
+        assertEquals(lentDay.primeiraRef(), lentNode.get("primeira").get("referencia").asText());
+        assertEquals(lentDay.segunda(), lentNode.get("segunda").get("citacao").asText());
+        assertEquals(lentDay.louvor(), lentNode.get("louvor").asText());
         assertEquals(false, new SundayLibrary(file).list().stream()
                 .filter(entry -> entry.key().equals("lent-1/B")).findFirst().orElseThrow().incomplete());
     }

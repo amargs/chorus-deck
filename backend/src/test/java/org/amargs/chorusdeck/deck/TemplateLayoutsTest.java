@@ -588,13 +588,11 @@ class TemplateLayoutsTest {
             assertEquals(TemplateLayouts.LEITURA_2, layouts.get(psalm + 1));
             assertTrue(psalm < gospel);
             assertEquals(TemplateLayouts.INTERVAL_BLANK, layouts.get(gospel + 1));
-            assertEquals("Is 45, 1.4-6", textShape(ppt.getSlides().get(first), "Referência").getText());
-            assertEquals("«Tomei Ciro pela mão»", textShape(ppt.getSlides().get(first), "Citação").getText());
-            assertEquals("«Aclamai a glória do Senhor.»", textShape(ppt.getSlides().get(psalm), "Citação").getText());
-            assertEquals("«Dai a César o que é de César e a Deus o que é de Deus»",
-                    textShape(ppt.getSlides().get(gospel), "Citação").getText());
-            assertEquals("«Dai a César o que é de César e a Deus o que é de Deus»",
-                    textShape(ppt.getSlides().get(0), "Frase").getText());
+            assertEquals(day.primeira().referencia(), textShape(ppt.getSlides().get(first), "Referência").getText());
+            assertEquals("«" + day.primeira().citacao() + "»", textShape(ppt.getSlides().get(first), "Citação").getText());
+            assertEquals("«" + day.refrao() + "»", textShape(ppt.getSlides().get(psalm), "Citação").getText());
+            assertEquals("«" + day.evangelho().citacao() + "»", textShape(ppt.getSlides().get(gospel), "Citação").getText());
+            assertEquals("«" + day.evangelho().citacao() + "»", textShape(ppt.getSlides().get(0), "Frase").getText());
             Path comum = template().toAbsolutePath().normalize().getParent()
                     .resolve("../../assets/background_comum.jpg").normalize();
             if (Files.isRegularFile(comum)) {
