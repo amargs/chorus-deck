@@ -127,6 +127,39 @@ class SlideChoiceTest {
         assertEquals(List.of("unus"), new SlideChoice(null, null).show(latinFirst).content());
     }
 
+    @Test
+    void aShorterChoiceKeepsThoseTextBoxes() throws Exception {
+        List<String> verses = List.of("**Aleluia**", "Escutai", "**Aleluia**", "Glória", "**Aleluia**");
+        SongCfg song = new SongCfg(11, "Aleluia, já nasceu o Salvador", verses, "10");
+        assertEquals(List.of("**Aleluia**", "Escutai", "**Aleluia**"), new SlideChoice(null, null, List.of(1, 2, 3)).show(song).content());
+        assertEquals(verses, song.content());
+
+        Path dir = Files.createTempDirectory("slide-choice");
+        SongDeckRequests.Ready ready = SongDeckRequests.parse(JSON.readTree("""
+                {"ids":[{"id":11,"slides":[1,2,3]}],"output":"a.pptx"}
+                """), List.of(song), dir);
+        assertEquals(List.of(1, 2, 3), ready.choices().get(0).slides());
+        IllegalArgumentException missing = assertThrows(IllegalArgumentException.class, () -> SongDeckRequests.parse(JSON.readTree("""
+                {"ids":[{"id":11,"slides":[1,6]}],"output":"a.pptx"}
+                """), List.of(song), dir));
+        assertTrue(missing.getMessage().contains("no verse 6"));
+
+        Path index = dir.resolve("index.json");
+        SongIndex.write(index, List.of(song));
+        String before = Files.readString(index);
+        Path out = dir.resolve("canticos.pptx");
+        new DeckService().generateSongs(
+                new AppConfig(Path.of("unused.pptx"), index, template(), out),
+                new DeckService.Selection.Ids(List.of(11), ready.choices()),
+                null);
+        try (XMLSlideShow ppt = open(out)) {
+            assertEquals(3, ppt.getSlides().size());
+            assertEquals("Escutai", textShape(ppt.getSlides().get(1), "Letra").getText());
+            assertFalse(slideText(ppt).contains("Glória"));
+        }
+        assertEquals(before, Files.readString(index));
+    }
+
     private static String notes(XSLFSlide slide) {
         XSLFNotes notes = slide.getNotes();
         if (notes == null) {

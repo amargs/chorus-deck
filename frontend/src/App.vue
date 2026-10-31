@@ -5,7 +5,7 @@ import CoverFields from './components/CoverFields.vue'
 import Eucharist from './components/Eucharist.vue'
 import Library from './components/Library.vue'
 import SongList from './components/SongList.vue'
-import { THEME, deckFileName, occasionFileName, slideChoice, withShow } from './songs.js'
+import { THEME, deckFileName, keepEstrofes, occasionFileName, slideChoice, withShow } from './songs.js'
 
 const screen = ref('home')
 const lastDeck = ref('')
@@ -359,9 +359,13 @@ function add(song) {
 function showSong(index, patch) {
   const song = chosen.value[index]
   if (!song) return
-  const next = chosen.value.slice()
-  next[index] = { ...song, ...patch }
-  chosen.value = next
+  const next = { ...song, ...patch }
+  if (patch.showLyrics && patch.showLyrics !== song.showLyrics) {
+    next.showEstrofes = keepEstrofes(next, song.showEstrofes)
+  }
+  const copy = chosen.value.slice()
+  copy[index] = next
+  chosen.value = copy
 }
 
 function removeSong(id) {

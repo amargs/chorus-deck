@@ -17,6 +17,7 @@ function name(alt) {
 
 const current = computed(() => name(shown.value === 'contentAlt'))
 const other = computed(() => name(shown.value !== 'contentAlt'))
+const switched = computed(() => shown.value !== preferredLyrics(props.song))
 
 function toggle() {
   if (!bothLanguages.value) return
@@ -28,11 +29,19 @@ function toggle() {
   <button
     v-if="bothLanguages"
     type="button"
-    class="rezado"
-    :title="'Mudar para ' + other"
+    class="icon language-toggle"
+    :class="{ 'language-on': switched }"
+    title="Mudar a língua"
     :aria-label="'Língua ' + current + '. Mudar para ' + other"
     @click="toggle"
   >
-    {{ current }}
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round" d="m5 8 6 6" />
+      <path stroke-linecap="round" stroke-linejoin="round" d="m4 14 6-6 2-3" />
+      <path stroke-linecap="round" d="M2 5h12" />
+      <path stroke-linecap="round" d="M7 2h1" />
+      <path stroke-linecap="round" stroke-linejoin="round" d="m22 22-5-10-5 10" />
+      <path stroke-linecap="round" d="M14 18h6" />
+    </svg>
   </button>
 </template>

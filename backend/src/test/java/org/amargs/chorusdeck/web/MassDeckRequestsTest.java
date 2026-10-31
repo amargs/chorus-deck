@@ -145,6 +145,18 @@ class MassDeckRequestsTest {
                 """), songs, dir);
         assertEquals("12", ready.request().entrada());
         assertEquals(new SlideChoice("titleAlt", "contentAlt"), ready.choices().get("entrada"));
+
+        MassDeckRequests.Ready shorter = MassDeckRequests.parse(JSON.readTree("""
+                {
+                  "date": "2026-10-18",
+                  "output": "missa.pptx",
+                  "songs": {
+                    "entrada": {"bookId": "12", "slides": [1]}
+                  },
+                  "opcoes": {"credo": "breve", "interval": "vazio"}
+                }
+                """), songs, dir);
+        assertEquals(List.of(1), shorter.choices().get("entrada").slides());
     }
 
     @Test

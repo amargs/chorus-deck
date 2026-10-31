@@ -122,14 +122,85 @@ export function preferredLyrics(song) {
   return 'content'
 }
 
-/** The slide choice stored on a picked song. */
+export function shownLyrics(song) {
+  return song?.showLyrics || preferredLyrics(song)
+}
+
+/** The estrofe groups for the language the deck is using. */
+export function shownPlan(song) {
+  if (!song) return null
+  return shownLyrics(song) === 'contentAlt' ? song.estrofesAlt || null : song.estrofes || null
+}
+
+/** The language now shown, when the song has two. */
+export function languageLabel(song) {
+  if (!song || (song.verses || 0) < 1 || (song.versesAlt || 0) < 1) return ''
+  const alt = shownLyrics(song) === 'contentAlt'
+  return languageName(alt ? song.langAlt : song.lang) || (alt ? 'Latim' : 'Português')
+}
+
+/** How many estrofes are included, when the song offers that choice. */
+export function estrofeCountLabel(song) {
+  const rows = shownPlan(song)?.rows?.map((row) => row.n) || []
+  if (rows.length < 2) return ''
+  const raw = song.showEstrofes
+  let count = rows.length
+  if (Array.isArray(raw)) {
+    const picked = raw.filter((n) => rows.includes(n))
+    count = picked.length ? picked.length : rows.length
+  } else if (Number.isInteger(raw) && raw > 0 && raw < rows.length) {
+    count = rows.filter((n) => n <= raw).length
+  }
+  return count === 1 ? '1 estrofe' : `${count} estrofes`
+}
+
+/** The estrofes still included. Absent means every estrofe. */
+export function keepEstrofes(song, chosen) {
+  const plan = shownPlan(song)
+  const rows = plan?.rows?.map((row) => row.n) || []
+  if (!rows.length) return undefined
+  let picked
+  if (Array.isArray(chosen)) {
+    picked = chosen.filter((n) => rows.includes(n))
+  } else if (Number.isInteger(chosen) && chosen > 0 && chosen < rows.length) {
+    picked = rows.filter((n) => n <= chosen)
+  } else {
+    return undefined
+  }
+  if (picked.length === 0 || picked.length === rows.length) return undefined
+  return picked
+}
+
+function lyricsChoice(song) {
+  const preferred = preferredLyrics(song)
+  const shown = shownLyrics(song)
+  return shown !== preferred ? shown : undefined
+}
+
+/** The slide choice sent when generating. Positions are omitted when every text box is kept. */
 export function slideChoice(song) {
   const choice = {}
-  const preferred = preferredLyrics(song)
-  const shown = song?.showLyrics || preferred
-  if (shown !== preferred) {
-    choice.lyrics = shown
+  const lyrics = lyricsChoice(song)
+  if (lyrics) choice.lyrics = lyrics
+  const plan = shownPlan(song)
+  const picked = keepEstrofes(song, song?.showEstrofes)
+  if (plan && picked) {
+    const slides = []
+    for (const row of plan.rows) {
+      if (picked.includes(row.n)) slides.push(...(row.slides || []))
+    }
+    if (slides.length) choice.slides = slides
   }
+  return choice
+}
+
+/** The choice kept on this deck. The estrofes are numbers, not text-box positions. */
+export function rememberedChoice(song) {
+  const choice = {}
+  const lyrics = lyricsChoice(song)
+  if (lyrics) choice.lyrics = lyrics
+  const picked = keepEstrofes(song, song?.showEstrofes)
+  if (picked) choice.estrofes = picked
   return choice
 }
 
@@ -142,7 +213,10 @@ export function withShow(song, previous) {
   } else if (previous?.showLyrics === 'content' && verses > 0) {
     showLyrics = 'content'
   }
-  return { ...song, showLyrics }
+  const next = { ...song, showLyrics }
+  const picked = keepEstrofes(next, previous?.showEstrofes)
+  if (picked) next.showEstrofes = picked
+  return next
 }
 
 const MASS_PREFIXES = ['RP', 'G', 'A', 'CR', 'S', 'P', 'C']

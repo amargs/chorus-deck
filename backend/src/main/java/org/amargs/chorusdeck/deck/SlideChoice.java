@@ -3,10 +3,15 @@ package org.amargs.chorusdeck.deck;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.amargs.chorusdeck.index.SongCfg;
 
+import java.util.ArrayList;
 import java.util.List;
 
-/** Which language one deck shows for a song. The slide title is always the main title. */
-public record SlideChoice(String title, String lyrics) {
+/** Which language, and which text boxes, one deck shows for a song. The slide title is always the main title. */
+public record SlideChoice(String title, String lyrics, List<Integer> slides) {
+
+    public SlideChoice(String title, String lyrics) {
+        this(title, lyrics, null);
+    }
 
     public SlideChoice {
         if (title != null && !title.equals("title") && !title.equals("titleAlt")) {
@@ -16,10 +21,23 @@ public record SlideChoice(String title, String lyrics) {
         if (lyrics != null && !lyrics.equals("content") && !lyrics.equals("contentAlt")) {
             throw new IllegalArgumentException("lyrics must be content or contentAlt.");
         }
+        if (slides != null) {
+            if (slides.isEmpty()) {
+                throw new IllegalArgumentException("slides must list the text boxes to keep.");
+            }
+            int previous = 0;
+            for (Integer slide : slides) {
+                if (slide == null || slide <= previous) {
+                    throw new IllegalArgumentException("slides must be increasing positions starting at 1.");
+                }
+                previous = slide;
+            }
+            slides = List.copyOf(slides);
+        }
     }
 
     public boolean isDefault() {
-        return lyrics == null;
+        return lyrics == null && slides == null;
     }
 
     public static SlideChoice from(JsonNode node) {
@@ -29,7 +47,7 @@ public record SlideChoice(String title, String lyrics) {
         if (!node.isObject()) {
             throw new IllegalArgumentException("A song choice must be an object.");
         }
-        SlideChoice choice = new SlideChoice(text(node, "title"), text(node, "lyrics"));
+        SlideChoice choice = new SlideChoice(text(node, "title"), text(node, "lyrics"), slides(node));
         return choice.isDefault() ? null : choice;
     }
 
@@ -49,11 +67,43 @@ public record SlideChoice(String title, String lyrics) {
         } else {
             verses = song.content() == null ? List.of() : song.content();
         }
-        verses = List.copyOf(verses);
+        verses = keep(song.id(), verses, slides);
         if (verses.isEmpty()) {
             throw new IllegalArgumentException("Song " + song.id() + " has no verses.");
         }
         return new SongCfg(song.id(), song.title(), verses, song.bookId(), song.titleAlt(), null);
+    }
+
+    private static List<String> keep(int id, List<String> verses, List<Integer> slides) {
+        if (slides == null) {
+            return List.copyOf(verses);
+        }
+        List<String> kept = new ArrayList<>();
+        for (int slide : slides) {
+            if (slide > verses.size()) {
+                throw new IllegalArgumentException("Song " + id + " has no verse " + slide + ".");
+            }
+            kept.add(verses.get(slide - 1));
+        }
+        return List.copyOf(kept);
+    }
+
+    private static List<Integer> slides(JsonNode node) {
+        JsonNode value = node.get("slides");
+        if (value == null || value.isNull()) {
+            return null;
+        }
+        if (!value.isArray() || value.isEmpty()) {
+            throw new IllegalArgumentException("slides must list the text boxes to keep.");
+        }
+        List<Integer> slides = new ArrayList<>();
+        for (JsonNode item : value) {
+            if (!item.isIntegralNumber()) {
+                throw new IllegalArgumentException("slides must be increasing positions starting at 1.");
+            }
+            slides.add(item.intValue());
+        }
+        return slides;
     }
 
     private static String text(JsonNode node, String field) {

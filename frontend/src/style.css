@@ -797,6 +797,7 @@ header .alter svg {
 .moments li {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.35rem;
   border-top: 1px solid #eeeae2;
 }
@@ -871,6 +872,135 @@ header .alter svg {
 .rezado:hover {
   color: var(--accent-ink);
   background: var(--accent-soft);
+}
+
+.estrofe-menu-anchor {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+}
+.estrofe-menu-anchor > button.icon svg,
+button.icon.language-toggle svg {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+button.icon.language-toggle:active,
+button.icon.language-on {
+  color: var(--accent-ink);
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 35%, #c8c1b4);
+}
+
+button.icon.language-on {
+  border-color: var(--accent);
+}
+
+.estrofe-menu-anchor > button.icon:active,
+.estrofe-menu-anchor > button.icon[aria-expanded="true"] {
+  color: var(--accent-ink);
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 35%, #c8c1b4);
+}
+
+.estrofe-menu {
+  position: fixed;
+  z-index: 15;
+  box-sizing: border-box;
+  max-height: min(20rem, calc(100vh - 1rem));
+  overflow: auto;
+  padding: 0.35rem 0.7rem 0.5rem;
+  background: #fff;
+  border: 1px solid rgb(28 25 21 / 10%);
+  border-radius: 8px;
+  box-shadow: 0 10px 28px rgb(28 25 21 / 14%);
+}
+
+.estrofe-menu-title {
+  margin: 0.2rem 0 0.35rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid #eeeae2;
+  color: #5c564c;
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+
+.estrofe-menu ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chosen-song {
+  flex-wrap: wrap;
+}
+
+.estrofes {
+  order: 1;
+  flex: 1 0 100%;
+  margin: 0.15rem 0 0.45rem;
+  padding: 0.15rem 0.15rem 0.45rem;
+}
+
+.estrofe-label {
+  margin: 0.15rem 0 0.2rem;
+  color: #8a8378;
+  font-size: 0.75rem;
+}
+
+.estrofes ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.estrofe {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+  padding: 0.38rem 0;
+  cursor: pointer;
+  font-weight: 400;
+}
+
+.estrofe-n {
+  flex: none;
+  width: 1.1rem;
+  color: #8a8378;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+}
+
+.estrofe-line {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.estrofe-refrain {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  margin-top: 0.2rem;
+  padding: 0.28rem 0 0.1rem;
+  color: #6f6962;
+  font-size: 0.85rem;
+}
+
+.estrofe-refrain > span:first-child {
+  flex: none;
+  font-weight: 650;
+}
+
+.estrofe-where {
+  flex: none;
+  color: #8a8378;
+}
+
+.estrofe-where::before {
+  content: "· ";
 }
 
 .songs li > .rezado {
@@ -1265,7 +1395,7 @@ input:not([type="checkbox"]):not([type="radio"])::placeholder {
 
 .catalog-head {
   position: sticky;
-  top: 3.4rem;
+  top: 0;
   z-index: 3;
   display: flex;
   align-items: center;
@@ -1465,6 +1595,11 @@ button.icon.drag-handle:active {
   line-height: 1.45;
 }
 
+.verse-box em {
+  font-style: italic;
+  color: inherit;
+}
+
 .verse-box:focus {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
@@ -1504,6 +1639,20 @@ button.icon.drag-handle:active {
 
 .song-name:not(:has(.title-alt)) {
   min-height: 0;
+}
+
+.chosen-song .song-name {
+  min-height: calc(1.4em + 0.78rem * 1.25);
+}
+
+.chosen-detail {
+  color: #6f6962;
+  font-size: 0.78rem;
+  font-weight: 400;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .title-alt {
@@ -1563,6 +1712,17 @@ button.icon.drag-handle:active {
 .row-actions {
   display: flex;
   gap: 0.3rem;
+}
+
+button.icon.row-remove {
+  border: none;
+  background: transparent;
+  color: #8a8378;
+}
+
+button.icon.row-remove:hover {
+  color: #3d3832;
+  background: #eeeae2;
 }
 
 .cover {

@@ -3,6 +3,7 @@ package org.amargs.chorusdeck.web;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.amargs.chorusdeck.deck.Cover;
+import org.amargs.chorusdeck.deck.Estrofes;
 import org.amargs.chorusdeck.deck.Season;
 import org.amargs.chorusdeck.deck.SlideChoice;
 import org.amargs.chorusdeck.index.SongCfg;
@@ -29,7 +30,9 @@ public final class SongDeckRequests {
             int versesAlt,
             String lang,
             String langAlt,
-            String defaultLyrics) {
+            String defaultLyrics,
+            Estrofes.Plan estrofes,
+            Estrofes.Plan estrofesAlt) {
     }
 
     public record Ready(List<Integer> ids, Path output, Cover cover, List<SlideChoice> choices) {
@@ -53,7 +56,8 @@ public final class SongDeckRequests {
             String defaultLyrics = versesAlt > 0 ? song.defaultLyrics() : null;
             views.add(new SongView(
                     song.id(), song.title(), titleAlt, bookId,
-                    verses > 0 || versesAlt > 0, verses, versesAlt, lang, langAlt, defaultLyrics));
+                    verses > 0 || versesAlt > 0, verses, versesAlt, lang, langAlt, defaultLyrics,
+                    Estrofes.plan(song.content(), bookId), Estrofes.plan(song.contentAlt(), bookId)));
         }
         return views;
     }

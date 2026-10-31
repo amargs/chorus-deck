@@ -570,6 +570,7 @@ class SongDeckServerTest {
             assertFalse(songs.get(1).has("titleAlt"));
             assertEquals(0, songs.get(1).get("verses").asInt());
             assertEquals(2, songs.get(1).get("versesAlt").asInt());
+            assertFalse(songs.get(0).has("estrofes"));
 
             HttpResponse<String> created = putSong(app, """
                     {"title":"Novo","bookId":"3","content":["a"],"titleAlt":"Aliud","contentAlt":["b","c"]}

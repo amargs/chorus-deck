@@ -1,7 +1,9 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import SongList from './SongList.vue'
-import { ACCENTS, COVERS, MOMENTS, SEASONS, comingSunday, languageName, preferredLyrics, slideChoice, withShow } from '../songs.js'
+import { ACCENTS, COVERS, MOMENTS, SEASONS, comingSunday, estrofeCountLabel, keepEstrofes, languageLabel, preferredLyrics, rememberedChoice, slideChoice, withShow } from '../songs.js'
+import Estrofes from './Estrofes.vue'
+import SongShow from './SongShow.vue'
 
 const props = defineProps({
   songs: { type: Array, required: true },
@@ -39,6 +41,7 @@ const accentTouched = ref(false)
 const slots = reactive({})
 const spoken = reactive({ gloria: false, paiNosso: false })
 const active = ref('entrada')
+const estrofesOpen = ref('')
 const query = ref('')
 const credo = ref('longo')
 const oracao = ref('')
@@ -432,6 +435,7 @@ function applySlots(saved) {
     }
     const previous = Number.isInteger(raw) ? null : {
       showLyrics: raw.lyrics === 'contentAlt' || raw.lyrics === 'content' ? raw.lyrics : undefined,
+      showEstrofes: Array.isArray(raw.estrofes) || Number.isInteger(raw.estrofes) ? raw.estrofes : undefined,
     }
     slots[moment] = withShow(song, previous)
   }
@@ -441,7 +445,7 @@ function draftBody() {
   const slotIds = {}
   for (const [moment, song] of Object.entries(slots)) {
     if (SONG_MOMENTS.has(moment) && Number.isInteger(song?.id)) {
-      slotIds[moment] = { id: song.id, ...slideChoice(song) }
+      slotIds[moment] = { id: song.id, ...rememberedChoice(song) }
     }
   }
   const savedForm = {}
@@ -572,31 +576,15 @@ function pick(song) {
 function setShow(moment, patch) {
   const song = slots[moment]
   if (!song) return
-  slots[moment] = { ...song, ...patch }
-}
-
-function bothLanguages(song) {
-  return !!song && (song.verses || 0) > 0 && (song.versesAlt || 0) > 0
+  const next = { ...song, ...patch }
+  if (patch.showLyrics && patch.showLyrics !== shownLyrics(song)) {
+    next.showEstrofes = keepEstrofes(next, song.showEstrofes)
+  }
+  slots[moment] = next
 }
 
 function shownLyrics(song) {
   return song?.showLyrics || preferredLyrics(song)
-}
-
-function momentLanguage(song) {
-  const alt = shownLyrics(song) === 'contentAlt'
-  return languageName(alt ? song.langAlt : song.lang) || (alt ? 'Latim' : 'Português')
-}
-
-function otherMomentLanguage(song) {
-  const alt = shownLyrics(song) === 'contentAlt'
-  return languageName(alt ? song.lang : song.langAlt) || (alt ? 'Português' : 'Latim')
-}
-
-function toggleLanguage(id) {
-  const song = slots[id]
-  if (!bothLanguages(song)) return
-  setShow(id, { showLyrics: shownLyrics(song) === 'contentAlt' ? 'content' : 'contentAlt' })
 }
 
 function unpick(id) {
@@ -607,9 +595,24 @@ function unpick(id) {
   }
 }
 
+function chooseMoment(id) {
+  if (active.value !== id) estrofesOpen.value = ''
+  active.value = id
+}
+
+function showEstrofes(id) {
+  active.value = id
+  estrofesOpen.value = estrofesOpen.value === id ? '' : id
+}
+
+function closeEstrofes() {
+  estrofesOpen.value = ''
+}
+
 function clearMoment(id) {
   spoken[id] = false
   delete slots[id]
+  if (estrofesOpen.value === id) estrofesOpen.value = ''
 }
 
 function speak(id, on) {
@@ -851,9 +854,9 @@ async function generate(force = false, replace = false) {
                 class="moment"
                 :class="{ armed: !moment.fixed && active === moment.id }"
                 :disabled="moment.fixed"
-                @click="active = moment.id"
+                @click="chooseMoment(moment.id)"
               >
-                <span class="moment-name" :class="{ waiting: !moment.fixed && !slots[moment.id] && !spoken[moment.id] }">{{ moment.label }}</span>
+                <span class="moment-name" :class="{ waiting: !moment.fixed && !slots[moment.id] && !spoken[moment.id] }">{{ moment.label }}<template v-if="languageLabel(slots[moment.id])"> · {{ languageLabel(slots[moment.id]) }}</template><template v-if="estrofeCountLabel(slots[moment.id])"> · {{ estrofeCountLabel(slots[moment.id]) }}</template></span>
                 <span v-if="moment.fixed" class="moment-song">{{ form.louvor || 'O refrão fica no diapositivo' }}</span>
                 <span v-else-if="spoken[moment.id]" class="moment-song">Rezado</span>
                 <span v-else-if="slots[moment.id]" class="moment-song picked">
@@ -863,16 +866,16 @@ async function generate(force = false, replace = false) {
                 <span v-else class="missing">por escolher</span>
               </button>
             </div>
-            <button
-              v-if="bothLanguages(slots[moment.id])"
-              type="button"
-              class="rezado"
-              :title="'Mudar para ' + otherMomentLanguage(slots[moment.id])"
-              :aria-label="'Língua ' + momentLanguage(slots[moment.id]) + '. Mudar para ' + otherMomentLanguage(slots[moment.id])"
-              @click="toggleLanguage(moment.id)"
-            >
-              {{ momentLanguage(slots[moment.id]) }}
-            </button>
+            <SongShow v-if="slots[moment.id]" :song="slots[moment.id]" @change="setShow(moment.id, $event)" />
+            <Estrofes
+              v-if="slots[moment.id]"
+              compact
+              :song="slots[moment.id]"
+              :open="estrofesOpen === moment.id"
+              @open="showEstrofes(moment.id)"
+              @close="closeEstrofes"
+              @change="setShow(moment.id, $event)"
+            />
             <button
               v-if="moment.optional && !slots[moment.id] && !spoken[moment.id]"
               type="button"
@@ -884,7 +887,8 @@ async function generate(force = false, replace = false) {
             <button
               v-if="slots[moment.id] || spoken[moment.id]"
               type="button"
-              class="icon"
+              class="icon row-remove"
+              title="Remover cântico"
               :aria-label="'Retirar ' + moment.label"
               @click="clearMoment(moment.id)"
             >

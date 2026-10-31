@@ -101,7 +101,7 @@
 }, {
   "id" : 19,
   "title" : "Braços no ar",
-  "content" : [ "**Braços no ar para gritar**\n**Braços a abrir para acolher**\n**Braços em cruz para dizer**\n**Aqui, aqui está Jesus**", "Dou-te o braço direito para abraçar o irmão\nPara lhe dar o que tenho\nPara ser a Tua mão", "**Braços no ar para gritar**\n**Braços a abrir para acolher**\n**Braços em cruz para dizer**\n**Aqui, aqui está Jesus**", "Dou-te o braço esquerdo\nPara puxar o arado\nPara lançar as redes\nDo Teu apostolado", "**Braços no ar para gritar**\n**Braços a abrir para acolher**\n**Braços em cruz para dizer**\n**Aqui, aqui está Jesus**", "Dou-te a perna direita\nPara andar o caminho\nQue Tu andaste, Senhor.\nNunca estarei sozinho", "**Braços no ar para gritar**\n**Braços a abrir para acolher**\n**Braços em cruz para dizer**\n**Aqui, aqui está Jesus**", "Dou-te a perna esquerda\nPara correr apressado\nFalando de Ti, de Deus\nAqui e em todo o lado", "**Braços no ar para gritar**\n**Braços a abrir para acolher**\n**Braços em cruz para dizer**\n**Aqui, aqui está Jesus**" ],
+  "content" : [ "**Braços no ar para gritar**\n**Braços a abrir para acolher**\n**Braços em cruz para dizer**\n**Aqui, aqui está Jesus**", "Dou-te o braço direito para abraçar o irmão\nPara lhe dar o que tenho para ser a Tua mão\nDou-te o braço esquerdo para puxar o arado\nPara lançar as redes do Teu apostolado", "**Braços no ar para gritar**\n**Braços a abrir para acolher**\n**Braços em cruz para dizer**\n**Aqui, aqui está Jesus**", "Dou-te a perna direita para andar o caminho\nQue Tu andaste, Senhor, nunca estarei sozinho\nDou-te a perna esquerda para correr apressado\nFalando de Ti, de Deus, aqui e em todo o lado", "**Braços no ar para gritar**\n**Braços a abrir para acolher**\n**Braços em cruz para dizer**\n**Aqui, aqui está Jesus**" ],
   "bookId" : "18"
 }, {
   "id" : 20,
@@ -120,9 +120,13 @@
   "bookId" : "21"
 }, {
   "id" : 240,
-  "title" : "Cantai, todos os povos (Laudate omnes gentes)",
+  "title" : "Cantai, todos os povos",
   "content" : [ "Cantai todos os povos\nLouvai nosso Senhor\nCantai todos os povos\nLouvai nosso Senhor" ],
-  "bookId" : "22"
+  "bookId" : "22",
+  "titleAlt" : "Laudate omnes gentes",
+  "contentAlt" : [ "Laudate omnes gentes\nLaudate Dominum\nLaudate omnes gentes\nLaudate Dominum" ],
+  "lang" : "pt",
+  "langAlt" : "la"
 }, {
   "id" : 24,
   "title" : "Cantarei ao Senhor",
@@ -136,7 +140,7 @@
 }, {
   "id" : 26,
   "title" : "Como são belos os pés",
-  "content" : [ "Já se ouvem nossos passos a chegar\nJá se ouvem nossas vozes de alegria\nNeste dia que é uma bênção\nPara a Igreja reunida\nJesus Cristo nos congrega \nE faz irmãos.", "**Como são belos os pés **\n**Que anunciam a paz**\n**E as mãos que repartem o pão **\n**Na refeição do cordeiro, **\n**Da palavra, vinho e pão             **\n**Somos o povo de Deus em comunhão.**", "Todos vós que tendes sede\nVinde beber á fonte da verdade\nSaciai a vossa fome.\nSem pagar vinho nem pão.", "**Como são belos os pés **\n**Que anunciam a paz**\n**E as mãos que repartem o pão **\n**Na refeição do cordeiro, **\n**Da palavra, vinho e pão             **\n**Somos o povo de Deus em comunhão.**", "Já se mudam nossos corações de pedra\nPela força do espírito de Deus\nJá vencemos as barreiras, que destroem a harmonia\nJesus Cristo nos congrega e faz irmãos", "**Como são belos os pés **\n**Que anunciam a paz**\n**E as mãos que repartem o pão **\n**Na refeição do cordeiro, **\n**Da palavra, vinho e pão             **\n**Somos o povo de Deus em comunhão.**", "Vinde todos que sóis pobres\nInjustiçados, sem teto\nou sem pão\nVinde ser fraternidade\nGerar o Cristo, fazer libertação.", "**Como são belos os pés **\n**Que anunciam a paz**\n**E as mãos que repartem o pão **\n**Na refeição do cordeiro, **\n**Da palavra, vinho e pão             **\n**Somos o povo de Deus em comunhão.**" ],
+  "content" : [ "Já se ouvem nossos passos a chegar\nJá se ouvem nossas vozes de alegria\nNeste dia que é uma bênção\nPara a Igreja reunida\nJesus Cristo nos congrega \nE faz irmãos.", "**Como são belos os pés **\n**Que anunciam a paz**\n**E as mãos que repartem o pão **\n**Na refeição do cordeiro, **\n**Da palavra, vinho e pão             **\n**Somos o povo de Deus em comunhão.**", "*Todos vós que tendes sede*\n*Vinde beber á fonte da verdade*\n*Saciai a vossa fome.*\n*Sem pagar vinho nem pão.*", "**Como são belos os pés **\n**Que anunciam a paz**\n**E as mãos que repartem o pão **\n**Na refeição do cordeiro, **\n**Da palavra, vinho e pão             **\n**Somos o povo de Deus em comunhão.**", "Já se mudam nossos corações de pedra\nPela força do espírito de Deus\nJá vencemos as barreiras, que destroem a harmonia\nJesus Cristo nos congrega e faz irmãos", "**Como são belos os pés **\n**Que anunciam a paz**\n**E as mãos que repartem o pão **\n**Na refeição do cordeiro, **\n**Da palavra, vinho e pão             **\n**Somos o povo de Deus em comunhão.**", "*Vinde todos que sóis pobres*\n*Injustiçados, sem tecto ou sem pão*\n*Vinde ser fraternidade*\n*Gerar o Cristo, fazer libertação.*", "**Como são belos os pés **\n**Que anunciam a paz**\n**E as mãos que repartem o pão **\n**Na refeição do cordeiro, **\n**Da palavra, vinho e pão             **\n**Somos o povo de Deus em comunhão.**" ],
   "bookId" : "25"
 }, {
   "id" : 27,
@@ -147,7 +151,7 @@
 }, {
   "id" : 28,
   "title" : "Consagração a Nossa Senhora",
-  "content" : [ "**Ó Senhora minha, ó minha Mãe**\n**Eu me ofereço, todo a vós, em prova da minha devoção para convosco**\n**Vos consagro neste dia e para sempre, os meus olhos, os meus ouvidos, a minha boca, o meu coração e inteiramente todo o meu ser**", "E porque assim sou vosso, ó incomparável Mãe, guardai-me e defendei-me como coisa e propriedade vossa", "Lembrai que vos pertenço\nTerna mãe, Senhora nossa\nGuardai-me e defendei-me\nComo coisa própria vossa" ],
+  "content" : [ "Ó Senhora minha, ó minha Mãe\nEu me ofereço, todo a vós, e em prova\nDa minha devoção para convosco, vos consagro\nNeste dia e para sempre, os meus olhos, \nOs meus ouvidos, a minha boca, o meu coração\nE inteiramente todo o meu ser", "E porque assim sou vosso, ó incomparável Mãe, \nguardai-me e defendei-me como coisa e propriedade vossa\nLembrai que vos pertenço terna mãe, Senhora nossa\nGuardai-me e defendei-me como coisa própria vossa" ],
   "bookId" : "27"
 }, {
   "id" : 29,
@@ -191,9 +195,10 @@
   "bookId" : "36"
 }, {
   "id" : 241,
-  "title" : "Dentro de mim (Minha luz é Jesus)",
+  "title" : "Dentro de mim",
   "content" : [ "Dentro de mim existe uma luz\nQue me mostra por onde por onde deverei andar.\nDentro de mim também mora Jesus\nQue me ensina a buscar o seu jeito de sonhar.", "**Minha luz é Jesus, e Jesus me conduz**\n**Pelos caminhos da paz.**", "Dentro de mim existe um farol\nQue me mostra por onde por onde deverei remar.\nDentro de mim Jesus Cristo é o sol\nQue me ensina a buscar o seu jeito de amar.", "**Minha luz é Jesus, e Jesus me conduz**\n**Pelos caminhos da paz.**" ],
-  "bookId" : "201"
+  "bookId" : "201",
+  "titleAlt" : "Minha luz é Jesus"
 }, {
   "id" : 37,
   "title" : "Deus é amor",
@@ -536,9 +541,14 @@
   "bookId" : "114"
 }, {
   "id" : 243,
-  "title" : "O reino de Deus (The kingdom of God)",
+  "title" : "The kingdom of God",
   "content" : [ "O reino de Deus é um reino de paz, justiça e alegria.\nSenhor, em nós vem abrir as portas do Teu reino" ],
-  "bookId" : "115"
+  "bookId" : "115",
+  "titleAlt" : "O reino de Deus",
+  "contentAlt" : [ "The kingdom of god is justice and peace\nAnd joy in the Holy Spirit\nCome, Lord and open in us the gates of your kingdom" ],
+  "lang" : "pt",
+  "langAlt" : "en",
+  "defaultLyrics" : "contentAlt"
 }, {
   "id" : 232,
   "title" : "O Senhor é a minha força",
@@ -832,7 +842,7 @@
 }, {
   "id" : 165,
   "title" : "Vem espírito de amor",
-  "content" : [ "O amor que o Espírito me dá,\nA força que tem p’ra mudar.\nQuando me afasto \nensina-me a caminhar.\nA minha vida nas mãos \nde Deus quer ficar.", "Sol da minha vida\nQuantas vezes me senti perdido\nCego na escuridão\nSem encontrar um caminho…", "**Vem Espírito de amor**\n**Ilumina a minha vida**\n**Vem encher de calor**\n**esta alma sofrida. (X2)**", "O amor que desceu do céu,\nMostra como falar de Deus.\nSem medo, sem vergonha \nEu quero gritar.\nSenhor meu Deus, a ti sempre\nQuero amar!", "Sinto a Tua força\nEnches-me com a Tua paz,\nSei que estou seguro\nQue sempre me guiarás…", "**Vem Espírito de amor**\n**Ilumina a minha vida**\n**Vem encher de calor**\n**esta alma sofrida. (X2)**" ],
+  "content" : [ "O amor que o Espírito me dá,\nA força que tem p’ra mudar.\nQuando me afasto \nensina-me a caminhar.\nA minha vida nas mãos \nde Deus quer ficar.", "*Sol da minha vida*\n*Quantas vezes me senti perdido*\n*Cego na escuridão*\n*Sem encontrar um caminho…*", "**Vem Espírito de amor**\n**Ilumina a minha vida**\n**Vem encher de calor**\n**esta alma sofrida. (X2)**", "O amor que desceu do céu,\nMostra como falar de Deus.\nSem medo, sem vergonha \nEu quero gritar.\nSenhor meu Deus, a ti sempre\nQuero amar!", "*Sinto a Tua força*\n*Enches-me com a Tua paz,*\n*Sei que estou seguro*\n*Que sempre me guiarás…*", "**Vem Espírito de amor**\n**Ilumina a minha vida**\n**Vem encher de calor**\n**esta alma sofrida. (X2)**" ],
   "bookId" : "178"
 }, {
   "id" : 166,
