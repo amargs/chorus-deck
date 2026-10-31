@@ -39,7 +39,6 @@ const cover = ref('')
 const accent = ref('accent1')
 const accentTouched = ref(false)
 const slots = reactive({})
-const spoken = reactive({ gloria: false, paiNosso: false })
 const active = ref('entrada')
 const estrofesOpen = ref('')
 const query = ref('')
@@ -407,8 +406,6 @@ function applyDraft(draft) {
   } else {
     pendingSlots = true
   }
-  spoken.gloria = draft.spoken?.gloria === true
-  spoken.paiNosso = draft.spoken?.paiNosso === true
   credo.value = draft.credo === 'breve' ? 'breve' : 'longo'
   oracao.value = typeof draft.oracao === 'string' ? draft.oracao : ''
   interval.value = INTERVALS.has(draft.interval) ? draft.interval : 'vazio'
@@ -460,7 +457,6 @@ function draftBody() {
     accent: accent.value,
     accentTouched: accentTouched.value,
     slots: slotIds,
-    spoken: { gloria: spoken.gloria, paiNosso: spoken.paiNosso },
     credo: credo.value,
     oracao: oracao.value,
     interval: interval.value,
@@ -567,9 +563,6 @@ function pick(song) {
   if (!song.bookId || !song.hasVerses || rows.value.find((moment) => moment.id === active.value)?.fixed) {
     return
   }
-  if (spoken[active.value]) {
-    spoken[active.value] = false
-  }
   slots[active.value] = withShow(song)
 }
 
@@ -610,16 +603,8 @@ function closeEstrofes() {
 }
 
 function clearMoment(id) {
-  spoken[id] = false
   delete slots[id]
   if (estrofesOpen.value === id) estrofesOpen.value = ''
-}
-
-function speak(id, on) {
-  spoken[id] = on
-  if (on) {
-    delete slots[id]
-  }
 }
 
 async function chooseImage() {
@@ -680,9 +665,6 @@ async function generate(force = false, replace = false) {
   busy.value = true
   const songs = {}
   for (const moment of moments.value) {
-    if (spoken[moment.id]) {
-      continue
-    }
     const song = slots[moment.id]
     if (song?.bookId) {
       const choice = slideChoice(song)
@@ -856,13 +838,13 @@ async function generate(force = false, replace = false) {
                 :disabled="moment.fixed"
                 @click="chooseMoment(moment.id)"
               >
-                <span class="moment-name" :class="{ waiting: !moment.fixed && !slots[moment.id] && !spoken[moment.id] }">{{ moment.label }}<template v-if="languageLabel(slots[moment.id])"> · {{ languageLabel(slots[moment.id]) }}</template><template v-if="estrofeCountLabel(slots[moment.id])"> · {{ estrofeCountLabel(slots[moment.id]) }}</template></span>
+                <span class="moment-name" :class="{ waiting: !moment.fixed && !moment.optional && !slots[moment.id] }">{{ moment.label }}<template v-if="languageLabel(slots[moment.id])"> · {{ languageLabel(slots[moment.id]) }}</template><template v-if="estrofeCountLabel(slots[moment.id])"> · {{ estrofeCountLabel(slots[moment.id]) }}</template></span>
                 <span v-if="moment.fixed" class="moment-song">{{ form.louvor || 'O refrão fica no diapositivo' }}</span>
-                <span v-else-if="spoken[moment.id]" class="moment-song">Rezado</span>
                 <span v-else-if="slots[moment.id]" class="moment-song picked">
                   <span class="book-badge">{{ slots[moment.id].bookId || '#' }}</span>
                   {{ slots[moment.id].title }}
                 </span>
+                <span v-else-if="moment.optional" class="missing">Rezado</span>
                 <span v-else class="missing">por escolher</span>
               </button>
             </div>
@@ -877,15 +859,7 @@ async function generate(force = false, replace = false) {
               @change="setShow(moment.id, $event)"
             />
             <button
-              v-if="moment.optional && !slots[moment.id] && !spoken[moment.id]"
-              type="button"
-              class="rezado"
-              @click="speak(moment.id, true)"
-            >
-              Rezado
-            </button>
-            <button
-              v-if="slots[moment.id] || spoken[moment.id]"
+              v-if="slots[moment.id]"
               type="button"
               class="icon row-remove"
               title="Remover cântico"

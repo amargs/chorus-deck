@@ -859,21 +859,6 @@ header .alter svg {
   white-space: pre-line;
 }
 
-.rezado {
-  flex: none;
-  margin-right: 0.35rem;
-  padding: 0.2rem 0.45rem;
-  border-color: transparent;
-  background: transparent;
-  color: #8a8378;
-  font-size: 0.85rem;
-}
-
-.rezado:hover {
-  color: var(--accent-ink);
-  background: var(--accent-soft);
-}
-
 .estrofe-menu-anchor {
   position: relative;
   flex: none;
@@ -1001,18 +986,6 @@ button.icon.language-on {
 
 .estrofe-where::before {
   content: "· ";
-}
-
-.songs li > .rezado {
-  display: inline-flex;
-  align-items: center;
-  align-self: center;
-  height: calc(1rem * 1.4);
-  margin: 0;
-  padding: 0 0.45rem;
-  border-color: transparent;
-  font-size: 0.85rem;
-  line-height: 1;
 }
 
 .field em {
