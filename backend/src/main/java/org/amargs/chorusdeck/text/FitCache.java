@@ -26,7 +26,7 @@ import java.util.Map;
 public final class FitCache {
 
     private static final Logger LOG = LogManager.getLogger(FitCache.class);
-    private static final int VERSION = 1;
+    private static final int VERSION = 5;
 
     private final Path file;
     private final Map<Integer, SongBody> songs = new LinkedHashMap<>();

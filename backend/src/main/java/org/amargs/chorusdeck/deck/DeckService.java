@@ -9,6 +9,7 @@ import org.amargs.chorusdeck.text.FitCache;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.poi.sl.usermodel.PictureData;
 import org.apache.poi.xslf.usermodel.XMLSlideShow;
 import org.apache.poi.xslf.usermodel.XSLFPictureData;
 import org.apache.poi.xslf.usermodel.XSLFSlide;
@@ -46,16 +47,14 @@ public final class DeckService {
              XMLSlideShow templatePpt = new XMLSlideShow(in)) {
             LOG.info("Opened template");
             Season season = Season.resolve(cover.season(), cover.cover());
-            XSLFSlideLayout coverLayout = TemplateLayouts.findLayout(templatePpt, season.coverLayout());
             XSLFSlideLayout titleLayout = TemplateLayouts.findLayout(templatePpt, season.titleLayout());
             XSLFSlideLayout lyricLayout = TemplateLayouts.findLayout(templatePpt, TemplateLayouts.LYRICS);
             if (season.headerScheme() != null) {
                 TemplateLayouts.setHeaderScheme(titleLayout, season.headerScheme());
             }
-            LOG.info("Resolved layouts (" + season.coverLayout() + ", " + season.titleLayout() + ")");
+            LOG.info("Resolved layouts (" + TemplateLayouts.COVER + " " + season.coverLayout() + ", " + season.titleLayout() + ")");
 
-            XSLFSlide coverSlide = templatePpt.createSlide(coverLayout);
-            fillCover(coverSlide, cover, season);
+            XSLFSlide coverSlide = addCover(templatePpt, config.template4x3(), cover, season);
             LOG.info("Filled cover text");
             List<Generated.Song> placed = new ArrayList<>();
             int slideCount = 1;
@@ -114,8 +113,7 @@ public final class DeckService {
                     ? templatePpt.addPicture(Files.readAllBytes(interval.image()), interval.pictureType())
                     : null;
             if (cover != null) {
-                XSLFSlide coverSlide = templatePpt.createSlide(TemplateLayouts.findLayout(templatePpt, season.coverLayout()));
-                fillCover(coverSlide, cover, season);
+                XSLFSlide coverSlide = addCover(templatePpt, config.template4x3(), cover, season);
                 TemplateLayouts.setNotes(coverSlide, notes(picked));
                 slideCount++;
                 addInterval(templatePpt, interval, picture);
@@ -176,16 +174,16 @@ public final class DeckService {
                             TemplateLayouts.findLayout(templatePpt, TemplateLayouts.LOUVOR), season.headerScheme());
                 }
             }
-            LOG.info("Resolved layouts (" + season.coverLayout() + ", " + season.titleLayout() + ")");
+            LOG.info("Resolved layouts (" + TemplateLayouts.COVER + " " + season.coverLayout() + ", " + season.titleLayout() + ")");
             applyScriptureBackground(templatePpt, config.template4x3(), season);
+            TemplateLayouts.setScriptureAccent(templatePpt, season.slideAccent());
             XSLFPictureData picture = mass.interval().needsImage()
                     ? templatePpt.addPicture(Files.readAllBytes(mass.interval().image()), mass.interval().pictureType())
                     : null;
             MassAssembler deck = new MassAssembler(
                     templatePpt, titleLayout, lyricLayout, fits, songs, mass.interval(), picture,
-                    choices == null ? Map.of() : choices);
-            XSLFSlide coverSlide = templatePpt.createSlide(TemplateLayouts.findLayout(templatePpt, season.coverLayout()));
-            fillCover(coverSlide, mass.cover(), season);
+                    choices == null ? Map.of() : choices, season.slideAccent());
+            XSLFSlide coverSlide = addCover(templatePpt, config.template4x3(), mass.cover(), season);
             deck.slides++;
             deck.interval();
             deck.song("entrada", mass.entrada(), true);
@@ -280,6 +278,7 @@ public final class DeckService {
         private final Interval intervalChoice;
         private final XSLFPictureData picture;
         private final Map<String, SlideChoice> choices;
+        private final String scriptureAccent;
         private final List<Picked> placedSongs = new ArrayList<>();
         private final List<Generated.Song> placed = new ArrayList<>();
         private int slides;
@@ -293,7 +292,8 @@ public final class DeckService {
                 List<SongCfg> songs,
                 Interval intervalChoice,
                 XSLFPictureData picture,
-                Map<String, SlideChoice> choices) {
+                Map<String, SlideChoice> choices,
+                String scriptureAccent) {
             this.ppt = ppt;
             this.titleLayout = titleLayout;
             this.lyricLayout = lyricLayout;
@@ -302,6 +302,7 @@ public final class DeckService {
             this.intervalChoice = intervalChoice;
             this.picture = picture;
             this.choices = choices;
+            this.scriptureAccent = scriptureAccent;
         }
 
         private void song(String moment, String bookId, boolean trailingInterval) throws IOException {
@@ -331,6 +332,7 @@ public final class DeckService {
             XSLFSlide slide = TemplateLayouts.addSlide(ppt, layout);
             TemplateLayouts.setShapeText(slide, "Referência", referencia, false);
             TemplateLayouts.setShapeText(slide, "Citação", quoted(citacao), true);
+            TemplateLayouts.setScriptureAccent(slide, scriptureAccent);
             slides++;
             markContent();
         }
@@ -338,7 +340,12 @@ public final class DeckService {
         private void louvor(String verse) {
             XSLFSlide slide = TemplateLayouts.addSlide(ppt, TemplateLayouts.LOUVOR);
             String body = verse == null ? "" : verse;
-            TemplateLayouts.setShapeText(slide, "Verso", body, !body.isEmpty());
+            if (body.isEmpty()) {
+                TemplateLayouts.setShapeText(slide, "Verso", body, false);
+            } else {
+                TemplateLayouts.setShrinkingText(slide, "Verso", body);
+            }
+            TemplateLayouts.setScriptureAccent(slide, scriptureAccent);
             slides++;
             markContent();
         }
@@ -347,6 +354,7 @@ public final class DeckService {
             XSLFSlide slide = TemplateLayouts.addSlide(ppt, TemplateLayouts.SALMO);
             String body = text == null || text.isBlank() ? "" : quoted(text);
             TemplateLayouts.setShapeText(slide, "Citação", body, !body.isEmpty());
+            TemplateLayouts.setScriptureAccent(slide, scriptureAccent);
             slides++;
             markContent();
         }
@@ -401,16 +409,52 @@ public final class DeckService {
     }
 
     private static void applyScriptureBackground(XMLSlideShow ppt, Path template, Season season) throws IOException {
-        Path image = template.toAbsolutePath().normalize().getParent()
-                .resolve("../../assets")
-                .resolve(season.scriptureBackground())
-                .normalize();
+        Path image = assetsDir(template).resolve(season.scriptureBackground());
         if (!Files.isRegularFile(image)) {
-            LOG.info("Scripture background " + image.getFileName() + " is not in assets yet");
-            return;
+            Path green = assetsDir(template).resolve("background_green.jpg");
+            if (Files.isRegularFile(green)) {
+                LOG.info("Scripture background " + image.getFileName() + " is missing; using background_green.jpg");
+                image = green;
+            } else {
+                LOG.info("Scripture background " + image.getFileName() + " is not in assets yet");
+                return;
+            }
         }
         TemplateLayouts.setScriptureBackground(ppt, Files.readAllBytes(image));
         LOG.info("Scripture background " + image.getFileName());
+    }
+
+    private static XSLFSlide addCover(XMLSlideShow ppt, Path template, Cover cover, Season season) throws IOException {
+        XSLFSlideLayout layout = TemplateLayouts.findLayout(ppt, TemplateLayouts.COVER);
+        TemplateLayouts.paintCover(layout, season.coverPaint());
+        XSLFSlide slide = ppt.createSlide(layout);
+        fillCover(slide, cover, season);
+        TemplateLayouts.paintCoverText(slide, season.coverPaint());
+        Path logo = assetsDir(template).resolve(season.coverPaint().logo());
+        if (!Files.isRegularFile(logo)) {
+            LOG.info("Cover logo " + logo.getFileName() + " is not in assets yet");
+            return slide;
+        }
+        XSLFPictureData picture = ppt.addPicture(Files.readAllBytes(logo), PictureData.PictureType.PNG);
+        TemplateLayouts.setCoverLogo(layout, picture);
+        LOG.info("Cover logo " + logo.getFileName());
+        return slide;
+    }
+
+    private static Path assetsDir(Path template) {
+        Path besideTemplate = template.toAbsolutePath().normalize().getParent().resolve("../../assets").normalize();
+        if (Files.isDirectory(besideTemplate)) {
+            return besideTemplate;
+        }
+        Path cwd = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
+        Path[] candidates = {cwd.resolve("assets"), cwd.resolve("../assets")};
+        for (Path candidate : candidates) {
+            Path normalized = candidate.normalize();
+            if (Files.isDirectory(normalized)) {
+                return normalized;
+            }
+        }
+        return besideTemplate;
     }
 
     private static void fillCover(XSLFSlide coverSlide, Cover cover, Season season) {

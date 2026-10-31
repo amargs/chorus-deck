@@ -556,9 +556,9 @@
   "bookId" : "116"
 }, {
   "id" : 107,
-  "title" : "O Senhor é meu Pastor",
-  "content" : [ "**O Senhor é meu Pastor, **\n**nada me falta! (X2) **", "Me conduz para as fontes de água viva e me apascenta\nMe protege de todos os perigos porque me ama | x2\n\n**O Senhor é meu Pastor, **\n**nada me falta! (X2) **", "Se me afasto me busca sem descanso, me vai chamando\nMe encontrando me abraça comovido, porque me ama | x2\n\n**O Senhor é meu Pastor, **\n**nada me falta! (X2) **", "Me alimenta com o pão que dá a vida, seu próprio Corpo\nE seu Vinho é Seu Sangue derramado porque me ama| x2\n\n**O Senhor é meu Pastor, **\n**nada me falta! (X2) **", "Dá-me o Pão do Seu Amor para que ame o mundo inteiro\nE lhe ofereço minha alma e minha vida, porque O Amo| x2\n\n**O Senhor é meu Pastor, **\n**nada me falta! (X2) **" ],
-  "bookId" : "118"
+  "title" : "O Senhor é meu Pastor, nada me falta",
+  "content" : [ "**O Senhor é meu Pastor, **\n**Nada me falta! (x2)**\nMe conduz para as fontes de água viva e me apascenta\nMe protege de todos os perigos porque me ama | x2", "**O Senhor é meu Pastor, **\n**Nada me falta! (x2)**\nSe me afasto me busca sem descanso, me vai chamando\nMe encontrando me abraça comovido, porque me ama | x2", "**O Senhor é meu Pastor, **\n**Nada me falta! (x2)**\nMe alimenta com o pão que dá a vida, seu próprio Corpo\nE seu Vinho é Seu Sangue derramado porque me ama | x2", "**O Senhor é meu Pastor, **\n**Nada me falta! (x2)**\nDá-me o Pão do Seu Amor para que ame o mundo inteiro\nE lhe ofereço minha alma e minha vida, porque O Amo | x2" ],
+  "bookId" : "117"
 }, {
   "id" : 108,
   "title" : "O sonho é…",
@@ -832,7 +832,7 @@
 }, {
   "id" : 163,
   "title" : "Vede Senhor",
-  "content" : [ "**Vede Senhor, quanta gente.**\n**Nunca ouviu falar de Vós; **\n**Quanta gente não sabe **\n**Que deve amar alguém**\n**Senhor, aceita-nos assim!**", "**Vede Senhor, nós chegamos **\n**Prontos a dar o que temos,**\n**A vida alegre ou triste**\n**O amor que em nós existe**\n**Senhor, aceita-nos assim!**", "**Vede Senhor, nós queremos**\n**Ser instrumentos do teu reino**\n**Espalhar a paz, o amor,**\n**Alegria esperança**\n**Senhor, ajuda-nos a ser!**" ],
+  "content" : [ "**Vede Senhor, quanta gente.**\n**Nunca ouviu falar de Vós; **\n**Quanta gente não sabe **\n**Que deve amar alguém**\n**Senhor, aceita-nos assim!**", "**Vede Senhor, nós chegámos **\n**Prontos a dar o que temos,**\n**A vida alegre ou triste**\n**O amor que em nós existe**\n**Senhor, aceita-nos assim!**", "**Vede Senhor, nós queremos**\n**Ser instrumentos do teu reino**\n**Espalhar a paz, o amor,**\n**Alegria esperança**\n**Senhor, ajuda-nos a ser!**" ],
   "bookId" : "176"
 }, {
   "id" : 164,
@@ -893,7 +893,8 @@
   "id" : 175,
   "title" : "Voa a grande altitude",
   "content" : [ "Não fiques na praia\nCom o barco amarrado\nE medo do mar\nTudo aqui é miragem\nMas na outra margem\nAlguém a esperar", "Como onda que morre\nSozinha na praia\nNão fiques brincando\nNo mar confiante\nEnsina o teu canto\nDe ave voando", "**Voa bem mais alto**\n**Livre sem alforge**\n**Sem prata nem ouro**\n**Amando este mundo**\n**Esta vida que é campo**\n**Que esconde o tesouro**", "Ninguém te ensinou\nMas no fundo tu sentes\nAsas para voar\nNem que o céu se tolde\nE as nuvens impeçam\nTu não vais parar", "Há gente vivendo\nTranquila e contente\nComo eu já vivi\nÉs águia diferente\nCéu azul cinzento\nFoi feito p’ra ti", "**Voa bem mais alto**\n**Livre sem alforge**\n**Sem prata nem ouro**\n**Amando este mundo**\n**Esta vida que é campo**\n**Que esconde o tesouro (x2)**" ],
-  "bookId" : "188"
+  "bookId" : "188",
+  "titleAlt" : "Voa bem mais alto"
 }, {
   "id" : 176,
   "title" : "Vós sereis os meus amigos",
@@ -1060,4 +1061,14 @@
   "title" : "Cordeiro (Nós Senhor)",
   "content" : [ "**Cordeiro de Deus que tiras o pecado do mundo,**\n**Tem piedade de nós, Senhor, tem piedade de nós.**\n**(x2)**", "**Cordeiro de Deus que tiras o pecado do mundo,**\n**Dá-nos a Tua paz, Senhor, dá-nos a tua paz.**\n**Dá-nos a tua paz, Senhor**" ],
   "bookId" : "C8"
+}, {
+  "id" : 250,
+  "title" : "Meu coração é para Ti, Senhor",
+  "content" : [ "Meu coração é para Ti, Senhor.\nMeu coração é para Ti, Senhor.\nMeu coração é para Ti, Senhor.\nMeu coração é para Ti", "**Porque Tu me deste a vida,**\n**Porque Tu me deste o existir**\n**Porque Tu me deste o carinho,**\n**Me deste amor (x2)**", "A minha vida é para Ti, Senhor.\nA minha vida é para Ti, Senhor.\nA minha vida é para Ti, Senhor.\nA minha vida é para Ti.", "**Porque Tu me deste a vida,**\n**Porque Tu me deste o existir**\n**Porque Tu me deste o carinho,**\n**Me deste amor (x2)**", "O pão e vinho são pra Ti, Senhor.\nO pão e vinho são pra Ti, Senhor.\nO pão e vinho são pra Ti, Senhor.\nO pão e vinho são pra Ti.", "**Porque Tu me deste a vida,**\n**Porque Tu me deste o existir**\n**Porque Tu me deste o carinho,**\n**Me deste amor (x2)**", "Meu pensamento é só Tu, Senhor.\nMeu pensamento é só Tu, Senhor.\nMeu pensamento é só Tu, Senhor.\nMeu pensamento é só Tu.", "**Porque Tu me deste a vida,**\n**Porque Tu me deste o existir**\n**Porque Tu me deste o carinho,**\n**Me deste amor (x2)**", "A minha força és só Tu, Senhor.\nA minha força és só Tu, Senhor.\nA minha força és só Tu, Senhor.\nA minha força és só Tu.", "**Porque Tu me deste a vida,**\n**Porque Tu me deste o existir**\n**Porque Tu me deste o carinho,**\n**Me deste amor (x2)**" ],
+  "bookId" : "215"
+}, {
+  "id" : 251,
+  "title" : "Senhor te pedimos perdão",
+  "content" : [ "Senhor, te pedimos perdão\nA ti que sempre nos amas\nA ti que sempre nos amas", "**Perdão, perdão**\n**Perdoa-nos Senhor**\n**Perdão, perdão**\n**Perdoa-nos Senhor**", "Senhor, te pedimos perdão\nA ti que és nosso pai\nA ti que és nosso pai", "**Perdão, perdão**\n**Perdoa-nos Senhor**\n**Perdão, perdão**\n**Perdoa-nos Senhor**" ],
+  "bookId" : "RP7"
 } ]

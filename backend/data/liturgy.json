@@ -459,6 +459,24 @@
         "citacao" : ""
       },
       "louvor" : "Nem só de pão vive o homem,\nMas de toda a palavra que sai da boca de Deus."
+    },
+    "all-saints" : {
+      "domingo" : "Solenidade de Todos os Santos",
+      "season" : "comum",
+      "cover" : "Capa - Solenidade",
+      "primeira" : {
+        "referencia" : "Ap 7, 2-4.9-14",
+        "citacao" : "Vi uma multidão imensa, que ninguém podia contar, de todas as nações, tribos, povos e línguas"
+      },
+      "salmo" : "Esta é a geração dos que procuram a Vossa face Senhor",
+      "evangelho" : {
+        "referencia" : "Mt 5, 1-12a",
+        "citacao" : "Alegrai-vos e exultai, porque é grande nos Céus a vossa recompensa"
+      },
+      "segunda" : {
+        "referencia" : "1 Jo 3, 1-3",
+        "citacao" : "Veremos a Deus tal como Ele é"
+      }
     }
   }
 }

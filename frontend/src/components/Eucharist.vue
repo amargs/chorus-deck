@@ -51,6 +51,7 @@ const output = ref('')
 const outputEdited = ref(false)
 const outputInput = ref(null)
 const error = ref('')
+const fileOpen = ref('')
 const busy = ref(false)
 let liturgyRequest = 0
 const missingPrompt = ref([])
@@ -153,22 +154,11 @@ watch(useSolemnity, (on) => {
     showAccent(on ? day.solemnity.accent : day.accent)
   }
   if (on && day.solemnity.outranks) {
-    clearReadings()
+    fillReadings(day.solemnity)
   } else {
     fillReadings(day)
   }
 }, { flush: 'sync' })
-
-function clearReadings() {
-  form.frase = ''
-  form.versiculo = ''
-  form.primeira = ''
-  form.primeiraRef = ''
-  form.segunda = ''
-  form.segundaRef = ''
-  form.salmo = ''
-  form.louvor = ''
-}
 
 function fillReadings(payload) {
   form.frase = payload.frase || ''
@@ -202,35 +192,35 @@ function shown(value) {
   return text || '-'
 }
 
+function hasStoredSentences(source) {
+  if (!source) {
+    return false
+  }
+  if (source.primeira && storedSentence(source.primeira.citacao)) {
+    return true
+  }
+  if (source.segunda && storedSentence(source.segunda.citacao)) {
+    return true
+  }
+  if (storedSentence(source.salmo) || storedSentence(source.frase)) {
+    return true
+  }
+  return !!(source.lenten && storedSentence(source.louvor))
+}
+
 const scripturesStored = computed(() => {
   const day = liturgy.value
   if (!day) {
     return false
   }
-  if (day.primeira && storedSentence(day.primeira.citacao)) {
+  if (day.persists === false) {
     return true
   }
-  if (day.segunda && storedSentence(day.segunda.citacao)) {
-    return true
+  if (useSolemnity.value && day.solemnity?.outranks) {
+    return hasStoredSentences(day.solemnity)
   }
-  if (storedSentence(day.salmo) || storedSentence(day.frase)) {
-    return true
-  }
-  return !!(day.lenten && storedSentence(day.louvor))
+  return hasStoredSentences(day)
 })
-
-function blankReadings() {
-  return {
-    frase: '',
-    versiculo: '',
-    primeira: '',
-    primeiraRef: '',
-    segunda: '',
-    segundaRef: '',
-    salmo: '',
-    louvor: '',
-  }
-}
 
 function liturgyReadings(day) {
   return {
@@ -252,7 +242,7 @@ function expectedReadings() {
     return null
   }
   if (useSolemnity.value && day.solemnity?.outranks) {
-    return blankReadings()
+    return liturgyReadings(day.solemnity)
   }
   return liturgyReadings(day)
 }
@@ -660,6 +650,7 @@ async function generate(force = false, replace = false) {
   missingPrompt.value = []
   replaceName.value = ''
   error.value = ''
+  fileOpen.value = ''
   window.clearTimeout(saveTimer)
   await queuePersist()
   busy.value = true
@@ -672,27 +663,28 @@ async function generate(force = false, replace = false) {
     }
   }
   const day = liturgy.value
+  const baseline = expectedReadings() || liturgyReadings(day)
   const leituras = {}
   const referencias = {}
-  if (changed(form.primeira, day.primeira?.citacao)) {
+  if (changed(form.primeira, baseline.primeira)) {
     leituras.primeira = form.primeira.trim()
   }
-  if (day.segunda && changed(form.segunda, day.segunda.citacao)) {
+  if (day.segunda && changed(form.segunda, baseline.segunda)) {
     leituras.segunda = form.segunda.trim()
   }
-  if (changed(form.salmo, day.salmo)) {
+  if (changed(form.salmo, baseline.salmo)) {
     leituras.salmo = form.salmo.trim()
   }
-  if (changed(form.frase, day.frase)) {
+  if (changed(form.frase, baseline.frase)) {
     leituras.evangelho = form.frase.trim()
   }
-  if (lenten.value && changed(form.louvor, day.louvor)) {
+  if (lenten.value && changed(form.louvor, baseline.louvor)) {
     leituras.louvor = form.louvor.trim()
   }
-  if (day.primeira && changed(form.primeiraRef, day.primeira.referencia)) {
+  if (day.primeira && changed(form.primeiraRef, baseline.primeiraRef)) {
     referencias.primeira = form.primeiraRef.trim()
   }
-  if (day.segunda && changed(form.segundaRef, day.segunda.referencia)) {
+  if (day.segunda && changed(form.segundaRef, baseline.segundaRef)) {
     referencias.segunda = form.segundaRef.trim()
   }
   const opcoes = { credo: credo.value, interval: interval.value }
@@ -753,7 +745,12 @@ async function generate(force = false, replace = false) {
     }
     emit('generated', payload.output)
   } catch (e) {
-    error.value = e.message
+    const message = e instanceof Error ? e.message : 'Não foi possível gerar.'
+    if (message.includes('ficheiro está aberto')) {
+      fileOpen.value = message
+    } else {
+      error.value = message
+    }
   } finally {
     busy.value = false
   }
@@ -1025,7 +1022,7 @@ async function generate(force = false, replace = false) {
         <h2 id="readings-title">Capa e leituras</h2>
         <div class="readings-scroll">
         <p v-if="scripturesStored" class="note">Estas alterações são válidas apenas para este domingo ou celebração e não substituem as ocorrências futuras.</p>
-        <p v-else class="note">Ao gerar a apresentação, estas leituras ficam guardadas para a próxima vez que este domingo ou esta celebração se repetir.</p>
+        <p v-else class="note">Ao gerar a apresentação, estas leituras ficam guardadas para a próxima vez que esta celebração se repetir.</p>
         <div class="readings">
           <label class="reading">
             <span>Capa</span>
@@ -1067,6 +1064,14 @@ async function generate(force = false, replace = false) {
         <div class="open-actions">
           <button type="button" @click="missingPrompt = []">Voltar a editar</button>
           <button class="primary" type="button" @click="generate(true)">Gerar mesmo assim</button>
+        </div>
+      </div>
+    </div>
+    <div v-if="fileOpen" class="modal-backdrop" @click.self="fileOpen = ''">
+      <div class="modal confirm" role="dialog" aria-modal="true" aria-labelledby="file-open" @keydown.esc="fileOpen = ''">
+        <p id="file-open" class="file-open">{{ fileOpen }}</p>
+        <div class="open-actions">
+          <button class="primary" type="button" @click="fileOpen = ''">Fechar</button>
         </div>
       </div>
     </div>

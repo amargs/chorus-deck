@@ -2027,6 +2027,10 @@ button.icon.row-remove:hover {
   margin-top: 0.75rem;
 }
 
+.modal.confirm p.file-open {
+  overflow-wrap: anywhere;
+}
+
 .modal.readings-editor {
   display: flex;
   flex-direction: column;

@@ -49,7 +49,7 @@ class DeckGeneratorTest {
             }
             IllegalArgumentException error = assertThrows(
                     IllegalArgumentException.class, () -> DeckFile.ensureWritable(file));
-            assertTrue(error.getMessage().contains("because it is open"));
+            assertTrue(error.getMessage().contains("ficheiro está aberto"));
         } finally {
             lock.destroy();
         }

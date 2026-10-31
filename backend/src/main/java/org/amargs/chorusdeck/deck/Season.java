@@ -56,18 +56,61 @@ public final class Season {
         return tempoName.startsWith("Tempo de Quaresma");
     }
 
+    /** Wash behind the readings. Rose, red, blue, and orange washes are not in assets yet, so those covers use green. A white solemnity uses gold. */
     public String scriptureBackground() {
-        return switch (coverLayout) {
-            case "Capa - Domingo III Advento" -> "background_advento_rosa.jpg";
-            case "Capa - Domingo IV Quaresma" -> "background_quaresma_rosa.jpg";
-            default -> switch (tempoName) {
-                case "Tempo de Advento" -> "background_advento.jpg";
-                case "Tempo de Natal" -> "background_natal.jpg";
-                case "Tempo de Quaresma" -> "background_quaresma.jpg";
-                case "Tempo Pascal" -> "background_pascoa.jpg";
-                default -> "background_comum.jpg";
-            };
+        if ("Capa - Domingo III Advento".equals(coverLayout) || "Capa - Domingo IV Quaresma".equals(coverLayout)) {
+            return "background_green.jpg";
+        }
+        if ("Capa - Solenidade".equals(coverLayout)) {
+            return "background_gold.jpg";
+        }
+        return switch (tempoName) {
+            case "Tempo de Advento", "Tempo de Quaresma" -> "background_purple.jpg";
+            case "Tempo de Natal", "Tempo Pascal" -> "background_gold.jpg";
+            default -> "background_green.jpg";
         };
+    }
+
+    /** Colors and logo painted onto the single {@code Capa} layout. */
+    public CoverPaint coverPaint() {
+        return switch (coverLayout) {
+            case "Capa - Advento" -> scheme("accent2", 20_000, 80_000, 40_000, 0, 0, "logo_advento.png");
+            case "Capa - Quaresma" -> scheme("accent2", 20_000, 80_000, 40_000, 0, 0, "logo_quaresma.png");
+            case "Capa - Domingo III Advento" -> scheme("accent3", 40_000, 60_000, 25_000, 0, 0, "logo_gaudete.png");
+            case "Capa - Domingo IV Quaresma" -> scheme("accent3", 40_000, 60_000, 25_000, 0, 0, "logo_laetere.png");
+            case "Capa - Natal" -> scheme("accent4", 20_000, 80_000, 20_000, 0, 0, "logo_natal.png");
+            case "Capa - Páscoa" -> scheme("accent4", 20_000, 80_000, 20_000, 0, 0, "logo_pascoa.png");
+            case "Capa - Solenidade" -> scheme("accent4", 20_000, 80_000, 20_000, 0, 0, "logo_comunhao.png");
+            case "Capa - Ramos" -> scheme("accent5", 60_000, 40_000, 20_000, 0, 0, "logo_ramos.png");
+            case "Capa - Pentecostes" -> scheme("accent5", 60_000, 40_000, 20_000, 0, 0, "logo_espirito.png");
+            case "Capa - Solenidade Pedro Paulo" -> scheme("accent5", 60_000, 40_000, 20_000, 0, 0, "logo_pedro_paulo.png");
+            case "Capa - Solenidade Paz" -> scheme("accent6", 40_000, 60_000, 20_000, 75_000, 0, "logo_paz.png");
+            case "Capa - Maria" -> scheme("accent6", 40_000, 60_000, 20_000, 75_000, 0, "logo_maria.png");
+            case "Capa - Taizé" -> new CoverPaint(null, "E37931", 0, 0, 100_000, "accent4", 60_000, 40_000, "logo_taize.png");
+            default -> scheme("accent1", 20_000, 80_000, 25_000, 0, 0, "logo_comum.png");
+        };
+    }
+
+    private static CoverPaint scheme(
+            String accent, int lumMod, int lumOff, int alpha, int textLumMod, int textLumOff, String logo) {
+        return new CoverPaint(accent, null, lumMod, lumOff, alpha, accent, textLumMod, textLumOff, logo);
+    }
+
+    /**
+     * Background and Domingo color taken from the old cover layouts.
+     * {@code lumMod} and {@code lumOff} are DrawingML percentages (100000 = 100%).
+     * {@code alpha} is opacity on the same scale. A text luminance of 0 leaves Domingo at the full accent.
+     */
+    public record CoverPaint(
+            String backgroundScheme,
+            String backgroundRgb,
+            int lumMod,
+            int lumOff,
+            int alpha,
+            String textScheme,
+            int textLumMod,
+            int textLumOff,
+            String logo) {
     }
 
     public static List<String> coverLayouts() {

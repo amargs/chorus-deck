@@ -90,11 +90,11 @@ public final class LiturgyClient {
     }
 
     /** A Sunday that is also one of the fixed solemnities. Absent on every other day. */
-    public record SundaySolemnity(String title, String cover, boolean outranksSunday) {
+    public record SundaySolemnity(String key, String title, String cover, boolean outranksSunday) {
     }
 
     /** A weekday that is one of the fixed solemnities. Absent on Sundays and every other day. */
-    public record WeekdaySolemnity(String title, String cover) {
+    public record WeekdaySolemnity(String key, String title, String cover) {
     }
 
     public static SundaySolemnity sundayOverlap(LocalDate date, String seasonKey) {
@@ -105,7 +105,7 @@ public final class LiturgyClient {
         if (solemnity == null) {
             return null;
         }
-        return new SundaySolemnity(solemnity.title(), solemnity.cover(), !sundayKeepsTheDay(seasonKey));
+        return new SundaySolemnity(solemnity.key(), solemnity.title(), solemnity.cover(), !sundayKeepsTheDay(seasonKey));
     }
 
     public static WeekdaySolemnity weekdaySolemnity(LocalDate date) {
@@ -116,7 +116,7 @@ public final class LiturgyClient {
         if (solemnity == null) {
             return null;
         }
-        return new WeekdaySolemnity(solemnity.title(), solemnity.cover());
+        return new WeekdaySolemnity(solemnity.key(), solemnity.title(), solemnity.cover());
     }
 
     /** Corpus Christi is the Thursday after Trinity Sunday, sixty days after Easter. */

@@ -25,10 +25,15 @@ import org.apache.poi.xslf.usermodel.XSLFTheme;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.xmlbeans.XmlCursor;
+import org.apache.xmlbeans.XmlObject;
 import org.openxmlformats.schemas.drawingml.x2006.main.CTSchemeColor;
 import org.openxmlformats.schemas.drawingml.x2006.main.CTShapeStyle;
+import org.openxmlformats.schemas.drawingml.x2006.main.CTSolidColorFillProperties;
+import org.openxmlformats.schemas.drawingml.x2006.main.CTTextBodyProperties;
 import org.openxmlformats.schemas.drawingml.x2006.main.CTTextCharacterProperties;
 import org.openxmlformats.schemas.drawingml.x2006.main.STSchemeColorVal;
+import org.openxmlformats.schemas.presentationml.x2006.main.CTBackgroundProperties;
 import org.openxmlformats.schemas.presentationml.x2006.main.CTBackground;
 import org.openxmlformats.schemas.presentationml.x2006.main.CTPicture;
 import org.openxmlformats.schemas.presentationml.x2006.main.CTPlaceholder;
@@ -39,12 +44,14 @@ import java.awt.geom.Rectangle2D;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.HexFormat;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import javax.imageio.ImageIO;
 
 public final class TemplateLayouts {
 
+    public static final String COVER = "Capa";
     public static final String ORDINARY_TITLE = "Título e letra";
     public static final String FESTIVE_TITLE = "Título e letra - Natal e Páscoa";
     public static final String LYRICS = "Letra";
@@ -249,6 +256,141 @@ public final class TemplateLayouts {
         throw new IllegalArgumentException("Layout not found: " + name);
     }
 
+    public static void paintCover(XSLFSlideLayout layout, Season.CoverPaint paint) {
+        CTBackground bg = layout.getXmlObject().getCSld().getBg();
+        if (bg == null || bg.getBgPr() == null) {
+            throw new IllegalArgumentException("Cover background not found");
+        }
+        CTBackgroundProperties bgPr = bg.getBgPr();
+        if (bgPr.isSetSolidFill()) {
+            bgPr.unsetSolidFill();
+        }
+        CTSolidColorFillProperties solid = bgPr.addNewSolidFill();
+        if (paint.backgroundRgb() != null) {
+            solid.addNewSrgbClr().setVal(HexFormat.of().parseHex(paint.backgroundRgb()));
+        } else {
+            CTSchemeColor scheme = solid.addNewSchemeClr();
+            scheme.setVal(schemeColor(paint.backgroundScheme()));
+            modulate(scheme, paint.lumMod(), paint.lumOff(), paint.alpha());
+        }
+        paintDomingo(textShape(layout, "Domingo"), paint);
+    }
+
+    public static void paintCoverText(XSLFSlide slide, Season.CoverPaint paint) {
+        CTShape domingo = textShape(slide, "Domingo");
+        if (domingo == null) {
+            domingo = textShape(slide.getSlideLayout(), "Domingo");
+        }
+        paintDomingo(domingo, paint);
+    }
+
+    public static void setCoverLogo(XSLFSlideLayout layout, XSLFPictureData picture) throws IOException {
+        XSLFPictureShape logo = null;
+        for (XSLFShape shape : layout.getShapes()) {
+            if (shape instanceof XSLFPictureShape pic && "Picture 4".equals(shape.getShapeName())) {
+                logo = pic;
+                break;
+            }
+        }
+        if (logo == null || !(logo.getXmlObject() instanceof CTPicture ctPicture)) {
+            throw new IllegalArgumentException("Cover logo not found");
+        }
+        Rectangle2D frame = logo.getAnchor();
+        POIXMLDocumentPart.RelationPart rel = layout.addRelation(null, XSLFRelation.IMAGES, picture);
+        ctPicture.getBlipFill().getBlip().setEmbed(rel.getRelationship().getId());
+        logo.setAnchor(fittedAnchor(frame, picture));
+    }
+
+    private static void paintDomingo(CTShape shape, Season.CoverPaint paint) {
+        if (shape == null
+                || shape.getTxBody() == null
+                || shape.getTxBody().getLstStyle() == null
+                || !shape.getTxBody().getLstStyle().isSetLvl1PPr()
+                || !shape.getTxBody().getLstStyle().getLvl1PPr().isSetDefRPr()) {
+            return;
+        }
+        CTTextCharacterProperties defaults = shape.getTxBody().getLstStyle().getLvl1PPr().getDefRPr();
+        if (defaults.isSetSolidFill()) {
+            defaults.unsetSolidFill();
+        }
+        CTSchemeColor scheme = defaults.addNewSolidFill().addNewSchemeClr();
+        scheme.setVal(schemeColor(paint.textScheme()));
+        modulate(scheme, paint.textLumMod(), paint.textLumOff(), 0);
+    }
+
+    private static void modulate(CTSchemeColor scheme, int lumMod, int lumOff, int alpha) {
+        if (lumMod > 0) {
+            scheme.addNewLumMod().setVal(lumMod);
+        }
+        if (lumOff > 0) {
+            scheme.addNewLumOff().setVal(lumOff);
+        }
+        if (alpha > 0 && alpha < 100_000) {
+            scheme.addNewAlpha().setVal(alpha);
+        }
+    }
+
+    private static STSchemeColorVal.Enum schemeColor(String name) {
+        STSchemeColorVal.Enum color = STSchemeColorVal.Enum.forString(name);
+        if (color == null) {
+            throw new IllegalArgumentException("Unknown theme color: " + name);
+        }
+        return color;
+    }
+
+    private static CTShape textShape(XSLFSheet sheet, String name) {
+        for (XSLFShape shape : sheet.getShapes()) {
+            if (name.equals(shape.getShapeName()) && shape.getXmlObject() instanceof CTShape ctShape) {
+                return ctShape;
+            }
+        }
+        return null;
+    }
+
+    /** Scripture text is a darkened accent. Point that accent at the season and keep the darkening. */
+    public static void setScriptureAccent(XMLSlideShow ppt, String scheme) {
+        STSchemeColorVal.Enum color = schemeColor(scheme);
+        for (String name : new String[]{LEITURA_1, LEITURA_2, SALMO, EVANGELHO, LOUVOR}) {
+            recolorAccents(findLayout(ppt, name).getXmlObject(), color);
+        }
+    }
+
+    public static void setScriptureAccent(XSLFSlide slide, String scheme) {
+        recolorAccents(slide.getXmlObject(), schemeColor(scheme));
+    }
+
+    private static void recolorAccents(XmlObject xml, STSchemeColorVal.Enum color) {
+        try (XmlCursor cursor = xml.newCursor()) {
+            visitAccents(cursor, color);
+        }
+    }
+
+    private static void visitAccents(XmlCursor cursor, STSchemeColorVal.Enum color) {
+        XmlCursor.TokenType token = cursor.currentTokenType();
+        if (token != null && token.isStart()
+                && cursor.getName() != null
+                && "schemeClr".equals(cursor.getName().getLocalPart())
+                && cursor.getObject() instanceof CTSchemeColor scheme
+                && isAccent(scheme.getVal())) {
+            scheme.setVal(color);
+        }
+        if (cursor.toFirstChild()) {
+            do {
+                visitAccents(cursor, color);
+            } while (cursor.toNextSibling());
+            cursor.toParent();
+        }
+    }
+
+    private static boolean isAccent(STSchemeColorVal.Enum value) {
+        return value == STSchemeColorVal.ACCENT_1
+                || value == STSchemeColorVal.ACCENT_2
+                || value == STSchemeColorVal.ACCENT_3
+                || value == STSchemeColorVal.ACCENT_4
+                || value == STSchemeColorVal.ACCENT_5
+                || value == STSchemeColorVal.ACCENT_6;
+    }
+
     public static void setHeaderScheme(XSLFSlideLayout layout, String schemeColor) {
         if (schemeColor == null || schemeColor.isBlank()) {
             return;
@@ -307,12 +449,43 @@ public final class TemplateLayouts {
     }
 
     public static void setShapeText(XSLFSlide slide, String shapeName, String text, boolean fit) {
+        setShapeText(slide, shapeName, text, fit, false);
+    }
+
+    /** Fit even when the layout turns shrinking off. The layout size stays the maximum. */
+    public static void setShrinkingText(XSLFSlide slide, String shapeName, String text) {
+        setShapeText(slide, shapeName, text, true, true);
+    }
+
+    private static void setShapeText(XSLFSlide slide, String shapeName, String text, boolean fit, boolean forceShrink) {
         XSLFTextShape shape = findTextShape(slide, shapeName);
         String marked = text == null ? "" : text;
         shape.setText(BoldMarkup.plain(marked));
         BoldMarkup.apply(shape, marked);
+        if (forceShrink) {
+            enableShrink(shape);
+        }
         if (fit) {
             TextFit.apply(shape, marked, null, 0, 0);
+        }
+    }
+
+    private static void enableShrink(XSLFTextShape shape) {
+        if (!(shape.getXmlObject() instanceof CTShape ctShape) || ctShape.getTxBody() == null) {
+            return;
+        }
+        CTTextBodyProperties body = ctShape.getTxBody().getBodyPr();
+        if (body == null) {
+            body = ctShape.getTxBody().addNewBodyPr();
+        }
+        if (body.isSetNoAutofit()) {
+            body.unsetNoAutofit();
+        }
+        if (body.isSetSpAutoFit()) {
+            body.unsetSpAutoFit();
+        }
+        if (!body.isSetNormAutofit()) {
+            body.addNewNormAutofit();
         }
     }
 

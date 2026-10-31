@@ -65,7 +65,8 @@ public final class DeckFile {
 
     private static IllegalArgumentException open(Path outputFile, Exception cause) {
         return new IllegalArgumentException(
-                "Can't write " + outputFile.toAbsolutePath() + " because it is open. Close it and run generate again.",
+                "Não é possível gravar " + outputFile.toAbsolutePath()
+                        + " porque o ficheiro está aberto. Feche-o e volte a gerar.",
                 cause);
     }
 }

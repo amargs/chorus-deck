@@ -9,6 +9,7 @@ import org.amargs.chorusdeck.index.SongCfg;
 import org.amargs.chorusdeck.liturgy.LiturgyClient;
 import org.amargs.chorusdeck.liturgy.LiturgyDay;
 import org.amargs.chorusdeck.liturgy.LiturgyFixtures;
+import org.amargs.chorusdeck.liturgy.SundayLibrary;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Files;
@@ -28,7 +29,7 @@ class MassDeckRequestsTest {
     private static final ObjectMapper JSON = new ObjectMapper();
 
     @Test
-    void previewNamesTheCoverTheReadingsAndTheSlotsTheSeasonHides() {
+    void previewNamesTheCoverTheReadingsAndTheSlotsTheSeasonHides() throws Exception {
         LiturgyDay day = LiturgyFixtures.ordinary29();
         Map<String, Object> preview = MassDeckRequests.preview(day);
         Season season = Season.resolve(day.seasonKey(), day.coverLayout());
@@ -37,6 +38,7 @@ class MassDeckRequestsTest {
         assertEquals(day.evangelho().referencia(), preview.get("versiculo"));
         assertEquals(season.omitsGloria(), preview.get("omitsGloria"));
         assertEquals(false, preview.get("lenten"));
+        assertEquals(true, preview.get("persists"));
         assertEquals(DeckSpec.fileName(day.date(), day.domingo(), day.seasonKey(), day.ano()), preview.get("fileName"));
         assertEquals("accent1", preview.get("accent"));
         assertEquals(season.coverLayout(), preview.get("cover"));
@@ -62,7 +64,7 @@ class MassDeckRequestsTest {
     }
 
     @Test
-    void aWeekdaySolemnityWarnsThatTheDayWasNotFilled() {
+    void aWeekdaySolemnityWarnsThatTheDayWasNotFilled() throws Exception {
         LocalDate date = LocalDate.of(2027, 11, 1);
         LiturgyClient.WeekdaySolemnity feast = LiturgyClient.weekdaySolemnity(date);
         LiturgyDay saints = new LiturgyDay(
@@ -75,17 +77,19 @@ class MassDeckRequestsTest {
         assertEquals(date.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + " é " + feast.title() + ".",
                 solemnity.get("warning"));
         assertEquals(true, solemnity.get("link"));
+        assertEquals(true, preview.get("persists"));
         assertFalse(solemnity.containsKey("outranks"));
         assertEquals(List.of(), preview.get("warnings"));
     }
 
     @Test
-    void anUnfilledDayWarnsOnce() {
+    void anUnfilledDayWarnsOnce() throws Exception {
         LiturgyDay day = new LiturgyDay(
                 LocalDate.of(2026, 10, 19), "2ªf da semana XXIX", "comum", null, "A",
                 null, null, null, null, null);
         List<?> warnings = (List<?>) MassDeckRequests.preview(day).get("warnings");
         assertEquals(List.of("A liturgia deste dia não está disponível para ser preenchida automaticamente"), warnings);
+        assertEquals(false, MassDeckRequests.preview(day).get("persists"));
     }
 
     @Test
@@ -160,7 +164,7 @@ class MassDeckRequestsTest {
     }
 
     @Test
-    void aSundaySolemnityStaysTheSundayUntilChosen() {
+    void aSundaySolemnityStaysTheSundayUntilChosen() throws Exception {
         LiturgyDay saints = sunday(LocalDate.of(2026, 11, 1), "Domingo XXXI", "comum");
         LiturgyClient.SundaySolemnity overlap = LiturgyClient.sundayOverlap(saints.date(), saints.seasonKey());
         Map<String, Object> solemnity = solemnity(saints);
@@ -183,7 +187,7 @@ class MassDeckRequestsTest {
     }
 
     @Test
-    void peterAndPaulUsesTheRedAccent() {
+    void peterAndPaulUsesTheRedAccent() throws Exception {
         LiturgyDay apostles = sunday(LocalDate.of(2025, 6, 29), "Domingo XIII", "comum");
         LiturgyClient.SundaySolemnity overlap = LiturgyClient.sundayOverlap(apostles.date(), apostles.seasonKey());
         Map<String, Object> peter = solemnity(apostles);
@@ -199,7 +203,7 @@ class MassDeckRequestsTest {
     }
 
     @Test
-    void aGoldSolemnityKeepsTheSeasonCover() {
+    void aGoldSolemnityKeepsTheSeasonCover() throws Exception {
         LiturgyDay day = new LiturgyDay(
                 LocalDate.of(2027, 5, 16),
                 "Solenidade da Ascensão do Senhor",
@@ -237,16 +241,38 @@ class MassDeckRequestsTest {
         Path dir = Files.createTempDirectory("mass-solemnity");
         MassRequest switched = MassDeckRequests.apply(ready(dir, """
                 {"date":"2026-11-01","output":"santos.pptx","domingo":"Todos os Santos","solemnity":true,"accent":"accent2",
-                 "versiculo":"","leituras":{"primeira":"Vi uma multidão"},
+                 "versiculo":"Mt 5, 1-12a","leituras":{"primeira":"Vi uma multidão","evangelho":"Bem-aventurados os pobres"},
                  "referencias":{"primeira":"Ap 7, 2-4","segunda":""},%s}
                 """), saints);
         assertEquals("Todos os Santos", switched.cover().domingo());
         assertEquals(LiturgyClient.sundayOverlap(saints.date(), saints.seasonKey()).cover(), switched.cover().cover());
-        assertEquals("", switched.cover().versiculo());
-        assertEquals("", switched.liturgy().evangelho().referencia());
+        assertEquals("Mt 5, 1-12a", switched.cover().versiculo());
+        assertEquals("Bem-aventurados os pobres", switched.cover().frase());
+        assertEquals("Mt 5, 1-12a", switched.liturgy().evangelho().referencia());
         assertEquals("Ap 7, 2-4", switched.liturgy().primeira().referencia());
         assertEquals("Vi uma multidão", switched.liturgy().primeira().citacao());
         assertEquals("accent2", switched.accent());
+
+        Path libraryFile = dir.resolve(SundayLibrary.FILE_NAME);
+        SundayLibrary library = new SundayLibrary(libraryFile);
+        library.rememberKey(
+                "all-saints", saints.date(), "A",
+                "Vi uma multidão", "Filhos de Deus", "Bendizei o Senhor", "Bem-aventurados os pobres", null,
+                "Ap 7, 2-4", "1 Jo 3, 1-3", "Mt 5, 1-12a");
+        Map<String, Object> preview = MassDeckRequests.preview(saints, library);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> stored = (Map<String, Object>) preview.get("solemnity");
+        assertEquals("Bem-aventurados os pobres", stored.get("frase"));
+        assertEquals("Mt 5, 1-12a", stored.get("versiculo"));
+        assertEquals("Eu sou o grande Rei", ((Map<?, ?>) preview.get("primeira")).get("citacao"));
+
+        MassRequest kept = MassDeckRequests.apply(ready(dir, """
+                {"date":"2026-11-01","output":"santos.pptx","domingo":"Todos os Santos","solemnity":true,%s}
+                """), saints, library);
+        assertEquals("Bem-aventurados os pobres", kept.cover().frase());
+        assertEquals("Vi uma multidão", kept.liturgy().primeira().citacao());
+        assertEquals("Filhos de Deus", kept.liturgy().segunda().citacao());
+        assertEquals("Bendizei o Senhor", kept.liturgy().refrao());
 
         LiturgyDay immaculate = sunday(LocalDate.of(2024, 12, 8), "Domingo II", "advento");
         MassRequest feast = MassDeckRequests.apply(ready(dir, """
@@ -301,7 +327,7 @@ class MassDeckRequestsTest {
     }
 
     @SuppressWarnings("unchecked")
-    private static Map<String, Object> solemnity(LiturgyDay day) {
+    private static Map<String, Object> solemnity(LiturgyDay day) throws Exception {
         return (Map<String, Object>) MassDeckRequests.preview(day).get("solemnity");
     }
 

@@ -402,6 +402,45 @@ class LiturgyClientTest {
         assertEquals("Alegrai-vos e exultai", day.evangelho().citacao());
     }
 
+    @Test
+    void aSolemnityStoresItsOwnSentencesAndLeavesTheSunday() throws IOException {
+        Path file = Files.createTempDirectory("sundays").resolve(SundayLibrary.FILE_NAME);
+        SundayLibrary library = new SundayLibrary(file);
+        LiturgyDay stored = library.rememberKey(
+                "all-saints",
+                LocalDate.of(2026, 11, 1),
+                "A",
+                "Vi uma multidão",
+                "Filhos de Deus",
+                "Bendizei o Senhor",
+                "Bem-aventurados os pobres",
+                null,
+                "Ap 7, 2-4",
+                "1 Jo 3, 1-3",
+                "Mt 5, 1-12a");
+        assertEquals("Solenidade de Todos os Santos", stored.domingo());
+        assertEquals("A", stored.ano());
+        assertEquals("Bem-aventurados os pobres", stored.evangelho().citacao());
+        assertEquals("Mt 5, 1-12a", stored.evangelho().referencia());
+        assertEquals("Filhos de Deus", stored.segunda().citacao());
+
+        LiturgyDay kept = library.rememberKey(
+                "all-saints",
+                LocalDate.of(2026, 11, 1),
+                "A",
+                "Outra multidão",
+                "Outra segunda",
+                "Outro salmo",
+                "Outro evangelho",
+                null,
+                "Outra ref",
+                "Outra segunda ref",
+                "Outro versículo");
+        assertEquals("Bem-aventurados os pobres", kept.evangelho().citacao());
+        assertEquals("Mt 5, 1-12a", kept.evangelho().referencia());
+        assertNull(library.stored(LocalDate.of(2026, 11, 1)));
+    }
+
     private static int indexOf(List<SundayLibrary.SundayEntry> entries, String key) {
         for (int i = 0; i < entries.size(); i++) {
             if (entries.get(i).key().equals(key)) {

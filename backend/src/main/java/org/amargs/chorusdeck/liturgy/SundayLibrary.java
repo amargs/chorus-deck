@@ -201,6 +201,51 @@ public final class SundayLibrary {
                 mergeText(day.louvor(), text(sunday, "louvor")));
     }
 
+    /**
+     * Writes sentences and references that are still blank on a solemnity's own key.
+     * A sentence or reference already stored is left as it is. {@code ano} is the year of this date.
+     */
+    public LiturgyDay rememberKey(
+            String key,
+            LocalDate date,
+            String ano,
+            String primeira,
+            String segunda,
+            String salmo,
+            String evangelho,
+            String louvor,
+            String primeiraRef,
+            String segundaRef,
+            String evangelhoRef) throws IOException {
+        Lectionary.Entry entry = Lectionary.find(key);
+        if (entry == null || date == null) {
+            return null;
+        }
+        load();
+        ObjectNode sunday = ensure(entry);
+        if (!blank(segunda) || !blank(segundaRef)) {
+            if (!(sunday.get("segunda") instanceof ObjectNode)) {
+                sunday.set("segunda", reading(""));
+            }
+        }
+        boolean changed = false;
+        changed |= fillReading(sunday, "primeira", primeira);
+        changed |= fillReading(sunday, "segunda", segunda);
+        changed |= fillText(sunday, "salmo", salmo);
+        changed |= fillReading(sunday, "evangelho", evangelho);
+        if (entry.lenten()) {
+            changed |= fillText(sunday, "louvor", louvor);
+        }
+        changed |= fillReference(sunday, "primeira", primeiraRef);
+        changed |= fillReference(sunday, "segunda", segundaRef);
+        changed |= fillReference(sunday, "evangelho", evangelhoRef);
+        if (changed) {
+            save();
+        }
+        String year = entry.ano() == null || entry.ano().isBlank() ? ano : entry.ano();
+        return day(date, year == null ? "" : year, sunday);
+    }
+
     /** Writes sentences that are still blank. A sentence already stored is left as it is. */
     public LiturgyDay rememberSentences(
             LocalDate date, String primeira, String segunda, String salmo, String evangelho, String louvor)
@@ -321,6 +366,17 @@ public final class SundayLibrary {
             fillRef(sunday, "segunda", calendar.segunda());
         }
         fillRef(sunday, "evangelho", calendar.evangelho());
+    }
+
+    private static boolean fillReference(ObjectNode sunday, String name, String referencia) {
+        if (referencia == null || referencia.isBlank() || !(sunday.get(name) instanceof ObjectNode reading)) {
+            return false;
+        }
+        if (text(reading, "referencia") != null) {
+            return false;
+        }
+        reading.put("referencia", referencia.trim());
+        return true;
     }
 
     private static void fillRef(ObjectNode sunday, String name, String referencia) {

@@ -12,7 +12,9 @@ import org.amargs.chorusdeck.liturgy.LiturgyClient;
 import org.amargs.chorusdeck.liturgy.LiturgyDay;
 import org.amargs.chorusdeck.liturgy.SundayLibrary;
 
+import java.io.IOException;
 import java.nio.file.Path;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -43,7 +45,11 @@ public final class MassDeckRequests {
             Map<String, SlideChoice> choices) {
     }
 
-    public static Map<String, Object> preview(LiturgyDay day) {
+    public static Map<String, Object> preview(LiturgyDay day) throws IOException {
+        return preview(day, null);
+    }
+
+    public static Map<String, Object> preview(LiturgyDay day, SundayLibrary library) throws IOException {
         Season season = Season.resolve(day.seasonKey(), day.coverLayout());
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("date", day.date().toString());
@@ -65,14 +71,19 @@ public final class MassDeckRequests {
             body.put("fileName", DeckSpec.fileName(day.date(), day.domingo(), day.seasonKey(), day.ano()));
         }
         body.put("warnings", warnings(day, season));
-        Map<String, Object> overlap = solemnity(day);
+        body.put("persists", persists(day));
+        Map<String, Object> overlap = solemnity(day, library);
         if (overlap != null) {
             body.put("solemnity", overlap);
         }
         return body;
     }
 
-    public static MassRequest apply(Ready ready, LiturgyDay day) {
+    public static MassRequest apply(Ready ready, LiturgyDay day) throws IOException {
+        return apply(ready, day, null);
+    }
+
+    public static MassRequest apply(Ready ready, LiturgyDay day, SundayLibrary library) throws IOException {
         String verse = ready.versiculo();
         if (verse == null || verse.isBlank()) {
             verse = null;
@@ -86,6 +97,9 @@ public final class MassDeckRequests {
             }
             if (overlap.outranksSunday()) {
                 source = blankScriptures(day);
+                if (library != null) {
+                    source = library.overlay(source, overlap.key());
+                }
             }
         }
         MassRequest mass = ready.request().withLiturgy(source).withCoverFields(ready.domingo(), verse)
@@ -243,7 +257,7 @@ public final class MassDeckRequests {
         return view;
     }
 
-    private static Map<String, Object> solemnity(LiturgyDay day) {
+    private static Map<String, Object> solemnity(LiturgyDay day, SundayLibrary library) throws IOException {
         LiturgyClient.SundaySolemnity overlap = LiturgyClient.sundayOverlap(day.date(), day.seasonKey());
         if (overlap == null) {
             return weekdaySolemnity(day);
@@ -257,7 +271,27 @@ public final class MassDeckRequests {
         if (day.ano() != null && !day.ano().isBlank()) {
             view.put("fileName", DeckSpec.fileName(day.date(), overlap.title(), day.seasonKey(), day.ano()));
         }
+        if (library != null && overlap.outranksSunday()) {
+            LiturgyDay stored = library.overlay(blankScriptures(day), overlap.key());
+            view.put("frase", text(stored.evangelho() == null ? null : stored.evangelho().citacao()));
+            view.put("versiculo", text(stored.evangelho() == null ? null : stored.evangelho().referencia()));
+            view.put("primeira", reading(stored.primeira()));
+            view.put("segunda", reading(stored.segunda()));
+            view.put("salmo", text(stored.refrao()));
+            view.put("louvor", text(stored.louvor()));
+        }
         return view;
+    }
+
+    private static boolean persists(LiturgyDay day) {
+        if (day.date() != null && day.date().getDayOfWeek() == DayOfWeek.SUNDAY) {
+            return true;
+        }
+        if (day.date() != null && LiturgyClient.weekdaySolemnity(day.date()) != null) {
+            return true;
+        }
+        String title = day.domingo();
+        return title != null && title.startsWith("Solenidade ");
     }
 
     private static String overlapWarning(LiturgyDay day, LiturgyClient.SundaySolemnity overlap) {

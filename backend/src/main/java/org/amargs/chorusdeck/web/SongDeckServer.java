@@ -102,8 +102,9 @@ public final class SongDeckServer {
         });
         app.get("/api/liturgy", ctx -> {
             Path index = library.requireIndex();
-            LiturgyDay day = liturgy.load(MassDeckRequests.date(ctx.queryParam("date")), index.resolveSibling(SundayLibrary.FILE_NAME));
-            ctx.json(MassDeckRequests.preview(day));
+            Path liturgyFile = index.resolveSibling(SundayLibrary.FILE_NAME);
+            LiturgyDay day = liturgy.load(MassDeckRequests.date(ctx.queryParam("date")), liturgyFile);
+            ctx.json(MassDeckRequests.preview(day, new SundayLibrary(liturgyFile)));
         });
         app.get("/api/sundays", ctx -> {
             Path index = library.requireIndex();
@@ -274,20 +275,36 @@ public final class SongDeckServer {
             Path written;
             int slides;
             if (massReady != null) {
-                LiturgyDay day = liturgy.load(massReady.request().date(), index.resolveSibling(SundayLibrary.FILE_NAME));
+                Path liturgyFile = index.resolveSibling(SundayLibrary.FILE_NAME);
+                SundayLibrary books = new SundayLibrary(liturgyFile);
+                LiturgyDay day = liturgy.load(massReady.request().date(), liturgyFile);
                 if (!massReady.manual()) {
-                    LiturgyDay remembered = new SundayLibrary(index.resolveSibling(SundayLibrary.FILE_NAME)).rememberSentences(
-                            day.date(),
-                            massReady.request().primeira(),
-                            massReady.request().segunda(),
-                            massReady.request().salmo(),
-                            massReady.request().evangelho(),
-                            massReady.request().louvor());
-                    if (remembered != null) {
+                    String key = solemnityKey(massReady, day);
+                    LiturgyDay remembered = key == null
+                            ? books.rememberSentences(
+                                    day.date(),
+                                    massReady.request().primeira(),
+                                    massReady.request().segunda(),
+                                    massReady.request().salmo(),
+                                    massReady.request().evangelho(),
+                                    massReady.request().louvor())
+                            : books.rememberKey(
+                                    key,
+                                    day.date(),
+                                    day.ano(),
+                                    massReady.request().primeira(),
+                                    massReady.request().segunda(),
+                                    massReady.request().salmo(),
+                                    massReady.request().evangelho(),
+                                    massReady.request().louvor(),
+                                    massReady.primeiraRef(),
+                                    massReady.segundaRef(),
+                                    massReady.versiculo());
+                    if (key == null && remembered != null) {
                         day = remembered;
                     }
                 }
-                MassRequest mass = MassDeckRequests.apply(massReady, day);
+                MassRequest mass = MassDeckRequests.apply(massReady, day, books);
                 DeckService.Generated generated = new DeckService().generateMass(
                         new AppConfig(null, index, PackagedTemplate.file(), null).withOutput(massReady.output()),
                         mass,
@@ -352,6 +369,18 @@ public final class SongDeckServer {
     @FunctionalInterface
     interface LiturgyLookup {
         LiturgyDay load(LocalDate date, Path libraryFile);
+    }
+
+    private static String solemnityKey(MassDeckRequests.Ready ready, LiturgyDay day) {
+        LiturgyClient.SundaySolemnity overlap = LiturgyClient.sundayOverlap(day.date(), day.seasonKey());
+        if (ready.solemnity() && overlap != null && overlap.outranksSunday()) {
+            return overlap.key();
+        }
+        LiturgyClient.WeekdaySolemnity weekday = LiturgyClient.weekdaySolemnity(day.date());
+        if (weekday != null) {
+            return weekday.key();
+        }
+        return null;
     }
 
     private static int songId(String raw) {

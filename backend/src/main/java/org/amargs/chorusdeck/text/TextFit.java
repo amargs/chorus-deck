@@ -26,12 +26,18 @@ import java.util.Locale;
 public final class TextFit {
 
     private static final int FULL_SCALE = 100_000;
-    private static final int MIN_SCALE = 10_000;
+    private static final int MIN_HUNDREDTHS = 800;
+    private static final int POINT_HUNDREDTHS = 100;
+    /** A wrapped line shorter than this may move up when a smaller size removes that line. */
+    private static final int SHORT_CHUNK_CHARACTERS = 12;
+    /**
+     * Java measures a real font a little narrower than PowerPoint. A pull is accepted only when the
+     * word still fits after giving back this much of an em, so a line that fills the box is not kept.
+     */
+    private static final double PULL_SLACK_EM = 0.12;
     private static final double EMU_PER_POINT = 12_700;
     private static final double DEFAULT_INSET_X = 91_440;
     private static final double DEFAULT_INSET_Y = 45_720;
-    /** Lyric boxes are fitted inside this fraction of the measured box so the last line stays inside. */
-    private static final double LYRIC_BOX_FRACTION = 0.88;
     private static final FontRenderContext RENDER_CONTEXT = new FontRenderContext(null, true, true);
     /** PowerPoint draws lowercase as capitals at this fraction of the font size when {@code cap="small"}. */
     private static final double SMALL_CAPS_SCALE = 0.8;
@@ -62,9 +68,8 @@ public final class TextFit {
             return;
         }
 
-        boolean lyric = !Fonts.titlePlaceholder(shape);
-        double textWidth = widthPt * (lyric ? 0.92 : 0.98);
-        double targetHeight = lyric ? heightPt * LYRIC_BOX_FRACTION : heightPt;
+        double textWidth = widthPt;
+        double targetHeight = heightPt;
         TextStyle style = textStyle(shape, txBody);
         String box = box(textWidth, targetHeight, style.fontPt());
         String hash = FitCache.hash(BoldMarkup.SEMIBOLD + "\0" + style.typeface() + "\0"
@@ -86,15 +91,54 @@ public final class TextFit {
 
     private static int fittedHundredths(XSLFTextShape shape, TextStyle style, double textWidth, double targetHeight) {
         List<XSLFTextParagraph> paragraphs = shape.getTextParagraphs();
-        int fontScale = FULL_SCALE;
-        if (!fits(paragraphs, style, textWidth, targetHeight, 1, 0)) {
-            fontScale = fit(paragraphs, style, textWidth, targetHeight);
+        int max = (int) Math.round(style.fontPt() * 100.0);
+        int chosen = MIN_HUNDREDTHS;
+        for (int hundredths = max; hundredths >= MIN_HUNDREDTHS; hundredths -= POINT_HUNDREDTHS) {
+            if (fits(paragraphs, style, textWidth, targetHeight, hundredths / 100.0)) {
+                chosen = hundredths;
+                break;
+            }
         }
-        if (fontScale >= FULL_SCALE) {
+        chosen = pullShortChunk(paragraphs, style, textWidth, targetHeight, chosen);
+        if (chosen >= max) {
             return 0;
         }
-        int hundredths = (int) Math.floor(style.fontPt() * fontScale / FULL_SCALE * 100.0);
-        return Math.max(hundredths, 800);
+        return chosen;
+    }
+
+    /**
+     * When the size that fits leaves a wrapped line of fewer than 12 characters, use a smaller size
+     * if that pulls the chunk onto the previous line. The drop is at most 10% of that size,
+     * rounded up to a whole point (48 can fall to 43, 16 can fall to 14). If a short chunk remains,
+     * the same limit is applied again from the size just chosen.
+     */
+    private static int pullShortChunk(
+            List<XSLFTextParagraph> paragraphs, TextStyle style, double widthPt, double heightPt, int chosen) {
+        while (true) {
+            Wrap atSize = measure(paragraphs, style, widthPt, chosen / 100.0);
+            if (!atSize.shortChunk()) {
+                return chosen;
+            }
+            int maxDrop = (int) Math.ceil((chosen / POINT_HUNDREDTHS) * 0.10) * POINT_HUNDREDTHS;
+            int pulled = chosen;
+            for (int drop = POINT_HUNDREDTHS; drop <= maxDrop; drop += POINT_HUNDREDTHS) {
+                int smaller = chosen - drop;
+                if (smaller < MIN_HUNDREDTHS) {
+                    break;
+                }
+                double trial = smaller / 100.0;
+                double pullWidth = style.font() == null ? widthPt : Math.max(1, widthPt - trial * PULL_SLACK_EM);
+                Wrap reduced = measure(paragraphs, style, pullWidth, trial);
+                if (reduced.lines() < atSize.lines() && fits(paragraphs, style, widthPt, heightPt, trial)) {
+                    pulled = smaller;
+                    break;
+                }
+            }
+            if (pulled == chosen) {
+                return chosen;
+            }
+            chosen = pulled;
+        }
     }
 
     private static String layoutName(XSLFTextShape shape) {
@@ -142,46 +186,57 @@ public final class TextFit {
         return Double.parseDouble(value.toString());
     }
 
-    private static int fit(List<XSLFTextParagraph> paragraphs, TextStyle style, double widthPt, double heightPt) {
-        if (fits(paragraphs, style, widthPt, heightPt, 1, 0)) {
-            return FULL_SCALE;
-        }
-        int best = MIN_SCALE;
-        int low = MIN_SCALE;
-        int high = FULL_SCALE;
-        while (low <= high) {
-            int mid = (low + high) / 2;
-            if (fits(paragraphs, style, widthPt, heightPt, mid / (double) FULL_SCALE, 0)) {
-                best = mid;
-                low = mid + 1;
-            } else {
-                high = mid - 1;
-            }
-        }
-        return best;
-    }
-
-    private static boolean fits(List<XSLFTextParagraph> paragraphs, TextStyle style, double widthPt, double heightPt, double fontScale, double lineReduction) {
-        double fontPt = style.fontPt() * fontScale;
-        double linePt = style.exactLinePt() > 0
-                ? style.exactLinePt()
-                : fontPt * style.linePct() * (1 - lineReduction);
+    private static boolean fits(List<XSLFTextParagraph> paragraphs, TextStyle style, double widthPt, double heightPt, double fontPt) {
+        double linePt = style.exactLinePt() > 0 ? style.exactLinePt() : singleSpacing(style, fontPt) * style.linePct();
+        Wrap measured = measure(paragraphs, style, widthPt, fontPt);
         double total = 0;
         for (XSLFTextParagraph paragraph : paragraphs) {
-            int lines = wrapLines(paragraph, widthPt, fontPt, style.font(), style.boldFont(), style.smallCaps());
-            total += style.spaceBeforePt() + lines * linePt + style.spaceAfterPt();
+            total += style.spaceBeforePt() + style.spaceAfterPt();
         }
+        total += measured.lines() * linePt;
         return total <= heightPt + 0.5;
     }
 
-    private static int wrapLines(XSLFTextParagraph paragraph, double widthPt, double fontPt, Font regular, Font bold, boolean smallCaps) {
+    /** Percentage spacing is a fraction of the font's own line spacing, not of the point size. */
+    private static double singleSpacing(TextStyle style, double fontPt) {
+        if (style.font() == null) {
+            return fontPt;
+        }
+        double height = Math.max(lineBox(style.font(), fontPt), lineBox(style.boldFont(), fontPt));
+        return height > 0 ? height : fontPt;
+    }
+
+    private static double lineBox(Font font, double fontPt) {
+        if (font == null) {
+            return 0;
+        }
+        java.awt.font.LineMetrics metrics = font.deriveFont((float) fontPt).getLineMetrics("Ag", RENDER_CONTEXT);
+        float height = metrics.getAscent() + metrics.getDescent() + metrics.getLeading();
+        return height > 0 ? height : 0;
+    }
+
+    private static Wrap measure(List<XSLFTextParagraph> paragraphs, TextStyle style, double widthPt, double fontPt) {
+        int lines = 0;
+        boolean shortChunk = false;
+        for (XSLFTextParagraph paragraph : paragraphs) {
+            Wrap wrapped = wrapParagraph(paragraph, widthPt, fontPt, style.font(), style.boldFont(), style.smallCaps());
+            lines += wrapped.lines();
+            shortChunk = shortChunk || wrapped.shortChunk();
+        }
+        return new Wrap(lines, shortChunk);
+    }
+
+    private static Wrap wrapParagraph(XSLFTextParagraph paragraph, double widthPt, double fontPt, Font regular, Font bold, boolean smallCaps) {
         List<XSLFTextRun> runs = paragraph.getTextRuns();
         if (runs.isEmpty()) {
-            return 1;
+            return new Wrap(1, false);
         }
         int lines = 1;
         double used = 0;
         boolean any = false;
+        int charsOnLine = 0;
+        boolean wrappedLine = false;
+        boolean shortChunk = false;
         for (XSLFTextRun run : runs) {
             String raw = run.getRawText();
             if (raw == null || raw.isEmpty()) {
@@ -191,8 +246,11 @@ public final class TextFit {
             Font face = runFace(run, regular, bold);
             for (String token : tokens(raw)) {
                 if (token.equals("\n")) {
+                    shortChunk = shortChunk || shortWrappedChunk(wrappedLine, charsOnLine);
                     lines++;
                     used = 0;
+                    charsOnLine = 0;
+                    wrappedLine = false;
                     continue;
                 }
                 double width = textWidth(token, face, fontPt, smallCaps && runSmallCaps(run));
@@ -202,25 +260,35 @@ public final class TextFit {
                     }
                     continue;
                 }
-                if (used == 0 || used + width <= widthPt) {
-                    if (width <= widthPt) {
-                        used = used == 0 ? width : used + width;
-                    } else {
-                        lines += Math.max(0, (int) Math.ceil(width / widthPt) - 1);
-                        used = width % widthPt;
-                    }
-                } else {
+                boolean newLine = used > 0 && used + width > widthPt;
+                if (newLine) {
+                    shortChunk = shortChunk || shortWrappedChunk(wrappedLine, charsOnLine);
                     lines++;
-                    if (width <= widthPt) {
-                        used = width;
-                    } else {
-                        lines += Math.max(0, (int) Math.ceil(width / widthPt) - 1);
-                        used = width % widthPt;
-                    }
+                    charsOnLine = 0;
+                    wrappedLine = true;
+                    used = 0;
                 }
+                if (width <= widthPt) {
+                    used = used == 0 ? width : used + width;
+                } else {
+                    lines += Math.max(0, (int) Math.ceil(width / widthPt) - 1);
+                    used = width % widthPt;
+                }
+                charsOnLine += charsOnLine == 0 ? token.length() : 1 + token.length();
             }
         }
-        return any ? lines : 1;
+        if (!any) {
+            return new Wrap(1, false);
+        }
+        shortChunk = shortChunk || shortWrappedChunk(wrappedLine, charsOnLine);
+        return new Wrap(lines, shortChunk);
+    }
+
+    private static boolean shortWrappedChunk(boolean wrappedLine, int charsOnLine) {
+        return wrappedLine && charsOnLine > 0 && charsOnLine < SHORT_CHUNK_CHARACTERS;
+    }
+
+    private record Wrap(int lines, boolean shortChunk) {
     }
 
     private static Font runFace(XSLFTextRun run, Font regular, Font bold) {

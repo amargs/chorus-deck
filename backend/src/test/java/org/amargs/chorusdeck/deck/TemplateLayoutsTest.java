@@ -24,6 +24,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import javax.imageio.ImageIO;
 import java.time.LocalDate;
 import java.util.Base64;
@@ -41,7 +42,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class TemplateLayoutsTest {
 
     private static final List<String> REQUIRED_LAYOUTS = List.of(
-            "Capa - Tempo Comum",
+            "Capa",
             "Capa - Advento",
             "Capa - Natal",
             "Capa - Quaresma",
@@ -171,13 +172,13 @@ class TemplateLayoutsTest {
     }
 
     @Test
-    void song98FirstVerseShrinksBelow48() throws Exception {
+    void song98FirstVerseShrinksBelowTheTemplateSize() throws Exception {
         try (XMLSlideShow ppt = openTemplate()) {
             XSLFSlide slide = ppt.createSlide(TemplateLayouts.findLayout(ppt, TemplateLayouts.ORDINARY_TITLE));
             String verse = "Se me envolve a noite escura\ne caminho sobre abismos de amargura,\nnada temo, porque a luz está comigo. \nNada temo, porque…";
             TemplateLayouts.setShapeText(slide, "Letra", verse);
             int hundredths = fontSize(textShape(slide, "Letra"));
-            assertTrue(hundredths < 4_800, "sz=" + hundredths);
+            assertTrue(hundredths < 5_400, "sz=" + hundredths);
             assertTrue(hundredths > 2_000, "sz=" + hundredths);
         }
     }
@@ -194,14 +195,13 @@ class TemplateLayoutsTest {
     }
 
     @Test
-    void continuationSlideShrinksALittleFurther() throws Exception {
+    void continuationVerseShrinksSoTheWrappedLinesStayInTheBox() throws Exception {
         try (XMLSlideShow ppt = openTemplate()) {
             XSLFSlide slide = ppt.createSlide(TemplateLayouts.findLayout(ppt, TemplateLayouts.LYRICS));
             String verse = "Se me colhe a tempestade\ne Jesus vai a dormir na minha barca,\nnada temo porque a Paz está comigo. \nNada temo porque…";
             TemplateLayouts.setShapeText(slide, "Letra", verse);
             int hundredths = fontSize(textShape(slide, "Letra"));
-            assertTrue(hundredths < 5_200, "sz=" + hundredths);
-            assertTrue(hundredths > 2_000, "sz=" + hundredths);
+            assertEquals(4_900, hundredths);
         }
     }
 
@@ -252,7 +252,7 @@ class TemplateLayoutsTest {
 
         try (XMLSlideShow ppt = open(out)) {
             assertEquals(6, ppt.getSlides().size());
-            assertEquals("Capa - Tempo Comum", ppt.getSlides().get(0).getSlideLayout().getName());
+            assertEquals("Capa", ppt.getSlides().get(0).getSlideLayout().getName());
             assertEquals("XXVIII Domingo", textShape(ppt.getSlides().get(0), "Domingo").getText());
             assertEquals("«frase»", textShape(ppt.getSlides().get(0), "Frase").getText());
             XSLFTextShape domingoShape = textShape(ppt.getSlides().get(0), "Domingo");
@@ -301,7 +301,7 @@ class TemplateLayoutsTest {
 
         try (XMLSlideShow ppt = open(out)) {
             assertEquals(8, ppt.getSlides().size());
-            assertEquals("Capa - Tempo Comum", ppt.getSlides().get(0).getSlideLayout().getName());
+            assertEquals("Capa", ppt.getSlides().get(0).getSlideLayout().getName());
             assertEquals(TemplateLayouts.INTERVAL_BLANK, ppt.getSlides().get(1).getSlideLayout().getName());
             assertTrue(ppt.getSlides().get(1).getShapes().isEmpty());
             assertEquals(TemplateLayouts.ORDINARY_TITLE, ppt.getSlides().get(2).getSlideLayout().getName());
@@ -515,6 +515,42 @@ class TemplateLayoutsTest {
     }
 
     @Test
+    void lentenVerseShrinksBelowTheLayoutSize() throws Exception {
+        try (XMLSlideShow templatePpt = new XMLSlideShow(Files.newInputStream(template()))) {
+            Assumptions.assumeTrue(hasLayout(templatePpt, TemplateLayouts.LOUVOR),
+                    "Layout Louvor a vós is not in the template yet");
+        }
+        String verse = "No meio da nuvem luminosa ouviu-se a voz do Pai: este é o meu Filho muito amado. ".repeat(6).trim();
+        LiturgyDay day = new LiturgyDay(
+                LocalDate.of(2026, 3, 1),
+                "Domingo III",
+                "quaresma",
+                null,
+                "B",
+                new LiturgyDay.Reading("Ex 17, 3-7", "Dai-nos água"),
+                null,
+                "Aclamai",
+                new LiturgyDay.Reading("Jo 4, 5-42", "Água viva"),
+                verse);
+        Path out = Files.createTempFile("chorus-deck", ".pptx");
+        new DeckService().generateMass(
+                new AppConfig(Path.of("unused.pptx"), indexFile(), template(), out),
+                MassRequest.load(massFile("""
+                        date: 2026-03-01
+                        opcoes:
+                          credo: breve
+                        """)).withLiturgy(day));
+        try (XMLSlideShow ppt = open(out)) {
+            int louvor = layoutNames(ppt).indexOf(TemplateLayouts.LOUVOR);
+            XSLFTextShape verso = textShape(ppt.getSlides().get(louvor), "Verso");
+            assertEquals(verse, verso.getText());
+            int size = fontSize(verso);
+            assertTrue(size < 4_400, "sz=" + size);
+            assertTrue(size >= 800, "sz=" + size);
+        }
+    }
+
+    @Test
     void quaresmaReplacesTheAlleluiaWithLouvor() throws Exception {
         try (XMLSlideShow templatePpt = new XMLSlideShow(Files.newInputStream(template()))) {
             Assumptions.assumeTrue(hasLayout(templatePpt, TemplateLayouts.LOUVOR),
@@ -548,7 +584,9 @@ class TemplateLayoutsTest {
             int gospel = layouts.indexOf(TemplateLayouts.EVANGELHO);
             assertTrue(louvor >= 0);
             assertTrue(louvor < gospel);
-            assertEquals("Deus amou tanto o mundo", textShape(ppt.getSlides().get(louvor), "Verso").getText());
+            XSLFTextShape verso = textShape(ppt.getSlides().get(louvor), "Verso");
+            assertEquals("Deus amou tanto o mundo", verso.getText());
+            assertEquals(4_400, fontSize(verso));
             assertFalse(notes(ppt.getSlides().get(0)).contains("2 -"));
             assertFalse(layouts.contains(TemplateLayouts.GLORIA_1));
         }
@@ -594,7 +632,7 @@ class TemplateLayoutsTest {
             assertEquals("«" + day.evangelho().citacao() + "»", textShape(ppt.getSlides().get(gospel), "Citação").getText());
             assertEquals("«" + day.evangelho().citacao() + "»", textShape(ppt.getSlides().get(0), "Frase").getText());
             Path comum = template().toAbsolutePath().normalize().getParent()
-                    .resolve("../../assets/background_comum.jpg").normalize();
+                    .resolve("../../assets/background_green.jpg").normalize();
             if (Files.isRegularFile(comum)) {
                 assertArrayEquals(Files.readAllBytes(comum), TemplateLayouts.scriptureBackground(ppt));
             }
@@ -602,50 +640,93 @@ class TemplateLayoutsTest {
     }
 
     @Test
+    void scriptureTextUsesTheSeasonAccent() throws Exception {
+        assertScriptureAccent("comum", null, "accent1");
+        assertScriptureAccent("comum", "Capa - Solenidade", "accent4");
+        assertScriptureAccent("advento", null, "accent2");
+        assertScriptureAccent("ramos", null, "accent5");
+        assertScriptureAccent("natal", "Capa - Solenidade Paz", "accent6");
+    }
+
+    private static void assertScriptureAccent(String season, String cover, String accent) throws Exception {
+        Path yaml = massFile("""
+                date: 2026-11-01
+                opcoes:
+                  credo: longo
+                """);
+        LiturgyDay day = new LiturgyDay(
+                LocalDate.of(2026, 11, 1),
+                "Celebração",
+                season,
+                cover,
+                "A",
+                new LiturgyDay.Reading("Ap 7, 2-4.9-14", "Vi uma multidão"),
+                null,
+                "Bendizei o Senhor",
+                new LiturgyDay.Reading("Mt 5, 1-12a", "Bem-aventurados os pobres"),
+                null);
+        Path out = Files.createTempFile("chorus-deck", ".pptx");
+        new DeckService().generateMass(
+                new AppConfig(Path.of("unused.pptx"), indexFile(), template(), out),
+                MassRequest.load(yaml).withLiturgy(day));
+        try (XMLSlideShow ppt = open(out)) {
+            int first = layoutNames(ppt).indexOf(TemplateLayouts.LEITURA_1);
+            String fill = accentFill(ppt.getSlides().get(first), "Citação");
+            assertTrue(fill.contains("val=\"" + accent + "\""), fill);
+            assertTrue(fill.contains("75000"), fill);
+        }
+    }
+
+    @Test
     void scriptureBackgroundFollowsTheSeasonIncludingRoseSundays() {
-        assertEquals("background_comum.jpg", Season.resolve("comum", null).scriptureBackground());
-        assertEquals("background_advento.jpg", Season.resolve("advento", null).scriptureBackground());
-        assertEquals("background_advento_rosa.jpg",
+        assertEquals("background_green.jpg", Season.resolve("comum", null).scriptureBackground());
+        assertEquals("background_purple.jpg", Season.resolve("advento", null).scriptureBackground());
+        assertEquals("background_green.jpg",
                 Season.resolve("advento", "Capa - Domingo III Advento").scriptureBackground());
-        assertEquals("background_natal.jpg", Season.resolve("natal", null).scriptureBackground());
-        assertEquals("background_quaresma.jpg", Season.resolve("quaresma", null).scriptureBackground());
-        assertEquals("background_quaresma.jpg", Season.resolve("ramos", null).scriptureBackground());
-        assertEquals("background_quaresma_rosa.jpg",
+        assertEquals("background_gold.jpg", Season.resolve("natal", null).scriptureBackground());
+        assertEquals("background_purple.jpg", Season.resolve("quaresma", null).scriptureBackground());
+        assertEquals("background_purple.jpg", Season.resolve("ramos", null).scriptureBackground());
+        assertEquals("background_green.jpg",
                 Season.resolve("quaresma", "Capa - Domingo IV Quaresma").scriptureBackground());
-        assertEquals("background_pascoa.jpg", Season.resolve("pascoa", null).scriptureBackground());
-        assertEquals("background_pascoa.jpg", Season.resolve("pentecostes", null).scriptureBackground());
+        assertEquals("background_gold.jpg", Season.resolve("pascoa", null).scriptureBackground());
+        assertEquals("background_gold.jpg", Season.resolve("pentecostes", null).scriptureBackground());
 
         Season white = Season.resolve("comum", "Capa - Solenidade");
         assertEquals("Capa - Solenidade", white.coverLayout());
         assertEquals(TemplateLayouts.FESTIVE_TITLE, white.titleLayout());
         assertNull(white.headerScheme());
         assertEquals("Tempo Comum · Ano A", white.tempo("A"));
-        assertEquals("background_comum.jpg", white.scriptureBackground());
+        assertEquals("background_gold.jpg", white.scriptureBackground());
         assertFalse(white.omitsGloria());
 
         Season immaculate = Season.resolve("advento", "Capa - Solenidade");
         assertEquals(TemplateLayouts.FESTIVE_TITLE, immaculate.titleLayout());
         assertEquals("Tempo de Advento · Ano B", immaculate.tempo("B"));
-        assertEquals("background_advento.jpg", immaculate.scriptureBackground());
+        assertEquals("background_gold.jpg", immaculate.scriptureBackground());
         assertTrue(immaculate.omitsGloria());
 
         Season apostles = Season.resolve("comum", "Capa - Solenidade Pedro Paulo");
         assertEquals(TemplateLayouts.ORDINARY_TITLE, apostles.titleLayout());
         assertEquals("accent5", apostles.headerScheme());
         assertEquals("Tempo Comum · Ano A", apostles.tempo("A"));
-        assertEquals("background_comum.jpg", apostles.scriptureBackground());
+        assertEquals("background_green.jpg", apostles.scriptureBackground());
 
         Season peace = Season.resolve("natal", "Capa - Solenidade Paz");
         assertEquals(TemplateLayouts.ORDINARY_TITLE, peace.titleLayout());
         assertEquals("accent6", peace.headerScheme());
         assertEquals("Tempo de Natal · Ano A", peace.tempo("A"));
-        assertEquals("background_natal.jpg", peace.scriptureBackground());
+        assertEquals("background_gold.jpg", peace.scriptureBackground());
 
         Season mary = Season.resolve("comum", "Capa - Maria");
         assertEquals("accent6", mary.headerScheme());
         Season taize = Season.resolve("comum", "Capa - Taizé");
         assertEquals("Capa - Taizé", taize.coverLayout());
         assertEquals("accent1", taize.headerScheme());
+        assertEquals("E37931", taize.coverPaint().backgroundRgb());
+        assertEquals(100_000, taize.coverPaint().alpha());
+        assertEquals("logo_taize.png", taize.coverPaint().logo());
+        assertEquals(75_000, peace.coverPaint().textLumMod());
+        assertEquals("logo_paz.png", peace.coverPaint().logo());
     }
 
     @Test
@@ -854,8 +935,19 @@ class TemplateLayoutsTest {
 
         try (XMLSlideShow ppt = open(out)) {
             XSLFSlide cover = ppt.getSlides().get(0);
-            assertEquals("Capa - Domingo IV Quaresma", cover.getSlideLayout().getName());
+            assertEquals("Capa", cover.getSlideLayout().getName());
             assertEquals("Tempo de Quaresma · Ano B", textShape(cover, "Tempo").getText());
+            String background = cover.getSlideLayout().getXmlObject().getCSld().getBg().xmlText();
+            assertTrue(background.contains("accent3"), background);
+            assertTrue(background.contains("40000"), background);
+            assertTrue(background.contains("25000"), background);
+            assertArrayEquals(asset("logo_laetere.png"), coverLogo(cover));
+            String domingo = layoutShape(cover, "Domingo").xmlText();
+            assertTrue(domingo.contains("accent3"), domingo);
+            String slideDomingo = ((CTShape) textShape(cover, "Domingo").getXmlObject()).xmlText();
+            if (slideDomingo.contains("schemeClr")) {
+                assertTrue(slideDomingo.contains("accent3"), slideDomingo);
+            }
             assertEquals(TemplateLayouts.ORDINARY_TITLE, ppt.getSlides().get(1).getSlideLayout().getName());
             assertEquals("accent3", headerScheme(ppt));
         }
@@ -866,9 +958,33 @@ class TemplateLayoutsTest {
                 new DeckService.Selection.Ids(List.of(2)),
                 cover("pascoa"));
         try (XMLSlideShow ppt = open(festive)) {
-            assertEquals("Capa - Páscoa", ppt.getSlides().get(0).getSlideLayout().getName());
+            assertEquals("Capa", ppt.getSlides().get(0).getSlideLayout().getName());
             assertEquals("Tempo Pascal · Ano A", textShape(ppt.getSlides().get(0), "Tempo").getText());
+            assertArrayEquals(asset("logo_pascoa.png"), coverLogo(ppt.getSlides().get(0)));
+            String pascoa = ppt.getSlides().get(0).getSlideLayout().getXmlObject().getCSld().getBg().xmlText();
+            assertTrue(pascoa.contains("accent4"), pascoa);
+            assertTrue(pascoa.contains("20000"), pascoa);
             assertEquals(TemplateLayouts.FESTIVE_TITLE, ppt.getSlides().get(1).getSlideLayout().getName());
+        }
+
+        Path copied = Files.createTempFile("chorus-deck-template", ".pptx");
+        Files.copy(template(), copied, StandardCopyOption.REPLACE_EXISTING);
+        Path solemnity = Files.createTempFile("chorus-deck", ".pptx");
+        new DeckService().generate(
+                new AppConfig(Path.of("unused.pptx"), indexFile(), copied, solemnity),
+                new DeckService.Selection.Ids(List.of(2)),
+                new Cover(
+                        "comum",
+                        "Capa - Solenidade",
+                        "Solenidade de Todos os Santos",
+                        "Bem-aventurados os pobres",
+                        "Mt 5, 1-12a",
+                        "A"));
+        try (XMLSlideShow ppt = open(solemnity)) {
+            XSLFSlide cover = ppt.getSlides().get(0);
+            assertEquals("Capa", cover.getSlideLayout().getName());
+            assertEquals("«Bem-aventurados os pobres»", textShape(cover, "Frase").getText());
+            assertArrayEquals(asset("logo_comunhao.png"), coverLogo(cover));
         }
     }
 
@@ -1025,6 +1141,37 @@ class TemplateLayoutsTest {
             return number.intValue();
         }
         return Integer.parseInt(size.toString());
+    }
+
+    private static byte[] asset(String name) throws Exception {
+        Path file = template().toAbsolutePath().normalize().getParent().resolve("../../assets").resolve(name).normalize();
+        return Files.readAllBytes(file);
+    }
+
+    private static String accentFill(XSLFSlide slide, String name) {
+        String onSlide = ((CTShape) textShape(slide, name).getXmlObject()).xmlText();
+        if (onSlide.contains("schemeClr")) {
+            return onSlide;
+        }
+        return layoutShape(slide, name).xmlText();
+    }
+
+    private static CTShape layoutShape(XSLFSlide cover, String name) {
+        for (XSLFShape shape : cover.getSlideLayout().getShapes()) {
+            if (name.equals(shape.getShapeName()) && shape.getXmlObject() instanceof CTShape ctShape) {
+                return ctShape;
+            }
+        }
+        throw new IllegalStateException("Shape not found: " + name);
+    }
+
+    private static byte[] coverLogo(XSLFSlide cover) {
+        for (XSLFShape shape : cover.getSlideLayout().getShapes()) {
+            if (shape instanceof XSLFPictureShape picture && "Picture 4".equals(picture.getShapeName())) {
+                return picture.getPictureData().getData();
+            }
+        }
+        throw new IllegalStateException("Cover logo not found");
     }
 
     private static XSLFTextShape textShape(XSLFSlide slide, String name) {

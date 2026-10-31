@@ -43,6 +43,7 @@ const folder = ref('')
 const folderEdited = ref(false)
 const savedPath = ref('')
 const error = ref('')
+const fileOpen = ref('')
 const busy = ref(false)
 const loadError = ref('')
 const missingFonts = ref([])
@@ -631,6 +632,7 @@ async function pickAnotherName() {
 
 async function generate(replace = false) {
   error.value = ''
+  fileOpen.value = ''
   savedPath.value = ''
   replaceName.value = ''
   busy.value = true
@@ -684,7 +686,12 @@ async function generate(replace = false) {
     }
     savedPath.value = payload.output
   } catch (e) {
-    error.value = e.message
+    const message = e instanceof Error ? e.message : 'Não foi possível gerar.'
+    if (message.includes('ficheiro está aberto')) {
+      fileOpen.value = message
+    } else {
+      error.value = message
+    }
   } finally {
     busy.value = false
   }
@@ -952,6 +959,14 @@ async function errorText(response) {
       </div>
       <p v-if="error && !savedPath" class="status error">{{ error }}</p>
     </section>
+    <div v-if="fileOpen" class="modal-backdrop" @click.self="fileOpen = ''">
+      <div class="modal confirm" role="dialog" aria-modal="true" aria-labelledby="file-open" @keydown.esc="fileOpen = ''">
+        <p id="file-open" class="file-open">{{ fileOpen }}</p>
+        <div class="open-actions">
+          <button class="primary" type="button" @click="fileOpen = ''">Fechar</button>
+        </div>
+      </div>
+    </div>
     <div v-if="replaceName" class="modal-backdrop" @click.self="pickAnotherName">
       <div class="modal confirm" role="dialog" aria-modal="true" aria-labelledby="replace-file">
         <p id="replace-file">Já existe um ficheiro com o nome {{ replaceName }}. Quer substituí-lo?</p>
